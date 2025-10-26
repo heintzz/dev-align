@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const connectDB = require('./configs/db.conn');
 const authRoutes = require('./routes/auth.routes');
 const skillRoutes = require('./routes/skill.routes');
+const positionRoutes = require('./routes/position.routes');
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.get('/', (_, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/skill', skillRoutes);
+app.use('/position', positionRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
