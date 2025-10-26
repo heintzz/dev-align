@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 
 const connectDB = require('./configs/db.conn');
+const authRoutes = require('./routes/auth.routes');
 
 dotenv.config();
 
@@ -19,6 +20,8 @@ connectDB();
 app.get('/', (_, res) => {
   res.send('Hello World!');
 });
+
+app.use('/auth', authRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
