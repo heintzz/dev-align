@@ -1,0 +1,18 @@
+feat: add employee creation endpoint
+
+This commit introduces the functionality for creating new employees.
+
+- **feat(hr):** add endpoint for creating employees
+  - Create a new route at `POST /hr/employee` to handle employee creation requests.
+  - Implement the `createEmployee` controller to process the request, hash the password, and save the new employee to the database.
+  - Add a check to prevent creating users with duplicate email addresses.
+
+- **feat(user):** add user model and data transfer object
+  - Define the `User` schema with fields for employee information, including name, email, password, position, and role.
+  - Create a `user.dto` to map the user object to a public-facing response, ensuring sensitive data like the password is not exposed.
+
+- **feat(utils):** add password hashing utility
+  - Create a utility function to hash passwords using `bcryptjs` before storing them in the database.
+
+- **chore:** update main server file
+  - Mount the new `hrRoutes` in `index.js` to make the employee creation endpoint available.
