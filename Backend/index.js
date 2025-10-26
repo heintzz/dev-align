@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 
 const connectDB = require('./configs/db.conn');
 const hrRoutes = require('./routes/hr.routes');
+const authRoutes = require('./routes/auth.routes');
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.get('/', (_, res) => {
 });
 
 app.use('/hr', hrRoutes);
+app.use('/auth', authRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);

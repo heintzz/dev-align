@@ -25,7 +25,6 @@ const userSchema = new Schema(
     },
     date_of_birth: {
       type: Date,
-      
       required: false,
     },
     // TODO: add reference to the corresponding schema
