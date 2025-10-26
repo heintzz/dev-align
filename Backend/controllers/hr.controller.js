@@ -1,9 +1,10 @@
 const userDto = require('../dto/user.dto');
 const { User } = require('../models');
-const { hashPassword } = require('../utils/password');
+const { sendEmail } = require('../utils/email');
+const { hashPassword, generatePassword } = require('../utils/password');
 
 const createEmployee = async (req, res) => {
-  const { password, email } = req.body;
+  const { email } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -14,6 +15,7 @@ const createEmployee = async (req, res) => {
     });
   }
 
+  const password = generatePassword();
   const hashedPassword = await hashPassword(password);
 
   const user = new User({
@@ -23,6 +25,21 @@ const createEmployee = async (req, res) => {
 
   try {
     const newUser = await user.save();
+
+    const message = `Hello ${req.body.name}, Welcome onboard!!
+Your HR has created an account for you.
+Email: ${email}
+Password: ${password}
+Please log in and change your password.
+    `;
+
+    // TODO: check email validation before sending
+    await sendEmail({
+      to: email,
+      subject: 'Account Created - DevAlign HRIS',
+      text: message,
+    });
+
     res.status(201).json({
       success: true,
       data: userDto.mapUserToUserResponse(newUser),
