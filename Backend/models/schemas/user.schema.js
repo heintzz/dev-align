@@ -15,28 +15,27 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
-    phone_number: {
+    phoneNumber: {
       type: String,
       required: false,
+      default: null,
     },
-    place_of_birth: {
+    placeOfBirth: {
       type: String,
       required: false,
+      default: null,
     },
-    date_of_birth: {
+    dateOfBirth: {
       type: Date,
       required: false,
+      default: null,
     },
-    // TODO: add reference to the corresponding schema
     position: {
-      type: String,
-      required: false,
+      ref: 'Position',
+      type: Schema.Types.ObjectId,
+      default: null,
     },
-    skills: {
-      type: [String],
-      required: false,
-    },
-    manager_id: {
+    managerId: {
       ref: 'User',
       type: Schema.Types.ObjectId,
       required: false,
