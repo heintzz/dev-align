@@ -13,8 +13,15 @@ const sendEmail = async (options) => {
     from: '"DevAlign HRIS" <noreply@hr-devalign.com>',
     to: options.to,
     subject: options.subject,
-    text: options.text,
   };
+
+  if (options.text) {
+    message['text'] = options.text;
+  }
+
+  if (options.html) {
+    message['html'] = options.html;
+  }
 
   await transporter.sendMail(message);
 };

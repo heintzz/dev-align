@@ -15,17 +15,17 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
-    phone_number: {
+    phoneNumber: {
       type: String,
       required: false,
       default: null,
     },
-    place_of_birth: {
+    placeOfBirth: {
       type: String,
       required: false,
       default: null,
     },
-    date_of_birth: {
+    dateOfBirth: {
       type: Date,
       required: false,
       default: null,
@@ -35,13 +35,7 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId,
       default: null,
     },
-    skills: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Skill',
-      },
-    ],
-    manager_id: {
+    managerId: {
       ref: 'User',
       type: Schema.Types.ObjectId,
       required: false,

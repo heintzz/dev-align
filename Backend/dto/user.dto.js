@@ -2,12 +2,12 @@ function mapUserToUserResponse(user) {
   return {
     name: user.name,
     email: user.email,
-    phoneNumber: user.phone_number,
-    placeOfBirth: user.place_of_birth,
-    dateOfBirth: user.date_of_birth,
+    phoneNumber: user.phoneNumber,
+    placeOfBirth: user.placeOfBirth,
+    dateOfBirth: user.dateOfBirth,
     position: user.position,
     skills: user.skills,
-    manager_id: user.manager_id,
+    managerId: user.managerId,
     role: user.role,
   };
 }
