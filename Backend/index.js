@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 
 const connectDB = require('./configs/db.conn');
+const hrRoutes = require('./routes/hr.routes');
 const authRoutes = require('./routes/auth.routes');
 const skillRoutes = require('./routes/skill.routes');
 const positionRoutes = require('./routes/position.routes');
@@ -23,6 +24,7 @@ app.get('/', (_, res) => {
   res.send('Hello World!');
 });
 
+app.use('/hr', hrRoutes);
 app.use('/auth', authRoutes);
 app.use('/skill', skillRoutes);
 app.use('/position', positionRoutes);

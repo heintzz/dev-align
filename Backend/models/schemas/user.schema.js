@@ -18,23 +18,22 @@ const userSchema = new Schema(
     phoneNumber: {
       type: String,
       required: false,
+      default: null,
     },
     placeOfBirth: {
       type: String,
       required: false,
+      default: null,
     },
     dateOfBirth: {
       type: Date,
       required: false,
+      default: null,
     },
-    // TODO: add reference to the corresponding schema
     position: {
-      type: String,
-      required: false,
-    },
-    skills: {
-      type: [String],
-      required: false,
+      ref: 'Position',
+      type: Schema.Types.ObjectId,
+      default: null,
     },
     managerId: {
       ref: 'User',
