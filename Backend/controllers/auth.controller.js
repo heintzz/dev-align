@@ -155,4 +155,44 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { userLogin, requestResetPassword, resetPassword };
+const updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findOne({ _id: req.user.id });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'User not found',
+      });
+    }
+
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    const isMatch = bcrypt.compare(currentPassword, user.password);
+
+    if (isMatch) {
+      user.password = newHashedPassword;
+      await user.save();
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid Credentials',
+        message: 'Current password is incorrect',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Password updated',
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+module.exports = { userLogin, requestResetPassword, resetPassword, updatePassword };
