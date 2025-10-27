@@ -6,9 +6,10 @@ const connectDB = require('./configs/db.conn');
 const hrRoutes = require('./routes/hr.routes');
 const authRoutes = require('./routes/auth.routes');
 const skillRoutes = require('./routes/skill.routes');
+const swaggerSpecs = require('./configs/swagger');
+const menuRoutes = require('./routes/menu.routes');
 const positionRoutes = require('./routes/position.routes');
 const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./configs/swagger');
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use('/hr', hrRoutes);
 app.use('/auth', authRoutes);
 app.use('/skill', skillRoutes);
 app.use('/position', positionRoutes);
+app.use('/menu', menuRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
