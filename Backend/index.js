@@ -7,6 +7,8 @@ const hrRoutes = require('./routes/hr.routes');
 const authRoutes = require('./routes/auth.routes');
 const skillRoutes = require('./routes/skill.routes');
 const positionRoutes = require('./routes/position.routes');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./configs/swagger');
 
 dotenv.config();
 
@@ -19,6 +21,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 connectDB();
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 app.get('/', (_, res) => {
   res.send('Hello World!');
