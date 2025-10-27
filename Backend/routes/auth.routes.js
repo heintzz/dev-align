@@ -8,6 +8,6 @@ const router = express.Router();
 
 router.post('/login', userLogin);
 router.post('/forgot-password', requestResetPassword);
-router.post('/change-passwor', resetPassword);
+router.post('/change-password', resetPassword);
 
 module.exports = router;
