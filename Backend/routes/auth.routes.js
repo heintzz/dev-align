@@ -3,9 +3,10 @@ const {
   userLogin,
   requestResetPassword,
   resetPassword,
+  updatePassword,
 } = require('../controllers/auth.controller');
+const verifyToken = require('../middlewares/token');
 const router = express.Router();
-
 
 /**
  * @swagger
@@ -112,5 +113,33 @@ router.post('/forgot-password', requestResetPassword);
  */
 router.post('/change-password', resetPassword);
 
+/**
+ * @swagger
+ * /auth/update-password:
+ *   post:
+ *     summary: Update user password
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password updated
+ *       400:
+ *         description: Invalid credentials
+ *       404:
+ *         description: User not found
+ */
+router.post('/update-password', verifyToken, updatePassword);
 
 module.exports = router;
