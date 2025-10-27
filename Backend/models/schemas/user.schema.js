@@ -52,6 +52,10 @@ const userSchema = new Schema(
       enum: ['hr', 'manager', 'staff'],
       default: 'staff',
     },
+    active: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
