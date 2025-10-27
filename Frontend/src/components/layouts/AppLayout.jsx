@@ -6,13 +6,18 @@ import App from "@/App";
 export default function Layout({ children }) {
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppNavbar />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          {children}
-        </main>
-      </SidebarInset>
+      <div className="flex h-screen w-full overflow-hidden">
+        {/* Sidebar */}
+        <AppSidebar />
+
+        {/* Main content */}
+        <div className="flex flex-col flex-1 min-w-0">
+          <AppNavbar />
+          <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+            {children}
+          </main>
+        </div>
+      </div>
     </SidebarProvider>
   );
 }
