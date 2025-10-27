@@ -6,8 +6,8 @@ export default function AppNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 flex justify-between h-16 items-center gap-4 border-b bg-tersier">
-      <SidebarTrigger className="text-gray-700 hover:text-gray-900" />
+    <header className="sticky top-0 z-40 flex justify-between h-24 items-center gap-4 border-b bg-tersier">
+      <SidebarTrigger className="text-gray-700 hover:text-red-900" />
 
       <div className="flex items-center gap-4">
         <button className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
