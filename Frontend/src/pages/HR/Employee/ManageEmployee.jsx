@@ -176,7 +176,7 @@ const data = [
   // Add more for pagination
 ];
 
-export default function Column() {
+export default function ManageEmployee() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(5);
   const [globalFilter, setGlobalFilter] = useState("");

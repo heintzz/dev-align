@@ -1,14 +1,20 @@
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 
 // Pages
 import Kanban from "@/pages/Kanban";
 import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
-import ManageEmployee from "@/pages/HR/ManageEmployee";
+import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
+import AddEmployee from "./pages/HR/Employee/AddEmployee";
 
 function App() {
   return (
@@ -24,7 +30,9 @@ function App() {
           path="/kanban"
           element={
             <AppLayout>
-              <Kanban />
+              {/* <Kanban /> */}
+              {/* <ManageEmployee /> */}
+              <AddEmployee />
             </AppLayout>
           }
         />

@@ -34,7 +34,7 @@ export default function AppSidebar() {
   useEffect(() => {
     const fetchMenus = async () => {
       try {
-        const res = await fetch("http://localhost:3400/menu/getMenu", {
+        const res = await fetch("http://localhost:5000/menu/getMenu", {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -75,7 +75,7 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="shadow-lg">
       <SidebarHeader>
-        <Link to="#" className="flex items-center py-5 space-x-1.5">
+        <Link to="#" className="flex items-center py-3.5 space-x-1.5">
           <img
             src={logoIcon}
             alt="DevAlign Logo"

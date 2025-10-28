@@ -1,12 +1,12 @@
-const express = require('express');
+const express = require("express");
 const {
   getSkills,
   createSkill,
   updateSkill,
   deleteSkill,
-} = require('../controllers/skill.controller');
-const auth = require('../middlewares/authorization');
-const verifyToken = require('../middlewares/token');
+} = require("../controllers/skill.controller");
+const auth = require("../middlewares/authorization");
+const verifyToken = require("../middlewares/token");
 const router = express.Router();
 
 /**
@@ -62,7 +62,7 @@ const router = express.Router();
  *                           name:
  *                             type: string
  */
-router.get('/', verifyToken, auth('hr'), getSkills);
+router.get("/", verifyToken, getSkills);
 
 /**
  * @swagger
@@ -88,7 +88,7 @@ router.get('/', verifyToken, auth('hr'), getSkills);
  *       400:
  *         description: Bad request
  */
-router.post('/', verifyToken, auth('hr'), createSkill);
+router.post("/", verifyToken, auth("hr"), createSkill);
 
 /**
  * @swagger
@@ -120,7 +120,7 @@ router.post('/', verifyToken, auth('hr'), createSkill);
  *       404:
  *         description: Skill not found
  */
-router.put('/:skillId', verifyToken, auth('hr'), updateSkill);
+router.put("/:skillId", verifyToken, auth("hr"), updateSkill);
 
 /**
  * @swagger
@@ -142,6 +142,6 @@ router.put('/:skillId', verifyToken, auth('hr'), updateSkill);
  *       404:
  *         description: Skill not found
  */
-router.delete('/:skillId', verifyToken, auth('hr'), deleteSkill);
+router.delete("/:skillId", verifyToken, auth("hr"), deleteSkill);
 
 module.exports = router;
