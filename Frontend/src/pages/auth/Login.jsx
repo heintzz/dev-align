@@ -1,26 +1,46 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import logoKiri from "../../assets/img/loginkiri.png";
 import logoKecil from "../../assets/img/loginkanan.png";
-import { Link } from "react-router-dom";
+import authService from "../../services/auth.service";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear error saat user mengetik
+    if (error) setError("");
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login data:", formData);
+    setError("");
+    setIsLoading(true);
 
-    // TODO: Hubungkan ke endpoint backend
+    try {
+      const response = await authService.login(formData.email, formData.password);
+      
+      if (response.success) {
+        // Redirect berdasarkan role
+        navigate('/kanban'); // Atau route lain sesuai kebutuhan
+      }
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+      console.error('Login error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Logo Section */}
       <div className="flex-1 overflow-hidden">
-        {/* Ganti bagian ini dengan img tag */}
         <img
           src={logoKiri}
           alt="DevAlign Logo"
@@ -47,7 +67,16 @@ export default function Login() {
           </div>
 
           {/* Login Title */}
-          <h2 className="text-3xl font-semibold text-slate-800 mb-8">Login</h2>
+          <h2 className="text-3xl font-semibold mb-8" style={{ color: "#2C3F48" }}>
+            Login
+          </h2>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          )}
 
           {/* Login Form */}
           <div className="space-y-6">
@@ -59,7 +88,8 @@ export default function Login() {
                 placeholder="Email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -71,24 +101,28 @@ export default function Login() {
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
-            <Link
-              to="/forgot-password"
-              className="text-sm hover:underline"
-              style={{ color: "#2C3F48" }}
-            >
-              Forgot Password?
-            </Link>
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm hover:underline"
+                style={{ color: "#2C3F48" }}
+              >
+                Forgot Password?
+              </Link>
+            </div>
 
             <button
               onClick={handleSubmit}
-              className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90"
+              disabled={isLoading}
+              className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2C3F48" }}
             >
-              Login
+              {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </div>
         </div>

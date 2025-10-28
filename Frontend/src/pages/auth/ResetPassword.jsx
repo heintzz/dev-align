@@ -1,25 +1,30 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-
 import logoKiri from "../../assets/img/loginkiri.png";
 import logoKecil from "../../assets/img/loginkanan.png";
+import authService from "../../services/auth.service";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token"); // Ambil token dari URL
+  const token = searchParams.get("token");
+  const userId = searchParams.get("id");
+  
   const [formData, setFormData] = useState({
     newPassword: "",
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
+  const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: "" });
     }
+    if (error) setError("");
   };
 
   const validateForm = () => {
@@ -36,8 +41,9 @@ export default function ResetPassword() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     const newErrors = validateForm();
 
@@ -46,16 +52,32 @@ export default function ResetPassword() {
       return;
     }
 
-    console.log("Reset password:", formData);
-    console.log("Token:", token);
-    // TODO: Kirim ke backend
-    // await resetPasswordAPI(token, formData.newPassword);
+    if (!token || !userId) {
+      setError("Invalid reset link. Please request a new reset link.");
+      return;
+    }
 
-    setIsSubmitted(true);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
+    try {
+      await authService.resetPassword(
+        userId,
+        token,
+        formData.newPassword,
+        formData.confirmPassword
+      );
+      
+      setIsSubmitted(true);
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (err) {
+      setError(err.message || 'Failed to reset password. Please try again.');
+      console.error('Reset password error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -101,6 +123,7 @@ export default function ResetPassword() {
             Enter your new password below.
           </p>
 
+          {/* Success Message */}
           {isSubmitted ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <p className="text-green-800 text-sm font-medium mb-1">
@@ -112,6 +135,13 @@ export default function ResetPassword() {
             </div>
           ) : null}
 
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Reset Password Form */}
           <div className="space-y-6">
             <div>
@@ -122,7 +152,8 @@ export default function ResetPassword() {
                 placeholder="New Password"
                 value={formData.newPassword}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent ${
+                disabled={isLoading || isSubmitted}
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                   errors.newPassword ? "border-red-500" : "border-gray-300"
                 }`}
               />
@@ -141,7 +172,8 @@ export default function ResetPassword() {
                 placeholder="Confirm New Password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent ${
+                disabled={isLoading || isSubmitted}
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                   errors.confirmPassword ? "border-red-500" : "border-gray-300"
                 }`}
               />
@@ -154,25 +186,21 @@ export default function ResetPassword() {
 
             <button
               onClick={handleSubmit}
-              disabled={isSubmitted}
+              disabled={isSubmitted || isLoading}
               className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2C3F48" }}
             >
-              {isSubmitted ? "Password Reset!" : "Reset Password"}
+              {isLoading ? 'Resetting...' : isSubmitted ? 'Password Reset!' : 'Reset Password'}
             </button>
 
             <div className="text-center">
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  console.log("Navigate to login");
-                }}
-                className="text-sm hover:underline cursor-pointer"
+              <button
+                onClick={() => navigate('/login')}
+                className="text-sm hover:underline cursor-pointer bg-transparent border-0"
                 style={{ color: "#2C3F48" }}
               >
                 Back to Login
-              </a>
+              </button>
             </div>
           </div>
         </div>
