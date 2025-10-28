@@ -6,7 +6,8 @@ import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import ManageEmployee from "@/pages/HR/ManageEmployee";
-import Dashboard from "@/pages/HR/Dashboard"
+import HRDashboard from "@/pages/HR/Dashboard"
+import PMDashboard from "./pages/PM/Dashboard";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
@@ -34,7 +35,16 @@ function App() {
           path="/dashboard-hr"
           element={
             <AppLayout>
-              <Dashboard />
+              <HRDashboard />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/dashboard-pm"
+          element={
+            <AppLayout>
+              <PMDashboard />
             </AppLayout>
           }
         />
