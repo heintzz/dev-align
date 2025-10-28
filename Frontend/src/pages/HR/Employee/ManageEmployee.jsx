@@ -240,14 +240,14 @@ export default function ManageEmployee() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
                   <DropdownMenuItem
-                    onClick={() => alert(`Editing ${row.original.name}`)}
-                    className="cursor-pointer"
+                    // onClick={() => alert(`Editing ${row.original.name}`)}
+                    // className="cursor-pointer"
                   >
                     <FilePenLine /> Individual
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => alert(`Deleting ${row.original.name}`)}
-                    className="cursor-pointer"
+                    // onClick={() => alert(`Deleting ${row.original.name}`)}
+                    // className="cursor-pointer"
                   >
                     <Sheet />
                     Multiple

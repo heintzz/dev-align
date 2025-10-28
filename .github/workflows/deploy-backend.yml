@@ -1,0 +1,71 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend to EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Backend EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.BACKEND_HOST }}
+          username: ubuntu
+          key: ${{ secrets.BACKEND_SSH_KEY }}
+          script: |
+            echo "🚀 Starting backend deployment..."
+            echo "📍 Backend Server: 13.250.231.18"
+            
+            # Navigate to app directory
+            cd /var/www/backend
+            
+            # Backup old version
+            if [ -d "DevAlign" ]; then
+              echo "📦 Backing up current version..."
+              rm -rf DevAlign-backup
+              mv DevAlign DevAlign-backup
+            fi
+            
+            # Clone latest code
+            echo "📥 Cloning repository..."
+            git clone -b dev https://github.com/PentabyteDevAlign/DevAlign.git
+            
+            # Install dependencies
+            echo "📦 Installing backend dependencies..."
+            cd DevAlign/Backend
+            npm install --production
+            
+            # Copy environment file
+            echo "⚙️ Copying environment variables..."
+            cp /var/www/backend/.env .env
+            
+            # Stop existing PM2 process
+            echo "🛑 Stopping existing backend process..."
+            pm2 stop devalign-backend 2>/dev/null || true
+            pm2 delete devalign-backend 2>/dev/null || true
+            
+            # Start backend with PM2
+            echo "▶️ Starting backend server..."
+            pm2 start npm --name "devalign-backend" -- start
+            pm2 save
+            
+            # Setup PM2 auto-restart on server reboot
+            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu 2>/dev/null || true
+            
+            # Show status
+            pm2 status
+            
+            echo "✅ Backend deployment complete!"
+            echo "🌐 Backend API running at: http://13.250.231.18:5000"
+            echo "📊 Check logs with: pm2 logs devalign-backend"
