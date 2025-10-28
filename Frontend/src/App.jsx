@@ -6,6 +6,7 @@ import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import ManageEmployee from "@/pages/HR/ManageEmployee";
+import Dashboard from "@/pages/HR/Dashboard"
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
@@ -25,6 +26,15 @@ function App() {
           element={
             <AppLayout>
               <Kanban />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/dashboard-hr"
+          element={
+            <AppLayout>
+              <Dashboard />
             </AppLayout>
           }
         />

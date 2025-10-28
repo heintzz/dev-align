@@ -34,7 +34,7 @@ export default function AppSidebar() {
   useEffect(() => {
     const fetchMenus = async () => {
       try {
-        const res = await fetch("http://localhost:3400/menu/getMenu", {
+        const res = await fetch("http://localhost:5000/menu/getMenu", {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
