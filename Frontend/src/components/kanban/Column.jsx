@@ -51,7 +51,7 @@ const Column = ({ droppableId, column, updateColumn, className = "" }) => {
               }`}
               style={{ maxHeight: "60vh", overflow: "hidden" }}
             >
-              <ScrollArea className="h-[40vh]">
+              <ScrollArea className="h-[45vh]">
                 <div className="space-y-2">
                   {column.tasks.map((task, index) => (
                     <Draggable
