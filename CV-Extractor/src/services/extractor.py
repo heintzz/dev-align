@@ -3,8 +3,7 @@ import uuid
 import shutil
 from fastapi import UploadFile
 from src.models.cv import InvalidFileTypeError, DocumentUploadError
-
-UPLOAD_DIR: str = "temp"
+from src.config import settings
 
 def generate_file_id() -> str:
     return str(uuid.uuid4())
@@ -54,9 +53,9 @@ def upload_document(
     document_id = generate_file_id()
     file_extension = os.path.splitext(file.filename)[1]
     file_name = f"{document_id}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
+    file_path = os.path.join(settings.UPLOAD_DIR, file_name)
     
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     
     try:
         save_upload_file(file, file_path)
