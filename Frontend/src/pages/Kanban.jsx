@@ -97,13 +97,13 @@ export default function Kanban() {
                 droppableId={key}
                 column={column}
                 updateColumn={updateColumn}
-                className="flex-shrink-0"
+                className="shrink-0"
               />
             ))}
           </DragDropContext>
 
           {/* Add new list card */}
-          <Card className="w-72 flex-shrink-0 p-4">
+          <Card className="w-72 shrink-0 p-4">
             <div className="flex flex-col gap-2">
               <Input
                 placeholder="New list name..."

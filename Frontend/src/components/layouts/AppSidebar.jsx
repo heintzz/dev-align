@@ -8,11 +8,18 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 import { ChevronDown, ChevronRight } from "lucide-react";
 import logoIcon from "@/assets/img/LogoDevAlign.png";
@@ -84,6 +91,7 @@ export default function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menus.map((item) => {
@@ -91,18 +99,72 @@ export default function AppSidebar() {
                 const hasChildren = item.children && item.children.length > 0;
                 const isOpen = openMenu === item._id;
 
+                // ✅ CASE 1: If sidebar is collapsed → use Popover
+                if (isCollapsed && hasChildren) {
+                  return (
+                    <SidebarMenuItem key={item._id}>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <SidebarMenuButton
+                            className="flex text-primer hover:bg-primer hover:text-white items-center justify-center cursor-pointer"
+                            tooltip={item.title}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </SidebarMenuButton>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          side="right"
+                          align="start"
+                          className="w-48 bg-tersier shadow-md rounded-lg p-2"
+                        >
+                          <p className="font-semibold text-sm text-gray-700 mb-2 border-b pb-1">
+                            {item.title}
+                          </p>
+                          <div className="flex flex-col gap-1">
+                            {item.children.map((child) => {
+                              const ChildIcon =
+                                LucideIcons[child.icon] || LucideIcons.Circle;
+                              return (
+                                <Link
+                                  key={child._id}
+                                  to={child.path || "#"}
+                                  onClick={
+                                    () => document.activeElement?.blur() // auto-close popover
+                                  }
+                                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 text-sm text-gray-700"
+                                >
+                                  <ChildIcon className="h-3.5 w-3.5 text-primer" />
+                                  {child.title}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </SidebarMenuItem>
+                  );
+                }
+
+                // ✅ CASE 2: Expanded Sidebar → Collapsible menu
                 return (
                   <SidebarMenuItem key={item._id}>
-                    {/* Parent Menu Button */}
                     <SidebarMenuButton
                       onClick={() =>
                         hasChildren ? toggleMenu(item._id) : null
                       }
                       asChild={!hasChildren}
-                      className="text-primer hover:bg-primer hover:text-white flex items-center"
+                      className="text-primer hover:bg-primer hover:text-white font-semibold flex items-center "
+                      tooltip={item.title}
                     >
                       {hasChildren ? (
-                        <button className="w-full flex items-center justify-between">
+                        <div
+                          className="w-full flex items-center justify-between cursor-pointer select-none"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && toggleMenu(item._id)
+                          }
+                        >
                           <div className="flex items-center space-x-2">
                             <Icon className="h-4 w-4" />
                             {!isCollapsed && <span>{item.title}</span>}
@@ -113,7 +175,7 @@ export default function AppSidebar() {
                             ) : (
                               <ChevronRight className="h-4 w-4" />
                             ))}
-                        </button>
+                        </div>
                       ) : (
                         <Link to={item.path || "#"}>
                           <Icon className="h-4 w-4" />
@@ -122,7 +184,6 @@ export default function AppSidebar() {
                       )}
                     </SidebarMenuButton>
 
-                    {/* Collapsible Children */}
                     {hasChildren && isOpen && !isCollapsed && (
                       <div className="ml-6 mt-1 space-y-1">
                         {item.children.map((child) => {

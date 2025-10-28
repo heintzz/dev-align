@@ -1,4 +1,5 @@
 import Kanban from "@/pages/Kanban";
+import ManageEmployee from "@/pages/HR/ManageEmployee";
 
 import AppLayout from "@/components/layouts/AppLayout";
 
@@ -15,7 +16,8 @@ function App() {
     <>
       <Router>
         <AppLayout>
-          <Kanban />
+          {/* <Kanban /> */}
+          <ManageEmployee />
         </AppLayout>
       </Router>
     </>

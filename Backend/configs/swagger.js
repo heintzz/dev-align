@@ -1,24 +1,24 @@
-const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerJsdoc = require("swagger-jsdoc");
 
 const options = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'Dev-Align API',
-      version: '1.0.0',
-      description: 'API documentation for the Dev-Align backend.',
+      title: "Dev-Align API",
+      version: "1.0.0",
+      description: "API documentation for the Dev-Align backend.",
     },
     servers: [
       {
-        url: 'http://localhost:5000',
+        url: "http://localhost:3400",
       },
     ],
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
     },
@@ -28,7 +28,7 @@ const options = {
       },
     ],
   },
-  apis: ['./routes/*.js'],
+  apis: ["./routes/*.js"],
 };
 
 const specs = swaggerJsdoc(options);
