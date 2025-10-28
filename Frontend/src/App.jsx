@@ -5,6 +5,7 @@ import Kanban from "@/pages/Kanban";
 import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
+import ManageEmployee from "@/pages/HR/ManageEmployee";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
