@@ -1,5 +1,5 @@
 const userDto = require('../dto/user.dto');
-const { User, Position } = require('../models');
+const { User, Position, Skill } = require('../models');
 const { sendEmail } = require('../utils/email');
 const { hashPassword, generatePassword } = require('../utils/password');
 const mongoose = require('mongoose');
@@ -7,11 +7,39 @@ const XLSX = require('xlsx');
 const pdfParse = require('pdf-parse');
 const path = require('path');
 
-const createEmployee = async (req, res) => {
-  const { email } = req.body;
+const skillMatching = (skills, existingSkills) => {
+  const clean = (arr) =>
+    arr.map((skill) =>
+      skill
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .trim()
+    );
+  console.log({ existingSkills });
+  const cleanedSkills = clean(skills);
+  console.log({ cleanedSkills });
+  const cleanedExisting = clean(existingSkills);
+  console.log({ existingSkills });
+  console.log({ cleanedExisting });
 
+  const matchedSkills = existingSkills.filter((_, i) => {
+    if (cleanedExisting.includes(cleanedSkills[i])) return existingSkills[i];
+  });
+
+  const newSkills = skills.filter((skill, i) => {
+    if (!cleanedExisting.includes(cleanedSkills[i])) return skill;
+  });
+
+  console.log({ matchedSkills, newSkills });
+
+  return { matchedSkills, newSkills };
+};
+
+const createEmployee = async (req, res) => {
   try {
+    const { email } = req.body;
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -23,8 +51,30 @@ const createEmployee = async (req, res) => {
     const password = generatePassword();
     const hashedPassword = await hashPassword(password);
 
+    const existingSkills = await Skill.find({});
+    const existingSkillNames = existingSkills.map((skill) => skill.name);
+
+    const { matchedSkills, newSkills } = skillMatching(req.body.skills, existingSkillNames);
+    
+    let insertedIds = [];
+    if (newSkills.length > 0) {
+      const skillDocs = newSkills.map((name) => ({ name }));
+      const insertedSkills = await Skill.insertMany(skillDocs);
+      insertedIds = insertedSkills.map((doc) => doc._id);
+    }
+
+    if (matchedSkills?.length > 0) {
+      insertedIds = [
+        ...insertedIds,
+        ...existingSkills
+          .filter((skill) => matchedSkills.includes(skill.name))
+          .map((skill) => skill._id),
+      ];
+    }
+
     const user = new User({
       ...req.body,
+      skills: insertedIds,
       password: hashedPassword,
     });
 
@@ -32,7 +82,6 @@ const createEmployee = async (req, res) => {
 
     const message = `Hello ${req.body.name}, Welcome onboard!!\nYour HR has created an account for you.\nEmail: ${email}\nPassword: ${password}\nPlease log in and change your password.`;
 
-    // Attempt to send welcome email (non-blocking failure handled)
     try {
       await sendEmail({
         to: email,
@@ -40,8 +89,6 @@ const createEmployee = async (req, res) => {
         text: message,
       });
     } catch (e) {
-      // Log and continue — don't fail creation if email sending fails
-      // eslint-disable-next-line no-console
       console.warn('Failed to send welcome email:', e.message || e);
     }
 
@@ -73,7 +120,8 @@ const listEmployees = async (req, res) => {
   if (position && mongoose.Types.ObjectId.isValid(position)) filter.position = position;
 
   // By default only include active users. HR can include inactive via query param `includeInactive=true`.
-  const includeInactive = req.query.includeInactive === 'true' && req.user && req.user.role === 'hr';
+  const includeInactive =
+    req.query.includeInactive === 'true' && req.user && req.user.role === 'hr';
   if (!includeInactive) filter.active = true;
 
   try {
@@ -114,7 +162,11 @@ const getEmployee = async (req, res) => {
 
     // Authorization: hr and manager can view any; others can view only their own record
     const requester = req.user || {};
-    if (!['hr', 'manager'].includes(requester.role) && requester._id !== String(id) && requester.id !== String(id)) {
+    if (
+      !['hr', 'manager'].includes(requester.role) &&
+      requester._id !== String(id) &&
+      requester.id !== String(id)
+    ) {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
@@ -125,7 +177,9 @@ const getEmployee = async (req, res) => {
 
     return res.json({ success: true, data: userDto.mapUserToUserResponse(user) });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Internal Server Error', message: err.message });
   }
 };
 
@@ -145,7 +199,16 @@ const updateEmployee = async (req, res) => {
       if (exists) return res.status(400).json({ success: false, error: 'Duplicate Email' });
     }
 
-    const updatable = ['name', 'email', 'phoneNumber', 'placeOfBirth', 'dateOfBirth', 'position', 'managerId', 'role'];
+    const updatable = [
+      'name',
+      'email',
+      'phoneNumber',
+      'placeOfBirth',
+      'dateOfBirth',
+      'position',
+      'managerId',
+      'role',
+    ];
     updatable.forEach((k) => {
       if (Object.prototype.hasOwnProperty.call(req.body, k)) user[k] = req.body[k];
     });
@@ -153,7 +216,9 @@ const updateEmployee = async (req, res) => {
     const updated = await user.save();
     return res.json({ success: true, data: userDto.mapUserToUserResponse(updated) });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Internal Server Error', message: err.message });
   }
 };
 
@@ -174,13 +239,16 @@ const deleteEmployee = async (req, res) => {
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
-    if (user.active === false) return res.status(400).json({ success: false, error: 'Already Deactivated' });
+    if (user.active === false)
+      return res.status(400).json({ success: false, error: 'Already Deactivated' });
 
     user.active = false;
     await user.save();
     return res.json({ success: true, message: 'Employee deactivated' });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Internal Server Error', message: err.message });
   }
 };
 
@@ -212,15 +280,21 @@ const importEmployees = async (req, res) => {
     });
 
     // find existing users with those emails
-    const existingUsers = await User.find({ email: { $in: fileEmails } }).select('email _id').lean();
+    const existingUsers = await User.find({ email: { $in: fileEmails } })
+      .select('email _id')
+      .lean();
     const existingEmailSet = new Set(existingUsers.map((u) => String(u.email).toLowerCase()));
 
     // resolve managers
-    const managers = await User.find({ email: { $in: Array.from(managerEmailsSet) } }).select('email _id').lean();
+    const managers = await User.find({ email: { $in: Array.from(managerEmailsSet) } })
+      .select('email _id')
+      .lean();
     const managerMap = new Map(managers.map((m) => [String(m.email).toLowerCase(), m._id]));
 
     // resolve positions by name
-    const positions = await Position.find({ name: { $in: Array.from(positionNamesSet) } }).select('name _id').lean();
+    const positions = await Position.find({ name: { $in: Array.from(positionNamesSet) } })
+      .select('name _id')
+      .lean();
     const positionMap = new Map(positions.map((p) => [p.name, p._id]));
 
     // detect within-file duplicates
@@ -354,7 +428,9 @@ const importEmployees = async (req, res) => {
     const failed = results.length - created;
     return res.json({ success: true, dryRun, sendEmails, created, failed, results });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to parse file', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to parse file', message: err.message });
   }
 };
 
@@ -370,10 +446,15 @@ const getImportTemplate = async (req, res) => {
     const csvWorkbook = XLSX.readFile(csvPath, { type: 'file' });
     const buf = XLSX.write(csvWorkbook, { bookType: 'xlsx', type: 'buffer' });
     res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.xlsx');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
     return res.send(buf);
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to get template', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to get template', message: err.message });
   }
 };
 
@@ -389,15 +470,23 @@ const parseCv = async (req, res) => {
       const text = data.text || '';
 
       // extract emails and phones
-      const emails = (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).slice(0, 10);
+      const emails = (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).slice(
+        0,
+        10
+      );
       const phones = (text.match(/\+?\d[\d \-()]{6,}\d/g) || []).slice(0, 10);
 
       return res.json({ success: true, text: text.slice(0, 10000), emails, phones });
     }
 
-    return res.status(400).json({ success: false, error: 'Unsupported file type for CV parsing. Only PDF supported for now.' });
+    return res.status(400).json({
+      success: false,
+      error: 'Unsupported file type for CV parsing. Only PDF supported for now.',
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to parse CV', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to parse CV', message: err.message });
   }
 };
 

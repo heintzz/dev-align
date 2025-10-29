@@ -12,10 +12,10 @@ async function createUser() {
 
     // Data user yang mau dibuat
     const userData = {
-      name: 'Irsyad Ibadurrahman',
-      email: 'irsyadibadurrahman05419@gmail.com',
-      password: 'password123',
-      role: 'staff',
+      name: 'akunhr',
+      email: 'akunhr@gmail.com',
+      password: 'hr123',
+      role: 'hr',
     };
 
     // Cek apakah email sudah ada
@@ -45,7 +45,7 @@ async function createUser() {
     console.log('Password :', userData.password);
     console.log('Role     :', user.role);
     console.log('========================================\n');
-    
+
     mongoose.disconnect();
     process.exit(0);
   } catch (error) {
