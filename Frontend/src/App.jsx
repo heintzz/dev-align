@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 
 // Pages
 import Kanban from "@/pages/Kanban";
@@ -6,8 +11,9 @@ import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import ManageEmployee from "@/pages/HR/ManageEmployee";
-import HRDashboard from "@/pages/HR/Dashboard"
+import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
+import StaffDashboard from "./pages/Staff/Dashboard";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
@@ -45,6 +51,15 @@ function App() {
           element={
             <AppLayout>
               <PMDashboard />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/dashboard-staff"
+          element={
+            <AppLayout>
+              <StaffDashboard />
             </AppLayout>
           }
         />
