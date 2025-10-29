@@ -118,7 +118,7 @@ export default function UploadFile({
         {file && (
           <div className="flex flex-col items-center gap-2 mt-2">
             <p className="text-sm font-medium">{file.name}</p>
-            <Button
+            {/* <Button
               onClick={handleUpload}
               size="sm"
               disabled={loading || disabled}
@@ -126,7 +126,7 @@ export default function UploadFile({
             >
               <Upload className="h-4 w-4" />
               {loading ? "Uploading..." : "Upload"}
-            </Button>
+            </Button> */}
           </div>
         )}
       </CardContent>

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 // shadcn/ui components
 import {
@@ -44,6 +45,7 @@ import {
   FilePenLine,
   Sheet,
 } from "lucide-react";
+import api from "@/api/axios";
 
 const columns = [
   {
@@ -89,16 +91,32 @@ const columns = [
     ),
   },
   {
-    accessorKey: "status",
-    header: "Status",
-  },
-  {
     accessorKey: "email",
     header: "Email",
   },
   {
-    accessorKey: "amount",
-    header: "Amount",
+    accessorKey: "position.name",
+    header: "Position",
+  },
+  {
+    accessorKey: "role",
+    header: "Role",
+  },
+  {
+    accessorKey: "active",
+    header: "Status",
+    cell: ({ row }) => {
+      const isActive = row.getValue("active");
+      return (
+        <span
+          className={
+            isActive ? "text-green-600 font-medium" : "text-red-500 font-medium"
+          }
+        >
+          {isActive ? "Active" : "Resigned"}
+        </span>
+      );
+    },
   },
   {
     id: "actions",
@@ -129,53 +147,6 @@ const columns = [
   },
 ];
 
-// Example data
-const data = [
-  {
-    id: 1,
-    name: "Alice",
-    status: "success",
-    email: "alice@example.com",
-    amount: 120,
-  },
-  {
-    id: 2,
-    name: "Bob",
-    status: "pending",
-    email: "bob@example.com",
-    amount: 300,
-  },
-  {
-    id: 3,
-    name: "Charlie",
-    status: "failed",
-    email: "charlie@example.com",
-    amount: 150,
-  },
-  {
-    id: 4,
-    name: "Diana",
-    status: "success",
-    email: "diana@example.com",
-    amount: 220,
-  },
-  {
-    id: 5,
-    name: "Eve",
-    status: "pending",
-    email: "eve@example.com",
-    amount: 180,
-  },
-  {
-    id: 6,
-    name: "Frank",
-    status: "failed",
-    email: "frank@example.com",
-    amount: 90,
-  },
-  // Add more for pagination
-];
-
 export default function ManageEmployee() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(5);
@@ -183,24 +154,33 @@ export default function ManageEmployee() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
+  const [employees, setEmployees] = useState([]);
+
+  const navigate = useNavigate();
+
+  const getEmployees = async () => {
+    const { data } = await api.get("/hr/employees");
+    console.log(data);
+    setEmployees(data.data);
+  };
+
+  // getEmployees();
 
   const filteredData = useMemo(() => {
-    let filtered = data;
+    let filtered = employees;
 
-    // Filter by name (search)
     if (globalFilter) {
       filtered = filtered.filter((row) =>
         row.name.toLowerCase().includes(globalFilter.toLowerCase())
       );
     }
 
-    // Filter by status
     if (statusFilter !== "all") {
       filtered = filtered.filter((row) => row.status === statusFilter);
     }
 
     return filtered;
-  }, [globalFilter, statusFilter]);
+  }, [employees, globalFilter, statusFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -222,6 +202,10 @@ export default function ManageEmployee() {
     pageCount: Math.ceil(filteredData.length / pageSize),
   });
 
+  useEffect(() => {
+    getEmployees();
+  }, []);
+
   return (
     <>
       <div>
@@ -240,14 +224,14 @@ export default function ManageEmployee() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
                   <DropdownMenuItem
-                    // onClick={() => alert(`Editing ${row.original.name}`)}
-                    // className="cursor-pointer"
+                    onClick={() => navigate(`/addEmployee`)}
+                    className="cursor-pointer"
                   >
                     <FilePenLine /> Individual
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    // onClick={() => alert(`Deleting ${row.original.name}`)}
-                    // className="cursor-pointer"
+                  // onClick={() => alert(`Deleting ${row.original.name}`)}
+                  // className="cursor-pointer"
                   >
                     <Sheet />
                     Multiple

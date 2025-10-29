@@ -17,8 +17,11 @@ import PMDashboard from "./pages/PM/Dashboard";
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
 import AddEmployee from "./pages/HR/Employee/AddEmployee";
+import { useState } from "react";
 
 function App() {
+  const [role, setRole] = useState(localStorage.getItem("userRole"));
+  const [token, setToken] = useState(localStorage.getItem("token"));
   return (
     <Router>
       <Routes>
@@ -38,19 +41,34 @@ function App() {
         />
 
         <Route
-          path="/dashboard-hr"
+          path="/dashboard"
           element={
             <AppLayout>
-              <HRDashboard />
+              {role == "hr" ? (
+                <HRDashboard />
+              ) : role == "manager" ? (
+                <PMDashboard />
+              ) : (
+                <Kanban />
+              )}
             </AppLayout>
           }
         />
 
         <Route
-          path="/dashboard-pm"
+          path="/employee"
           element={
             <AppLayout>
-              <PMDashboard />
+              <ManageEmployee />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/addEmployee"
+          element={
+            <AppLayout>
+              <AddEmployee />
             </AppLayout>
           }
         />
