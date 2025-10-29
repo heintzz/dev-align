@@ -26,8 +26,19 @@ export default function Login() {
       const response = await authService.login(formData.email, formData.password);
       
       if (response.success) {
+        const role = response.data.role;
+        
         // Redirect berdasarkan role
-        navigate('/kanban'); // Atau route lain sesuai kebutuhan
+        if (role === 'hr') {
+          navigate('/dashboard-hr');
+        } else if (role === 'manager') {
+          navigate('/dashboard-pm');
+        } else if (role === 'staff') {
+          navigate('/dashboard-staff');
+        } else {
+          // Fallback jika role tidak dikenali
+          navigate('/kanban');
+        }
       }
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
