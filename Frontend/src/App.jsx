@@ -4,6 +4,12 @@ import {
   Routes,
   Navigate,
 } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 
 // Pages
 import Kanban from "@/pages/Kanban";
@@ -13,6 +19,7 @@ import ResetPassword from "@/pages/auth/ResetPassword";
 import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
 import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
+import StaffDashboard from "./pages/Staff/Dashboard";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
@@ -44,31 +51,16 @@ function App() {
           path="/dashboard"
           element={
             <AppLayout>
-              {role == "hr" ? (
-                <HRDashboard />
-              ) : role == "manager" ? (
-                <PMDashboard />
-              ) : (
-                <Kanban />
-              )}
+              <HRDashboard />
             </AppLayout>
           }
         />
 
         <Route
-          path="/employee"
+          path="/dashboard-pm"
           element={
             <AppLayout>
-              <ManageEmployee />
-            </AppLayout>
-          }
-        />
-
-        <Route
-          path="/addEmployee"
-          element={
-            <AppLayout>
-              <AddEmployee />
+              <PMDashboard />
             </AppLayout>
           }
         />
