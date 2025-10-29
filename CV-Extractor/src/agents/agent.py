@@ -6,9 +6,7 @@ def configure_dspy():
         model=f"openai/{settings.LLM_MODEL}",
         api_base=settings.LLM_BASE_URL,
         api_key=settings.LLM_API_KEY,
-        temperature=0.1,
+        temperature=0.6,
         max_tokens=4000,
     )
     dspy.configure(lm=lm)
-
-configure_dspy()

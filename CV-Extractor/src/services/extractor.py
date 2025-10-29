@@ -2,7 +2,7 @@ import os
 import uuid
 import shutil
 from fastapi import UploadFile
-from src.models.cv import InvalidFileTypeError, DocumentUploadError
+from src.models.document import InvalidFileTypeError, DocumentUploadError
 from src.config import settings
 
 def generate_file_id() -> str:

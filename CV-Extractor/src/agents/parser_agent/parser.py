@@ -2,7 +2,7 @@ import dspy
 from typing import Dict, Any
 from src.agents.parser_agent.model import CVStructuredModel
 from src.agents.types import CVData
-from src.utils import retry_on_error
+from src.utils.util import retry_on_error
 
 class CVParserAgent(dspy.Module):
     def __init__(self):
@@ -13,6 +13,7 @@ class CVParserAgent(dspy.Module):
     def forward(self, cv_text: str) -> Dict[str, Any]:
         try:
             prediction = self.generate(cv_text=cv_text)
+            print(prediction)
             
             name = "Unknown"
             if hasattr(prediction, 'name') and prediction.name:
