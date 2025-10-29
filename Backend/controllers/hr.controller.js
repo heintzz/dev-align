@@ -22,12 +22,18 @@ const skillMatching = (skills, existingSkills) => {
   console.log({ existingSkills });
   console.log({ cleanedExisting });
 
-  const matchedSkills = existingSkills.filter((_, i) => {
-    if (cleanedExisting.includes(cleanedSkills[i])) return existingSkills[i];
-  });
+  const matchedSkills = [];
+  const newSkills = [];
 
-  const newSkills = skills.filter((skill, i) => {
-    if (!cleanedExisting.includes(cleanedSkills[i])) return skill;
+  cleanedSkills.forEach((skill, i) => {
+    const matchIndex = cleanedExisting.indexOf(skill);
+    if (matchIndex !== -1) {
+      // Match ditemukan → push versi DB
+      matchedSkills.push(existingSkills[matchIndex]);
+    } else {
+      // Tidak ditemukan → push versi user
+      newSkills.push(skills[i]);
+    }
   });
 
   console.log({ matchedSkills, newSkills });
@@ -55,7 +61,7 @@ const createEmployee = async (req, res) => {
     const existingSkillNames = existingSkills.map((skill) => skill.name);
 
     const { matchedSkills, newSkills } = skillMatching(req.body.skills, existingSkillNames);
-    
+
     let insertedIds = [];
     if (newSkills.length > 0) {
       const skillDocs = newSkills.map((name) => ({ name }));
