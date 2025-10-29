@@ -4,12 +4,6 @@ import {
   Routes,
   Navigate,
 } from "react-router-dom";
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Navigate,
-} from "react-router-dom";
 
 // Pages
 import Kanban from "@/pages/Kanban";
@@ -17,13 +11,14 @@ import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
+import EmployeeDetail from "@/pages/HR/Employee/EmployeeDetail";
+import AddEmployee from "./pages/HR/Employee/AddEmployee";
+
 import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
-import StaffDashboard from "./pages/Staff/Dashboard";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
-import AddEmployee from "./pages/HR/Employee/AddEmployee";
 import { useState } from "react";
 
 function App() {
@@ -51,22 +46,46 @@ function App() {
           path="/dashboard"
           element={
             <AppLayout>
-              <HRDashboard />
+              {role == "hr" ? (
+                <HRDashboard />
+              ) : role == "manager" ? (
+                <PMDashboard />
+              ) : (
+                <Kanban />
+              )}
             </AppLayout>
           }
         />
 
         <Route
-          path="/dashboard-pm"
+          path="/employees"
           element={
             <AppLayout>
-              <PMDashboard />
+              <ManageEmployee />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/employees/detail/:id"
+          element={
+            <AppLayout>
+              <EmployeeDetail />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/addEmployee"
+          element={
+            <AppLayout>
+              <AddEmployee />
             </AppLayout>
           }
         />
 
         {/* Redirect default ke /login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
       </Routes>
     </Router>
   );

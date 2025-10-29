@@ -227,20 +227,21 @@ export default function AddEmployee() {
     }
   };
 
-  const createEmployee = (e) => {
+  const createEmployee = async (e) => {
     e.preventDefault();
 
-    console.log(skills);
-    setEmployeeForm((prev) => ({
-      ...prev,
+    const formData = {
+      ...employeeForm,
       skills: skills.map((s) => s.name),
-    }));
-    console.log("Form Data:", employeeForm);
+    };
+
+    console.log("Form Data:", formData);
+
     try {
-      const { data } = api.post("/hr/employee", employeeForm);
-      console.log(data);
+      const { data } = await api.post("/hr/employee", formData);
+      console.log("Response:", data);
     } catch (error) {
-      console.log(error);
+      console.error("Error creating employee:", error);
     }
   };
 

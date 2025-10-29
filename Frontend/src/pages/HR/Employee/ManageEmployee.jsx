@@ -47,106 +47,6 @@ import {
 } from "lucide-react";
 import api from "@/api/axios";
 
-const columns = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        className="cursor-pointer"
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        className="cursor-pointer"
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <button
-        className="flex items-center font-semibold"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Name
-        <span className="ml-1 text-xs">
-          {column.getIsSorted() === "asc"
-            ? "▲"
-            : column.getIsSorted() === "desc"
-            ? "▼"
-            : ""}
-        </span>
-      </button>
-    ),
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-  },
-  {
-    accessorKey: "position.name",
-    header: "Position",
-  },
-  {
-    accessorKey: "role",
-    header: "Role",
-  },
-  {
-    accessorKey: "active",
-    header: "Status",
-    cell: ({ row }) => {
-      const isActive = row.getValue("active");
-      return (
-        <span
-          className={
-            isActive ? "text-green-600 font-medium" : "text-red-500 font-medium"
-          }
-        >
-          {isActive ? "Active" : "Resigned"}
-        </span>
-      );
-    },
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
-            <Ellipsis className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center">
-          <DropdownMenuItem
-            onClick={() => alert(`Editing ${row.original.name}`)}
-            className="cursor-pointer"
-          >
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => alert(`Deleting ${row.original.name}`)}
-            className="cursor-pointer"
-          >
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-];
-
 export default function ManageEmployee() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(5);
@@ -158,10 +58,120 @@ export default function ManageEmployee() {
 
   const navigate = useNavigate();
 
+  const columns = [
+    {
+      accessorKey: "id",
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          className="cursor-pointer"
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          className="cursor-pointer"
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <button
+          className="flex items-center font-semibold"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Name
+          <span className="ml-1 text-xs">
+            {column.getIsSorted() === "asc"
+              ? "▲"
+              : column.getIsSorted() === "desc"
+              ? "▼"
+              : ""}
+          </span>
+        </button>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+    },
+    {
+      accessorKey: "position.name",
+      header: "Position",
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+    },
+    {
+      accessorKey: "active",
+      header: "Status",
+      cell: ({ row }) => {
+        const isActive = row.getValue("active");
+        return (
+          <span
+            className={
+              isActive
+                ? "text-green-600 font-medium"
+                : "text-red-500 font-medium"
+            }
+          >
+            {isActive ? "Active" : "Resigned"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
+              <Ellipsis className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center">
+            <DropdownMenuItem
+              onClick={() => navigate(`detail/${row.original.id}`)}
+              className="cursor-pointer"
+            >
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => deativate(row.original.id)}
+              className="cursor-pointer"
+            >
+              Deactivate
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   const getEmployees = async () => {
     const { data } = await api.get("/hr/employees");
     console.log(data);
     setEmployees(data.data);
+  };
+
+  const deativate = async (id) => {
+    console.log(id);
+    const { data } = await api.delete(`hr/employee/${id}`);
+    console.log(data);
+    getEmployees();
   };
 
   // getEmployees();
