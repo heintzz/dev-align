@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 // shadcn/ui components
 import {
@@ -44,163 +45,152 @@ import {
   FilePenLine,
   Sheet,
 } from "lucide-react";
+import api from "@/api/axios";
 
-const columns = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        className="cursor-pointer"
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        className="cursor-pointer"
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <button
-        className="flex items-center font-semibold"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Name
-        <span className="ml-1 text-xs">
-          {column.getIsSorted() === "asc"
-            ? "▲"
-            : column.getIsSorted() === "desc"
-            ? "▼"
-            : ""}
-        </span>
-      </button>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-  },
-  {
-    accessorKey: "amount",
-    header: "Amount",
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
-            <Ellipsis className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center">
-          <DropdownMenuItem
-            onClick={() => alert(`Editing ${row.original.name}`)}
-            className="cursor-pointer"
-          >
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => alert(`Deleting ${row.original.name}`)}
-            className="cursor-pointer"
-          >
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-];
-
-// Example data
-const data = [
-  {
-    id: 1,
-    name: "Alice",
-    status: "success",
-    email: "alice@example.com",
-    amount: 120,
-  },
-  {
-    id: 2,
-    name: "Bob",
-    status: "pending",
-    email: "bob@example.com",
-    amount: 300,
-  },
-  {
-    id: 3,
-    name: "Charlie",
-    status: "failed",
-    email: "charlie@example.com",
-    amount: 150,
-  },
-  {
-    id: 4,
-    name: "Diana",
-    status: "success",
-    email: "diana@example.com",
-    amount: 220,
-  },
-  {
-    id: 5,
-    name: "Eve",
-    status: "pending",
-    email: "eve@example.com",
-    amount: 180,
-  },
-  {
-    id: 6,
-    name: "Frank",
-    status: "failed",
-    email: "frank@example.com",
-    amount: 90,
-  },
-  // Add more for pagination
-];
-
-export default function Column() {
+export default function ManageEmployee() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(5);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
+  const [employees, setEmployees] = useState([]);
+
+  const navigate = useNavigate();
+
+  const columns = [
+    {
+      accessorKey: "id",
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          className="cursor-pointer"
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          className="cursor-pointer"
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <button
+          className="flex items-center font-semibold"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Name
+          <span className="ml-1 text-xs">
+            {column.getIsSorted() === "asc"
+              ? "▲"
+              : column.getIsSorted() === "desc"
+              ? "▼"
+              : ""}
+          </span>
+        </button>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+    },
+    {
+      accessorKey: "position.name",
+      header: "Position",
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+    },
+    {
+      accessorKey: "active",
+      header: "Status",
+      cell: ({ row }) => {
+        const isActive = row.getValue("active");
+        return (
+          <span
+            className={
+              isActive
+                ? "text-green-600 font-medium"
+                : "text-red-500 font-medium"
+            }
+          >
+            {isActive ? "Active" : "Resigned"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
+              <Ellipsis className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center">
+            <DropdownMenuItem
+              onClick={() => navigate(`detail/${row.original.id}`)}
+              className="cursor-pointer"
+            >
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => deativate(row.original.id)}
+              className="cursor-pointer"
+            >
+              Deactivate
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const getEmployees = async () => {
+    const { data } = await api.get("/hr/employees");
+    console.log(data);
+    setEmployees(data.data);
+  };
+
+  const deativate = async (id) => {
+    console.log(id);
+    const { data } = await api.delete(`hr/employee/${id}`);
+    console.log(data);
+    getEmployees();
+  };
+
+  // getEmployees();
 
   const filteredData = useMemo(() => {
-    let filtered = data;
+    let filtered = employees;
 
-    // Filter by name (search)
     if (globalFilter) {
       filtered = filtered.filter((row) =>
         row.name.toLowerCase().includes(globalFilter.toLowerCase())
       );
     }
 
-    // Filter by status
     if (statusFilter !== "all") {
       filtered = filtered.filter((row) => row.status === statusFilter);
     }
 
     return filtered;
-  }, [globalFilter, statusFilter]);
+  }, [employees, globalFilter, statusFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -222,6 +212,10 @@ export default function Column() {
     pageCount: Math.ceil(filteredData.length / pageSize),
   });
 
+  useEffect(() => {
+    getEmployees();
+  }, []);
+
   return (
     <>
       <div>
@@ -240,14 +234,14 @@ export default function Column() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
                   <DropdownMenuItem
-                    // onClick={() => alert(`Editing ${row.original.name}`)}
-                    // className="cursor-pointer"
+                    onClick={() => navigate(`/addEmployee`)}
+                    className="cursor-pointer"
                   >
                     <FilePenLine /> Individual
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    // onClick={() => alert(`Deleting ${row.original.name}`)}
-                    // className="cursor-pointer"
+                  // onClick={() => alert(`Deleting ${row.original.name}`)}
+                  // className="cursor-pointer"
                   >
                     <Sheet />
                     Multiple

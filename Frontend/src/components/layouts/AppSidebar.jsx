@@ -75,7 +75,7 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="shadow-lg">
       <SidebarHeader>
-        <Link to="#" className="flex items-center py-5 space-x-1.5">
+        <Link to="#" className="flex items-center py-3.5 space-x-1.5">
           <img
             src={logoIcon}
             alt="DevAlign Logo"
