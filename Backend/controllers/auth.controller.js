@@ -1,14 +1,14 @@
-const { User, Token } = require("../models");
-const { sendEmail } = require("../utils/email");
-const { generateToken } = require("../utils/jwt");
-const { comparePassword } = require("../utils/password");
-const dotenv = require("dotenv");
-const crypto = require("crypto");
-const bcrypt = require("bcrypt");
+const { User, Token } = require('../models');
+const { sendEmail } = require('../utils/email');
+const { generateToken } = require('../utils/jwt');
+const { comparePassword } = require('../utils/password');
+const dotenv = require('dotenv');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 dotenv.config();
 
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 const userLogin = async (req, res) => {
   try {
@@ -18,8 +18,8 @@ const userLogin = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        error: "Not Found",
-        message: "User not found with this email",
+        error: 'Not Found',
+        message: 'User not found with this email',
       });
     }
 
@@ -27,8 +27,8 @@ const userLogin = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        error: "Invalid Credentials",
-        message: "Email or password is incorrect",
+        error: 'Invalid Credentials',
+        message: 'Email or password is incorrect',
       });
     }
 
@@ -45,7 +45,7 @@ const userLogin = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -63,16 +63,16 @@ const requestResetPassword = async (req, res) => {
       });
     }
 
-    const token = await Token.findOne({ userId: user._id }); // ← Perbaiki ini
+    const token = await Token.findOne({ userId: user._id });
     if (token) {
-      await token.deleteOne(); // ← Perbaiki ini juga
+      await token.deleteOne();
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashToken = await bcrypt.hash(resetToken, 10);
 
     await Token.create({ userId: user._id, token: hashToken, createdAt: Date.now() });
-    const link = `${CLIENT_URL}/reset-password?token=${resetToken}&id=${user._id}`; // ← Sesuaikan URL
+    const link = `${CLIENT_URL}/reset-password?token=${resetToken}&id=${user._id}`;
 
     const message = `
   <div>
@@ -89,7 +89,6 @@ const requestResetPassword = async (req, res) => {
       html: message,
     });
 
-    // ← Tambahkan return response
     return res.json({
       success: true,
       message: 'Password reset link has been sent to your email',
@@ -110,8 +109,8 @@ const resetPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "User not found",
+        error: 'Not Found',
+        message: 'User not found',
       });
     }
 
@@ -119,8 +118,8 @@ const resetPassword = async (req, res) => {
     if (!passwordResetToken) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Token not found",
+        error: 'Not Found',
+        message: 'Token not found',
       });
     }
 
@@ -128,16 +127,16 @@ const resetPassword = async (req, res) => {
     if (!isValid) {
       return res.status(400).json({
         success: false,
-        error: "Invalid Token",
-        message: "Invalid or expired password reset token",
+        error: 'Invalid Token',
+        message: 'Invalid or expired password reset token',
       });
     }
 
     if (password !== confirmPassword) {
       return res.status(400).json({
         success: false,
-        error: "Password Mismatch",
-        message: "Password and confirm password do not match",
+        error: 'Password Mismatch',
+        message: 'Password and confirm password do not match',
       });
     }
 
@@ -148,12 +147,12 @@ const resetPassword = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Password reset successful",
+      message: 'Password reset successful',
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -167,8 +166,8 @@ const updatePassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "User not found",
+        error: 'Not Found',
+        message: 'User not found',
       });
     }
 
@@ -181,19 +180,19 @@ const updatePassword = async (req, res) => {
     } else {
       return res.status(400).json({
         success: false,
-        error: "Invalid Credentials",
-        message: "Current password is incorrect",
+        error: 'Invalid Credentials',
+        message: 'Current password is incorrect',
       });
     }
 
     return res.json({
       success: true,
-      message: "Password updated",
+      message: 'Password updated',
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
