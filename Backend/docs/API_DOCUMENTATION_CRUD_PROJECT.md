@@ -16,14 +16,15 @@ This document provides comprehensive documentation for all API endpoints created
   - [Get All Projects (HR Only)](#2-get-all-projects-hr-only)
   - [Get Project by ID](#3-get-project-by-id)
   - [Create Project](#4-create-project)
-  - [Update Project](#5-update-project)
-  - [Delete Project](#6-delete-project)
+  - [Create Project with Staff Assignments](#5-create-project-with-staff-assignments-combined)
+  - [Update Project](#6-update-project)
+  - [Delete Project](#7-delete-project)
 - [Project Assignment Endpoints](#project-assignment-endpoints)
-  - [Get Project Assignments](#7-get-project-assignments)
-  - [Get Assignment by ID](#8-get-assignment-by-id)
-  - [Assign User to Project](#9-assign-user-to-project-auto-tech-lead)
-  - [Update Assignment](#10-update-assignment)
-  - [Remove Assignment](#11-remove-assignment)
+  - [Get Project Assignments](#8-get-project-assignments)
+  - [Get Assignment by ID](#9-get-assignment-by-id)
+  - [Assign User to Project](#10-assign-user-to-project-auto-tech-lead)
+  - [Update Assignment](#11-update-assignment)
+  - [Remove Assignment](#12-remove-assignment)
 - [Key Features](#key-features)
 - [Error Codes](#error-codes)
 - [Test Credentials](#test-credentials)
@@ -325,7 +326,173 @@ Content-Type: application/json
 
 ---
 
-### 5. Update Project
+### 5. Create Project with Staff Assignments (Combined)
+
+Creates a new project and automatically assigns staff members in a single API call. This is the **recommended endpoint for managers** when creating projects through the UI.
+
+**Endpoint**: `POST /project/with-assignments`
+
+**Access**: Manager only
+
+**⭐ Special Features**:
+- Creates project and assigns staff in one transaction
+- Automatically sets `teamMemberCount` based on `staffIds` array length
+- Manager roles are automatically assigned as tech leads
+- Returns both project and assignment data
+
+**Request Body**:
+
+| Field | Type | Required | Max Length | Description |
+|-------|------|----------|------------|-------------|
+| `name` | string | Yes | 100 | Project name |
+| `description` | string | Yes | - | Project description |
+| `staffIds` | array | Yes | - | Array of user IDs to assign to the project |
+| `status` | string | No | - | Project status (default: `planning`) |
+| `deadline` | date | No | - | Project deadline (ISO 8601 format) |
+
+**Status Values**: `planning`, `active`, `on_hold`, `completed`, `cancelled`
+
+**Request Example**:
+```http
+POST /project/with-assignments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "name": "E-Commerce Platform Development",
+  "description": "Build a full-featured e-commerce platform with payment gateway integration",
+  "status": "planning",
+  "deadline": "2025-12-31",
+  "staffIds": [
+    "69016bcc7157f337f7e2e4ea",
+    "69016bcc7157f337f7e2e4eb",
+    "69016bcc7157f337f7e2e4ec"
+  ]
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "success": true,
+  "data": {
+    "project": {
+      "_id": "6901b5caf7ed0f35753d38a3",
+      "name": "E-Commerce Platform Development",
+      "description": "Build a full-featured e-commerce platform with payment gateway integration",
+      "status": "planning",
+      "deadline": "2025-12-31T00:00:00.000Z",
+      "teamMemberCount": 3,
+      "createdBy": {
+        "_id": "69016bcc7157f337f7e2e4ea",
+        "name": "Tony Yoditanto",
+        "email": "tonyoditanto@gmail.com",
+        "role": "manager"
+      },
+      "createdAt": "2025-10-29T06:35:54.665Z",
+      "updatedAt": "2025-10-29T06:35:54.665Z",
+      "__v": 0
+    },
+    "assignments": [
+      {
+        "_id": "6901b5e8f7ed0f35753d38a9",
+        "projectId": {
+          "_id": "6901b5caf7ed0f35753d38a3",
+          "name": "E-Commerce Platform Development",
+          "description": "Build a full-featured e-commerce platform",
+          "status": "planning"
+        },
+        "userId": {
+          "_id": "69016bcc7157f337f7e2e4ea",
+          "name": "Tony Yoditanto",
+          "email": "tonyoditanto@gmail.com",
+          "role": "manager",
+          "position": "507f1f77bcf86cd799439011"
+        },
+        "isTechLead": true,
+        "__v": 0
+      },
+      {
+        "_id": "6901b5e8f7ed0f35753d38aa",
+        "projectId": {
+          "_id": "6901b5caf7ed0f35753d38a3",
+          "name": "E-Commerce Platform Development",
+          "description": "Build a full-featured e-commerce platform",
+          "status": "planning"
+        },
+        "userId": {
+          "_id": "69016bcc7157f337f7e2e4eb",
+          "name": "John Developer",
+          "email": "john@example.com",
+          "role": "staff",
+          "position": "507f1f77bcf86cd799439012"
+        },
+        "isTechLead": false,
+        "__v": 0
+      },
+      {
+        "_id": "6901b5e8f7ed0f35753d38ab",
+        "projectId": {
+          "_id": "6901b5caf7ed0f35753d38a3",
+          "name": "E-Commerce Platform Development",
+          "description": "Build a full-featured e-commerce platform",
+          "status": "planning"
+        },
+        "userId": {
+          "_id": "69016bcc7157f337f7e2e4ec",
+          "name": "Jane Designer",
+          "email": "jane@example.com",
+          "role": "staff",
+          "position": "507f1f77bcf86cd799439013"
+        },
+        "isTechLead": false,
+        "__v": 0
+      }
+    ],
+    "message": "Project created successfully with 3 staff members assigned"
+  }
+}
+```
+
+**Error** (400 Bad Request - Missing Name):
+```json
+{
+  "success": false,
+  "error": "Bad Request",
+  "message": "Project name must be specified"
+}
+```
+
+**Error** (400 Bad Request - Missing Description):
+```json
+{
+  "success": false,
+  "error": "Bad Request",
+  "message": "Project description must be specified"
+}
+```
+
+**Error** (400 Bad Request - Missing or Empty Staff Array):
+```json
+{
+  "success": false,
+  "error": "Bad Request",
+  "message": "At least one staff member must be assigned to the project"
+}
+```
+
+**Error** (404 Not Found - Invalid Staff IDs):
+```json
+{
+  "success": false,
+  "error": "Not Found",
+  "message": "One or more staff members not found"
+}
+```
+
+---
+
+### 6. Update Project
 
 Updates an existing project. Only provided fields will be updated.
 
@@ -391,7 +558,7 @@ Content-Type: application/json
 
 ---
 
-### 6. Delete Project
+### 7. Delete Project
 
 Permanently deletes a project from the database.
 
@@ -431,7 +598,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 Base path: `/project-assignment`
 
-### 7. Get Project Assignments
+### 8. Get Project Assignments
 
 Retrieves all project assignments with pagination and optional filtering.
 
@@ -490,7 +657,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-### 8. Get Assignment by ID
+### 9. Get Assignment by ID
 
 Retrieves detailed information about a specific project assignment.
 
@@ -547,7 +714,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-### 9. Assign User to Project (Auto Tech Lead)
+### 10. Assign User to Project (Auto Tech Lead)
 
 Assigns a user to a project with automatic tech lead assignment for managers.
 
@@ -633,7 +800,7 @@ Content-Type: application/json
 
 ---
 
-### 10. Update Assignment
+### 11. Update Assignment
 
 Updates a project assignment with automatic tech lead enforcement for managers.
 
@@ -703,7 +870,7 @@ Content-Type: application/json
 
 ---
 
-### 11. Remove Assignment
+### 12. Remove Assignment
 
 Removes a user's assignment from a project.
 
@@ -747,13 +914,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | 2 | `/project/all` | GET | HR | Get all projects (HR only) |
 | 3 | `/project/:projectId` | GET | All | Get project by ID |
 | 4 | `/project` | POST | Manager/HR | Create new project |
-| 5 | `/project/:projectId` | PUT | Manager/HR | Update existing project |
-| 6 | `/project/:projectId` | DELETE | Manager/HR | Delete project |
-| 7 | `/project-assignment` | GET | All | Get all assignments (with filters) |
-| 8 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
-| 9 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
-| 10 | `/project-assignment/:assignmentId` | PUT | Manager/HR | Update assignment |
-| 11 | `/project-assignment/:assignmentId` | DELETE | Manager/HR | Remove assignment |
+| 5 | `/project/with-assignments` | POST | Manager | **Create project with staff assignments (Recommended)** |
+| 6 | `/project/:projectId` | PUT | Manager/HR | Update existing project |
+| 7 | `/project/:projectId` | DELETE | Manager/HR | Delete project |
+| 8 | `/project-assignment` | GET | All | Get all assignments (with filters) |
+| 9 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
+| 10 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
+| 11 | `/project-assignment/:assignmentId` | PUT | Manager/HR | Update assignment |
+| 12 | `/project-assignment/:assignmentId` | DELETE | Manager/HR | Remove assignment |
 
 ---
 

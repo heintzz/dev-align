@@ -1,4 +1,4 @@
-const { Project } = require('../models');
+const { Project, ProjectAssignment, User } = require('../models');
 
 const createProject = async (req, res) => {
   const { name, description, status, deadline, teamMemberCount } = req.body;
@@ -232,8 +232,103 @@ const deleteProject = async (req, res) => {
   }
 };
 
+const createProjectWithAssignments = async (req, res) => {
+  const { name, description, status, deadline, staffIds } = req.body;
+
+  // Validation
+  if (!name || name.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: 'Project name must be specified',
+    });
+  }
+
+  if (!description || description.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: 'Project description must be specified',
+    });
+  }
+
+  if (!staffIds || !Array.isArray(staffIds) || staffIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: 'At least one staff member must be assigned to the project',
+    });
+  }
+
+  try {
+    // Verify all staff members exist
+    const staff = await User.find({ _id: { $in: staffIds } });
+
+    if (staff.length !== staffIds.length) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'One or more staff members not found',
+      });
+    }
+
+    // Create project
+    const projectData = {
+      name,
+      description,
+      createdBy: req.user.id,
+      teamMemberCount: staffIds.length,
+    };
+
+    if (status) projectData.status = status;
+    if (deadline) projectData.deadline = deadline;
+
+    const project = await Project.create(projectData);
+
+    // Create assignments for all staff members
+    const assignments = [];
+    for (const staffMember of staff) {
+      const assignmentData = {
+        projectId: project._id,
+        userId: staffMember._id,
+        // Automatically set isTechLead to true if user is a manager
+        isTechLead: staffMember.role === 'manager',
+      };
+
+      const assignment = await ProjectAssignment.create(assignmentData);
+      assignments.push(assignment);
+    }
+
+    // Populate project and assignments for response
+    const populatedProject = await Project.findById(project._id)
+      .populate('createdBy', 'name email role');
+
+    const populatedAssignments = await ProjectAssignment.find({
+      projectId: project._id
+    })
+      .populate('userId', 'name email role position')
+      .populate('projectId', 'name description status');
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        project: populatedProject,
+        assignments: populatedAssignments,
+        message: `Project created successfully with ${assignments.length} staff members assigned`,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   createProject,
+  createProjectWithAssignments,
   getProjects,
   getAllProjects,
   getProjectById,

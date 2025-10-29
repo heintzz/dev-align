@@ -4,6 +4,7 @@ const {
   getAllProjects,
   getProjectById,
   createProject,
+  createProjectWithAssignments,
   updateProject,
   deleteProject,
 } = require('../controllers/project.controller');
@@ -200,6 +201,73 @@ router.get('/:projectId', verifyToken, getProjectById);
  *         description: Bad request
  */
 router.post('/', verifyToken, auth('manager', 'hr'), createProject);
+
+/**
+ * @swagger
+ * /project/with-assignments:
+ *   post:
+ *     summary: Create a new project with staff assignments (Manager only)
+ *     description: Creates a project and automatically assigns staff members in a single operation. Manager role is automatically assigned as tech lead.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *               - staffIds
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *                 example: E-Commerce Platform Development
+ *               description:
+ *                 type: string
+ *                 example: Build a full-featured e-commerce platform with payment gateway integration
+ *               status:
+ *                 type: string
+ *                 enum: [planning, active, on_hold, completed, cancelled]
+ *                 example: planning
+ *               deadline:
+ *                 type: string
+ *                 format: date
+ *                 example: 2025-12-31
+ *               staffIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to assign to the project
+ *                 example: ["507f1f77bcf86cd799439011", "507f191e810c19729de860ea"]
+ *     responses:
+ *       201:
+ *         description: Project and assignments created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     project:
+ *                       type: object
+ *                     assignments:
+ *                       type: array
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Bad request - Missing required fields or invalid data
+ *       404:
+ *         description: One or more staff members not found
+ */
+router.post('/with-assignments', verifyToken, auth('manager'), createProjectWithAssignments);
 
 /**
  * @swagger
