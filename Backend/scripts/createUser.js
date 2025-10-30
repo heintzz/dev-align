@@ -1,27 +1,27 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-require('dotenv').config();
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+require("dotenv").config();
 
-const userSchema = require('../models/schemas/user.schema');
-const User = mongoose.model('User', userSchema);
+const userSchema = require("../models/schemas/user.schema");
+const User = mongoose.model("User", userSchema);
 
 async function createUser() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ Connected to MongoDB\n');
+    console.log("✅ Connected to MongoDB\n");
 
     // Data user yang mau dibuat
     const userData = {
-      name: 'Irsyad Ibadurrahman',
-      email: 'irsyadibadurrahman05419@gmail.com',
-      password: 'password123',
-      role: 'staff',
+      name: "Rahadi Fauzan",
+      email: "ozanzenniuz@gmail.com",
+      password: "password123",
+      role: "hr",
     };
 
     // Cek apakah email sudah ada
     const existingUser = await User.findOne({ email: userData.email });
     if (existingUser) {
-      console.log('❌ User with this email already exists!');
+      console.log("❌ User with this email already exists!");
       mongoose.disconnect();
       process.exit(1);
     }
@@ -37,19 +37,19 @@ async function createUser() {
       role: userData.role,
     });
 
-    console.log('✅ USER CREATED SUCCESSFULLY!\n');
-    console.log('========================================');
-    console.log('📋 LOGIN CREDENTIALS (SIMPAN INI!):');
-    console.log('========================================');
-    console.log('Email    :', user.email);
-    console.log('Password :', userData.password);
-    console.log('Role     :', user.role);
-    console.log('========================================\n');
-    
+    console.log("✅ USER CREATED SUCCESSFULLY!\n");
+    console.log("========================================");
+    console.log("📋 LOGIN CREDENTIALS (SIMPAN INI!):");
+    console.log("========================================");
+    console.log("Email    :", user.email);
+    console.log("Password :", userData.password);
+    console.log("Role     :", user.role);
+    console.log("========================================\n");
+
     mongoose.disconnect();
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error("❌ Error:", error.message);
     mongoose.disconnect();
     process.exit(1);
   }

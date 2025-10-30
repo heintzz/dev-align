@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    ports:
+      - '5000:5000'
+    env_file:
+      - ./Backend/.env
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+
+  ai-backend:
+    build:
+      context: ./AI
+      dockerfile: Dockerfile
+    env_file:
+      - ./Backend/.env
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./AI:/app
+      - /app/node_modules
