@@ -13,9 +13,13 @@ const projectSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['planning', 'active', 'on_hold', 'completed', 'cancelled'],
-      default: 'planning',
+      enum: ['active', 'completed'],
+      default: 'active',
       maxlength: 20,
+    },
+    startDate: {
+      type: Date,
+      default: Date.now,
     },
     deadline: {
       type: Date,
@@ -23,7 +27,7 @@ const projectSchema = new Schema(
     },
     teamMemberCount: {
       type: Number,
-      default: 0,
+      default: 1, // Default 1 to include manager
     },
     createdBy: {
       type: Schema.Types.ObjectId,
