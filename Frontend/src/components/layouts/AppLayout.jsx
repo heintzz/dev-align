@@ -13,7 +13,7 @@ export default function Layout({ children }) {
         {/* Main content */}
         <div className="flex flex-col flex-1 min-w-0">
           <AppNavbar />
-          <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+          <main className="flex-1 overflow-y-auto bg-gray-50 px-10 py-6">
             {children}
           </main>
         </div>

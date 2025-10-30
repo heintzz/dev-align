@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
 
-const { createEmployee } = require('../controllers/hr.controller');
+const {
+	createEmployee,
+	listEmployees,
+	getEmployee,
+	updateEmployee,
+	deleteEmployee,
+	importEmployees,
+	parseCv,
+	getImportTemplate,
+} = require('../controllers/hr.controller');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const verifyToken = require('../middlewares/token');
 const auth = require('../middlewares/authorization');
 
@@ -52,5 +63,159 @@ const auth = require('../middlewares/authorization');
  *         description: Bad request
  */
 router.post('/employee', verifyToken, auth('hr'), createEmployee);
+
+/**
+ * @swagger
+ * /hr/employees:
+ *   get:
+ *     summary: List employees (paginated)
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of employees
+ */
+router.get('/employees', verifyToken, auth('hr', 'manager'), listEmployees);
+
+/**
+ * @swagger
+ * /hr/employee/{id}:
+ *   get:
+ *     summary: Get employee by id
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Employee data
+ */
+router.get('/employee/:id', verifyToken, getEmployee);
+
+/**
+ * @swagger
+ * /hr/employee/{id}:
+ *   put:
+ *     summary: Update employee
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Updated employee
+ */
+router.put('/employee/:id', verifyToken, auth('hr'), updateEmployee);
+
+/**
+ * @swagger
+ * /hr/employee/{id}:
+ *   delete:
+ *     summary: Delete employee
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Employee deleted
+ */
+router.delete('/employee/:id', verifyToken, auth('hr'), deleteEmployee);
+
+/**
+ * @swagger
+ * /hr/employees/import:
+ *   post:
+ *     summary: Bulk import employees from Excel file
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Import result
+ */
+router.post('/employees/import', verifyToken, auth('hr'), upload.single('file'), importEmployees);
+
+/**
+ * @swagger
+ * /hr/parse-cv:
+ *   post:
+ *     summary: Parse uploaded CV (PDF) and extract basic info
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Parsed CV data
+ */
+router.post('/parse-cv', verifyToken, auth('hr'), upload.single('file'), parseCv);
+
+/**
+ * @swagger
+ * /hr/employees/template:
+ *   get:
+ *     summary: Download Excel/CSV template for bulk import
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: File download
+ */
+router.get('/employees/template', verifyToken, auth('hr'), getImportTemplate);
 
 module.exports = router;

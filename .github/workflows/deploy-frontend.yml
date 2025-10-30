@@ -1,0 +1,72 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend to EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Frontend EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.FRONTEND_HOST }}
+          username: ubuntu
+          key: ${{ secrets.FRONTEND_SSH_KEY }}
+          script: |
+            echo "🚀 Starting frontend deployment..."
+            echo "📍 Frontend Server: 18.141.166.14"
+            
+            # Navigate to app directory
+            cd /var/www/frontend
+            
+            # Backup old version
+            if [ -d "DevAlign" ]; then
+              echo "📦 Backing up current version..."
+              rm -rf DevAlign-backup
+              mv DevAlign DevAlign-backup
+            fi
+            
+            # Clone latest code
+            echo "📥 Cloning repository..."
+            git clone -b dev https://github.com/PentabyteDevAlign/DevAlign.git
+            
+            # Build frontend
+            echo "🔨 Building frontend..."
+            cd DevAlign/Frontend
+            
+            # Install dependencies
+            npm install
+            
+            # Build for production (will use .env.production)
+            npm run build
+            
+            # Verify build was created
+            if [ ! -d "dist" ]; then
+              echo "❌ Build failed - dist folder not found!"
+              exit 1
+            fi
+            
+            echo "📂 Build complete - files in dist folder"
+            ls -la dist
+            
+            # Restart Nginx
+            echo "🔄 Restarting Nginx..."
+            sudo systemctl restart nginx
+            
+            # Check Nginx status
+            sudo systemctl status nginx --no-pager | head -5
+            
+            echo "✅ Frontend deployment complete!"
+            echo "🌐 Frontend is live at: http://18.141.166.14"
+            echo "🔗 API calls will be proxied to: http://13.250.231.18:5000"

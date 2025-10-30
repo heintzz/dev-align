@@ -35,6 +35,12 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId,
       default: null,
     },
+    skills: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Skill',
+      },
+    ],
     managerId: {
       ref: 'User',
       type: Schema.Types.ObjectId,
@@ -45,6 +51,10 @@ const userSchema = new Schema(
       type: String,
       enum: ['hr', 'manager', 'staff'],
       default: 'staff',
+    },
+    active: {
+      type: Boolean,
+      default: true,
     },
   },
   {
