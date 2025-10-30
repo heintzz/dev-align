@@ -248,6 +248,11 @@ const importEmployees = async (req, res) => {
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
       const managerEmail = managerEmailRaw ? String(managerEmailRaw).toLowerCase() : null;
       const role = row.role || row.Role || 'staff';
+      // Parse skills - dapat berupa string (comma-separated) atau array
+      let skills = row.skills || row.Skills || [];
+      if (typeof skills === 'string') {
+        // Jika skills dalam format string, split by comma dan bersihkan whitespace
+        skills = skills.split(',').map(s => s.trim()).filter(s => s);
 
       const rowResult = { row: rowIndex, errors: [], warnings: [], resolved: {} };
 
@@ -332,6 +337,7 @@ const importEmployees = async (req, res) => {
           position,
           managerId,
           role,
+          skills, // tambahkan skills ke object creation
           password: hashedPassword,
         });
 
@@ -372,10 +378,14 @@ const getImportTemplate = async (req, res) => {
     const csvPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.csv');
     const fs = require('fs');
     if (format === 'xlsx' && fs.existsSync(xlsxPath)) {
-      return res.download(xlsxPath, 'employee-import-template.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.xlsx');
+      return res.sendFile(xlsxPath);
     }
     if (format === 'csv' && fs.existsSync(csvPath)) {
-      return res.download(csvPath, 'employee-import-template.csv');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.csv');
+      return res.sendFile(csvPath);
     }
     // fallback: error if file not found
     return res.status(404).json({ success: false, error: 'Template file not found' });
