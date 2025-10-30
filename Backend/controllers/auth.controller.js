@@ -172,19 +172,17 @@ const updatePassword = async (req, res) => {
       });
     }
 
-    const newHashedPassword = await bcrypt.hash(newPassword, 10);
-    const isMatch = bcrypt.compare(currentPassword, user.password);
-
-    if (isMatch) {
-      user.password = newHashedPassword;
-      await user.save();
-    } else {
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
       return res.status(400).json({
         success: false,
         error: "Invalid Credentials",
         message: "Current password is incorrect",
       });
     }
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = newHashedPassword;
+    await user.save();
 
     return res.json({
       success: true,

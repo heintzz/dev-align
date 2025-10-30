@@ -72,14 +72,16 @@ const listEmployees = async (req, res) => {
   if (role) filter.role = role;
   if (position && mongoose.Types.ObjectId.isValid(position)) filter.position = position;
 
-  // By default only include active users. HR can include inactive via query param `includeInactive=true`.
-  const includeInactive = req.query.includeInactive === 'true' && req.user && req.user.role === 'hr';
-  if (!includeInactive) filter.active = true;
+  // Default: tampilkan semua (active & inactive). Jika query active diberikan, filter sesuai.
+  if (typeof req.query.active !== 'undefined') {
+    filter.active = req.query.active === 'true';
+  }
 
   try {
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
       .populate('position')
+      .populate('managerId', 'name email phoneNumber position')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -107,10 +109,13 @@ const getEmployee = async (req, res) => {
   }
 
   try {
-    const user = await User.findById(id).populate('position');
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'Not Found' });
-    }
+    // populate manager info to include name & email for frontend
+    const user = await User.findById(id)
+      .populate('position')
+      .populate('managerId', 'name email phoneNumber position')
+      .lean();
+
+    if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
 
     // Authorization: hr and manager can view any; others can view only their own record
     const requester = req.user || {};
@@ -123,7 +128,9 @@ const getEmployee = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Not Found' });
     }
 
-    return res.json({ success: true, data: userDto.mapUserToUserResponse(user) });
+    // map and return — DTO will include manager object when populated
+    const response = userDto.mapUserToUserResponse(user);
+    return res.json({ success: true, data: response });
   } catch (err) {
     return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
   }
@@ -361,17 +368,17 @@ const importEmployees = async (req, res) => {
 const getImportTemplate = async (req, res) => {
   try {
     const format = (req.query.format || 'xlsx').toLowerCase();
+    const xlsxPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.xlsx');
     const csvPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.csv');
-    if (format === 'csv') {
+    const fs = require('fs');
+    if (format === 'xlsx' && fs.existsSync(xlsxPath)) {
+      return res.download(xlsxPath, 'employee-import-template.xlsx');
+    }
+    if (format === 'csv' && fs.existsSync(csvPath)) {
       return res.download(csvPath, 'employee-import-template.csv');
     }
-
-    // Default: generate XLSX buffer from CSV/template rows
-    const csvWorkbook = XLSX.readFile(csvPath, { type: 'file' });
-    const buf = XLSX.write(csvWorkbook, { bookType: 'xlsx', type: 'buffer' });
-    res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.xlsx');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    return res.send(buf);
+    // fallback: error if file not found
+    return res.status(404).json({ success: false, error: 'Template file not found' });
   } catch (err) {
     return res.status(500).json({ success: false, error: 'Failed to get template', message: err.message });
   }
