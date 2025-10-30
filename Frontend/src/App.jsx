@@ -10,20 +10,21 @@ import Kanban from "@/pages/Kanban";
 import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
-import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
-import EmployeeDetail from "@/pages/HR/Employee/EmployeeDetail";
-import AddEmployee from "./pages/HR/Employee/AddEmployee";
-
+import ManageEmployee from "@/pages/HR/ManageEmployee";
 import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
+import StaffDashboard from "./pages/Staff/Dashboard";
+import CreateProject from "./pages/PM/CreateProject";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function App() {
-  const [role, setRole] = useState(localStorage.getItem("userRole"));
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [role, setRole] = useState("");
+  useEffect(() => {
+    setRole(localStorage.getItem("role"));
+  }, []);
   return (
     <Router>
       <Routes>
@@ -43,7 +44,7 @@ function App() {
         />
 
         <Route
-          path="/dashboard"
+          path="/dashboard-hr"
           element={
             <AppLayout>
               {role == "hr" ? (
@@ -84,8 +85,26 @@ function App() {
           }
         />
 
+        <Route
+          path="/create-project"
+          element={
+            <AppLayout>
+              <CreateProject />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/projects"
+          element={
+            <AppLayout>
+              <ListProjects />
+            </AppLayout>
+          }
+        />
+
         {/* Redirect default ke /login */}
-        {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );
