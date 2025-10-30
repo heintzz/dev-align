@@ -248,11 +248,6 @@ const importEmployees = async (req, res) => {
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
       const managerEmail = managerEmailRaw ? String(managerEmailRaw).toLowerCase() : null;
       const role = row.role || row.Role || 'staff';
-      // Parse skills - dapat berupa string (comma-separated) atau array
-      let skills = row.skills || row.Skills || [];
-      if (typeof skills === 'string') {
-        // Jika skills dalam format string, split by comma dan bersihkan whitespace
-        skills = skills.split(',').map(s => s.trim()).filter(s => s);
 
       const rowResult = { row: rowIndex, errors: [], warnings: [], resolved: {} };
 
@@ -337,7 +332,6 @@ const importEmployees = async (req, res) => {
           position,
           managerId,
           role,
-          skills, // tambahkan skills ke object creation
           password: hashedPassword,
         });
 
