@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html,
+body {
+  overflow: hidden;
+  height: 100%;
+}
+
 @theme inline {
   --color-primer: #2c3f48;
   --color-sekunder: #557584;

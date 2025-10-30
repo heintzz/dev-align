@@ -1,0 +1,301 @@
+{
+  "info": {
+    "name": "DevAlign HR API",
+    "description": "API collection for DevAlign HR management system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login HR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"hr@devalign.com\",\n    \"password\": \"yourpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "path": ["auth", "login"]
+            },
+            "description": "Login to get JWT token for HR operations"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"John Developer\",\n    \"email\": \"john.dev@devalign.com\",\n    \"phoneNumber\": \"+6281234567890\",\n    \"placeOfBirth\": \"Jakarta\",\n    \"dateOfBirth\": \"1995-05-15\",\n    \"position\": \"651f3c5ea2b5d89012345678\",\n    \"managerId\": \"651f3c5ea2b5d89012345679\",\n    \"role\": \"staff\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees",
+              "path": ["employees"]
+            },
+            "description": "Create a new employee (DEV-23)"
+          }
+        },
+        {
+          "name": "List Employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees?page=1&limit=10&search=john",
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "john"
+                }
+              ],
+              "path": ["employees"]
+            },
+            "description": "Get list of employees with pagination (DEV-21)"
+          }
+        },
+        {
+          "name": "Get Employee Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/:id",
+              "path": ["employees", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "employeeId"
+                }
+              ]
+            },
+            "description": "Get detailed information about an employee (DEV-22)"
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"John Senior Developer\",\n    \"email\": \"john.dev@devalign.com\",\n    \"phoneNumber\": \"+6281234567890\",\n    \"placeOfBirth\": \"Jakarta\",\n    \"dateOfBirth\": \"1995-05-15\",\n    \"position\": \"651f3c5ea2b5d89012345678\",\n    \"managerId\": \"651f3c5ea2b5d89012345679\",\n    \"role\": \"staff\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/:id",
+              "path": ["employees", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "employeeId"
+                }
+              ]
+            },
+            "description": "Update employee information (DEV-29)"
+          }
+        },
+        {
+          "name": "Deactivate Employee",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/:id",
+              "path": ["employees", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "employeeId"
+                }
+              ]
+            },
+            "description": "Soft delete (deactivate) an employee (DEV-30)"
+          }
+        },
+        {
+          "name": "Hard Delete Employee",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/:id?hard=true",
+              "query": [
+                {
+                  "key": "hard",
+                  "value": "true"
+                }
+              ],
+              "path": ["employees", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "employeeId"
+                }
+              ]
+            },
+            "description": "Permanently delete an employee (HR only) (DEV-30)"
+          }
+        },
+        {
+          "name": "Import Employees",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/employees.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/import?dryRun=true&sendEmails=false",
+              "query": [
+                {
+                  "key": "dryRun",
+                  "value": "true"
+                },
+                {
+                  "key": "sendEmails",
+                  "value": "false"
+                }
+              ],
+              "path": ["employees", "import"]
+            },
+            "description": "Import multiple employees from Excel file (DEV-24)"
+          }
+        },
+        {
+          "name": "Get Import Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/import/template?format=xlsx",
+              "query": [
+                {
+                  "key": "format",
+                  "value": "xlsx"
+                }
+              ],
+              "path": ["employees", "import", "template"]
+            },
+            "description": "Download employee import template"
+          }
+        },
+        {
+          "name": "Parse CV",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/cv.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/parse-cv",
+              "path": ["employees", "parse-cv"]
+            },
+            "description": "Parse CV from PDF file (DEV-36)"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "your-jwt-token-here",
+      "type": "string"
+    }
+  ]
+}
