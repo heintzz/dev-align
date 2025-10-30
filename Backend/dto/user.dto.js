@@ -18,7 +18,9 @@ function mapUserToUserResponse(user) {
     placeOfBirth: user.placeOfBirth,
     dateOfBirth: user.dateOfBirth,
     position: user.position,
-    skills: user.skills,
+    skills: Array.isArray(user.skills)
+      ? user.skills.map((s) => (s && (s.name || s._id) ? { id: s._id || s.id, name: s.name || null } : s))
+      : user.skills,
     // keep managerId as id (if populated, extract its id)
     managerId: user && user.managerId && typeof user.managerId === 'object' ? (user.managerId._id || user.managerId.id) : user.managerId,
     // manager: null or {id,name,email,phoneNumber,position}
