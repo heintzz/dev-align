@@ -14,6 +14,8 @@ import ManageEmployee from "@/pages/HR/ManageEmployee";
 import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
 import StaffDashboard from "./pages/Staff/Dashboard";
+import CreateProject from "./pages/PM/CreateProject";
+import ListProjects from "./pages/PM/ListProject";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
@@ -60,6 +62,24 @@ function App() {
           element={
             <AppLayout>
               <StaffDashboard />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/create-project"
+          element={
+            <AppLayout>
+              <CreateProject />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/projects"
+          element={
+            <AppLayout>
+              <ListProjects />
             </AppLayout>
           }
         />
