@@ -3,10 +3,12 @@ const {
   getProjects,
   getAllProjects,
   getProjectById,
+  getProjectDetails,
   createProject,
   createProjectWithAssignments,
   updateProject,
   deleteProject,
+  assignTechLead,
 } = require('../controllers/project.controller');
 const auth = require('../middlewares/authorization');
 const verifyToken = require('../middlewares/token');
@@ -43,7 +45,7 @@ const router = express.Router();
  *         name: status
  *         schema:
  *           type: string
- *           enum: [planning, active, on_hold, completed, cancelled]
+ *           enum: [active, completed]
  *         description: Filter by project status
  *       - in: query
  *         name: createdBy
@@ -122,7 +124,7 @@ router.get('/', verifyToken, getProjects);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [planning, active, on_hold, completed, cancelled]
+ *           enum: [active, completed]
  *         description: Filter by project status
  *       - in: query
  *         name: createdBy
@@ -160,9 +162,133 @@ router.get('/:projectId', verifyToken, getProjectById);
 
 /**
  * @swagger
+ * /project/{projectId}/details:
+ *   get:
+ *     summary: Get comprehensive project details with all users
+ *     description: |
+ *       Returns complete project information including:
+ *       - Project details
+ *       - Manager ID (user who created the project)
+ *       - All staff IDs (all assigned users)
+ *       - Tech lead staff IDs (staff with isTechLead=true, excluding manager)
+ *       - Detailed information about manager and all staff
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: Comprehensive project details with all users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     project:
+ *                       type: object
+ *                       description: Basic project information
+ *                     managerId:
+ *                       type: string
+ *                       description: ID of the manager who created the project
+ *                     allStaffIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Array of all staff user IDs assigned to project
+ *                     techLeadStaffIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Array of staff user IDs who are tech leads (excluding manager)
+ *                     managerDetails:
+ *                       type: object
+ *                       description: Detailed information about the manager
+ *                     staffDetails:
+ *                       type: array
+ *                       description: Detailed information about all staff members
+ *       404:
+ *         description: Project not found
+ */
+router.get('/:projectId/details', verifyToken, getProjectDetails);
+
+/**
+ * @swagger
+ * /project/{projectId}/assign-tech-lead:
+ *   put:
+ *     summary: Assign or remove tech lead status for a staff member
+ *     description: |
+ *       Manages tech lead assignments with the following rules:
+ *       - Manager is automatically a tech lead (cannot be changed)
+ *       - Minimum 1 tech lead per project (the manager)
+ *       - Maximum 2 tech leads per project (manager + 1 staff)
+ *       - Manager can assign/change/remove tech lead status for staff
+ *       - Only 1 staff can be tech lead at a time
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Project ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - staffId
+ *               - isTechLead
+ *             properties:
+ *               staffId:
+ *                 type: string
+ *                 description: User ID of the staff member
+ *                 example: "69016bcc7157f337f7e2e4eb"
+ *               isTechLead:
+ *                 type: boolean
+ *                 description: Set to true to assign as tech lead, false to remove
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Tech lead status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   description: Updated assignment details
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Bad request (validation error or tech lead limit reached)
+ *       404:
+ *         description: Project or staff not found
+ */
+router.put('/:projectId/assign-tech-lead', verifyToken, auth('manager', 'hr'), assignTechLead);
+
+/**
+ * @swagger
  * /project:
  *   post:
- *     summary: Create a new project
+ *     summary: Create a new project (auto-set to 'active' status)
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -183,20 +309,21 @@ router.get('/:projectId', verifyToken, getProjectById);
  *               description:
  *                 type: string
  *                 example: Develop a cross-platform mobile application
- *               status:
+ *               startDate:
  *                 type: string
- *                 enum: [planning, active, on_hold, completed, cancelled]
- *                 example: planning
+ *                 format: date
+ *                 description: Project start date (defaults to current date if not provided)
+ *                 example: 2025-10-30
  *               deadline:
  *                 type: string
  *                 format: date
- *                 example: 2024-12-31
+ *                 example: 2025-12-31
  *               teamMemberCount:
  *                 type: integer
  *                 example: 5
  *     responses:
  *       201:
- *         description: Project created successfully
+ *         description: Project created successfully with status 'active'
  *       400:
  *         description: Bad request
  */
@@ -207,7 +334,7 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  * /project/with-assignments:
  *   post:
  *     summary: Create a new project with staff assignments (Manager only)
- *     description: Creates a project and automatically assigns staff members in a single operation. Manager role is automatically assigned as tech lead.
+ *     description: Creates a project (auto-set to 'active') and automatically assigns staff members in a single operation. Manager is automatically assigned as tech lead. Team member count includes manager + staff.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -229,10 +356,11 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  *               description:
  *                 type: string
  *                 example: Build a full-featured e-commerce platform with payment gateway integration
- *               status:
+ *               startDate:
  *                 type: string
- *                 enum: [planning, active, on_hold, completed, cancelled]
- *                 example: planning
+ *                 format: date
+ *                 description: Project start date (defaults to current date if not provided)
+ *                 example: 2025-10-30
  *               deadline:
  *                 type: string
  *                 format: date
@@ -245,7 +373,7 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  *                 example: ["507f1f77bcf86cd799439011", "507f191e810c19729de860ea"]
  *     responses:
  *       201:
- *         description: Project and assignments created successfully
+ *         description: Project and assignments created successfully with status 'active'
  *         content:
  *           application/json:
  *             schema:
@@ -273,7 +401,14 @@ router.post('/with-assignments', verifyToken, auth('manager'), createProjectWith
  * @swagger
  * /project/{projectId}:
  *   put:
- *     summary: Update a project
+ *     summary: Update a project (comprehensive staff management and skill transfer)
+ *     description: |
+ *       Updates project details with advanced staff management:
+ *       - Add/remove individual staff members (addStaffIds, removeStaffIds)
+ *       - Replace all staff at once (replaceStaffIds)
+ *       - When staff are removed, they are also removed from all task assignments
+ *       - When status changes from 'active' to 'completed', all task skills are transferred to assigned users (no duplicates)
+ *       - Team member count is automatically updated based on staff changes
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -298,17 +433,46 @@ router.post('/with-assignments', verifyToken, auth('manager'), createProjectWith
  *                 type: string
  *               status:
  *                 type: string
- *                 enum: [planning, active, on_hold, completed, cancelled]
+ *                 enum: [active, completed]
+ *                 description: When changed to 'completed', transfers all task skills to users
  *               deadline:
  *                 type: string
  *                 format: date
- *               teamMemberCount:
- *                 type: integer
+ *               addStaffIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: User IDs to add to the project
+ *                 example: ["507f1f77bcf86cd799439011"]
+ *               removeStaffIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: User IDs to remove from project and all task assignments
+ *                 example: ["507f191e810c19729de860ea"]
+ *               replaceStaffIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Replace all staff with new set (removes all existing, adds new ones)
+ *                 example: ["507f1f77bcf86cd799439011", "507f191e810c19729de860ea"]
  *     responses:
  *       200:
- *         description: Project updated successfully
+ *         description: Project updated successfully with detailed message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *                   description: Detailed message about what was updated
  *       404:
- *         description: Project not found
+ *         description: Project not found or staff members not found
  */
 router.put('/:projectId', verifyToken, auth('manager', 'hr'), updateProject);
 
@@ -316,7 +480,13 @@ router.put('/:projectId', verifyToken, auth('manager', 'hr'), updateProject);
  * @swagger
  * /project/{projectId}:
  *   delete:
- *     summary: Delete a project
+ *     summary: Delete a project (with cascading deletes)
+ *     description: |
+ *       Deletes a project and all related data:
+ *       - All task assignments for tasks in this project
+ *       - All tasks in this project
+ *       - All project assignments
+ *       - The project itself
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -329,7 +499,7 @@ router.put('/:projectId', verifyToken, auth('manager', 'hr'), updateProject);
  *         description: Project ID
  *     responses:
  *       204:
- *         description: Project deleted successfully
+ *         description: Project and all related data deleted successfully
  *       404:
  *         description: Project not found
  */
