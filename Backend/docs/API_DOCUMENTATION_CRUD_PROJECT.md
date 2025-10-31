@@ -68,6 +68,7 @@ Retrieves projects based on user role with automatic filtering.
 **Role Behavior**:
 - **Manager**: Returns only projects they created
 - **HR**: Returns all projects from all managers
+- **Staff**: Returns only projects they are assigned to
 
 **Query Parameters**:
 
@@ -112,6 +113,38 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "createdAt": "2025-10-29T07:07:58.883Z",
         "updatedAt": "2025-10-29T07:07:58.883Z"
       },
+      {
+        "_id": "6901b5caf7ed0f35753d38a3",
+        "name": "Mobile App Development",
+        "description": "Develop a cross-platform mobile application",
+        "status": "active",
+        "startDate": "2025-10-29T00:00:00.000Z",
+        "deadline": "2025-12-31T00:00:00.000Z",
+        "teamMemberCount": 5,
+        "createdBy": {
+          "_id": "69016bcc7157f337f7e2e4ea",
+          "name": "Tony Yoditanto",
+          "email": "tonyoditanto@gmail.com",
+          "role": "manager"
+        },
+        "createdAt": "2025-10-29T06:35:54.665Z",
+        "updatedAt": "2025-10-29T06:35:54.665Z"
+      }
+    ]
+  }
+}
+```
+
+**Staff Role Response Example** (200 OK):
+When a staff member makes the request, they only see projects they are assigned to:
+```json
+{
+  "success": true,
+  "data": {
+    "page": 1,
+    "perPage": 10,
+    "total": 1,
+    "projects": [
       {
         "_id": "6901b5caf7ed0f35753d38a3",
         "name": "Mobile App Development",
@@ -320,7 +353,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "name": "Tony Yoditanto",
         "email": "tonyoditanto@gmail.com",
         "role": "manager",
-        "position": "507f1f77bcf86cd799439011",
+        "position": {
+          "_id": "507f1f77bcf86cd799439011",
+          "name": "Engineering Manager"
+        },
         "isTechLead": true
       },
       {
@@ -328,7 +364,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "name": "John Developer",
         "email": "john@example.com",
         "role": "staff",
-        "position": "507f1f77bcf86cd799439012",
+        "position": {
+          "_id": "507f1f77bcf86cd799439012",
+          "name": "Senior Developer"
+        },
         "isTechLead": true
       },
       {
@@ -336,7 +375,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "name": "Jane Designer",
         "email": "jane@example.com",
         "role": "staff",
-        "position": "507f1f77bcf86cd799439013",
+        "position": {
+          "_id": "507f1f77bcf86cd799439013",
+          "name": "UI/UX Designer"
+        },
         "isTechLead": false
       },
       {
@@ -344,7 +386,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "name": "Bob Tester",
         "email": "bob@example.com",
         "role": "staff",
-        "position": "507f1f77bcf86cd799439014",
+        "position": {
+          "_id": "507f1f77bcf86cd799439014",
+          "name": "QA Engineer"
+        },
         "isTechLead": false
       }
     ]
@@ -357,7 +402,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - `allStaffIds`: Array of all user IDs assigned to the project (includes manager)
 - `techLeadStaffIds`: Array of staff user IDs who are tech leads (excludes manager, only staff with isTechLead=true)
 - `managerDetails`: Detailed information about the manager
-- `staffDetails`: Array with detailed information about all team members (includes their tech lead status)
+- `staffDetails`: Array with detailed information about all team members (includes their tech lead status and position details with _id and name)
 
 **Error** (404 Not Found):
 ```json
@@ -429,7 +474,10 @@ Content-Type: application/json
       "name": "John Developer",
       "email": "john@example.com",
       "role": "staff",
-      "position": "507f1f77bcf86cd799439012"
+      "position": {
+        "_id": "507f1f77bcf86cd799439012",
+        "name": "Senior Developer"
+      }
     },
     "isTechLead": true,
     "__v": 0
@@ -467,7 +515,10 @@ Content-Type: application/json
       "name": "John Developer",
       "email": "john@example.com",
       "role": "staff",
-      "position": "507f1f77bcf86cd799439012"
+      "position": {
+        "_id": "507f1f77bcf86cd799439012",
+        "name": "Senior Developer"
+      }
     },
     "isTechLead": false,
     "__v": 0
@@ -674,7 +725,10 @@ Content-Type: application/json
           "name": "Tony Yoditanto",
           "email": "tonyoditanto@gmail.com",
           "role": "manager",
-          "position": "507f1f77bcf86cd799439011"
+          "position": {
+            "_id": "507f1f77bcf86cd799439011",
+            "name": "Engineering Manager"
+          }
         },
         "isTechLead": true,
         "__v": 0
@@ -692,7 +746,10 @@ Content-Type: application/json
           "name": "John Developer",
           "email": "john@example.com",
           "role": "staff",
-          "position": "507f1f77bcf86cd799439012"
+          "position": {
+            "_id": "507f1f77bcf86cd799439012",
+            "name": "Senior Developer"
+          }
         },
         "isTechLead": false,
         "__v": 0
@@ -710,7 +767,10 @@ Content-Type: application/json
           "name": "Jane Designer",
           "email": "jane@example.com",
           "role": "staff",
-          "position": "507f1f77bcf86cd799439013"
+          "position": {
+            "_id": "507f1f77bcf86cd799439013",
+            "name": "UI/UX Designer"
+          }
         },
         "isTechLead": false,
         "__v": 0
@@ -1724,11 +1784,22 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2025-10-30
+**Last Updated**: 2025-10-31
 **Branch**: feat/crud_project
-**Version**: 2.1.0
+**Version**: 2.2.0
 
 ## Changelog
+
+### Version 2.2.0 (2025-10-31)
+- **Updated**: Staff role behavior for `GET /project` endpoint
+  - Staff users now see all projects they are assigned to
+  - Previously only Manager and HR roles had filtering
+- **Enhanced**: Position data now returns as object with `_id` and `name`
+  - Affects all endpoints that return user data with positions
+  - Updated endpoints: project details, project assignments, tech lead assignments, and create project with assignments
+  - Position field returns `{_id: string, name: string}` instead of just ID string
+  - When user has no position, still returns `null`
+- Updated documentation with staff role examples and position object format
 
 ### Version 2.1.0 (2025-10-30)
 - **New**: Get comprehensive project details endpoint (`GET /project/:projectId/details`)
