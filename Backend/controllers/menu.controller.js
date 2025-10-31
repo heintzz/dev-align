@@ -2,8 +2,7 @@ const { Menu } = require("../models");
 
 const getMenu = async (req, res) => {
   try {
-    // const role = req.user.role;
-    const role = "manager";
+    const role = req.user.role;
 
     const items = await Menu.find({ roles: role })
       .select("-roles -__v")

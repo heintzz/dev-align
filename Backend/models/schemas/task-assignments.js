@@ -1,16 +1,25 @@
-const mongoose = require('mongoose');
+const { Schema } = require('mongoose');
 
-const TaskAssignmentSchema = new mongoose.Schema({
-  taskId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Task',
-    required: true,
+const taskAssignmentSchema = new Schema(
+  {
+    taskId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Task',
+      required: true,
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    assignedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
-module.exports = mongoose.model('TaskAssignment', TaskAssignmentSchema);
+module.exports = taskAssignmentSchema;

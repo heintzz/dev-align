@@ -1,13 +1,13 @@
-const mongoose = require('mongoose');
+const { Schema } = require('mongoose');
 
-const ProjectAssignmentSchema = new mongoose.Schema({
+const projectAssignmentSchema = new Schema({
   projectId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'Project',
     required: true,
   },
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
   },
@@ -17,4 +17,4 @@ const ProjectAssignmentSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('ProjectAssignment', ProjectAssignmentSchema);
+module.exports = projectAssignmentSchema;

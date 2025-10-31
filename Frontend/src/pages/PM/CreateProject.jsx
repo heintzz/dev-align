@@ -100,7 +100,7 @@ export default function CreateProject() {
           position: { name: "Senior Frontend Developer" },
           skills: [
             { name: "React.js" },
-            { name: "TypeScript" },
+            { name: "JavaScript" },
             { name: "UI/UX" },
           ],
           currentWorkload: 40,
