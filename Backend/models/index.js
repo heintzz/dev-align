@@ -6,6 +6,9 @@ const menuSchema = require("./schemas/menu.schema");
 const tokenSchema = require("./schemas/token.schema");
 const projectSchema = require("./schemas/project.schema");
 const projectAssignmentSchema = require("./schemas/project-assignments.schema");
+const columSchema = require("./schemas/column.schema");
+const taskSchema = require("./schemas/task.schema");
+const taskAssignmentSchema = require("./schemas/task-assignments");
 
 const User = mongoose.model("User", userSchema);
 const Skill = mongoose.model("Skill", skillSchema);
@@ -13,7 +16,13 @@ const Position = mongoose.model("Position", positionSchema);
 const Menu = mongoose.model("Menu", menuSchema);
 const Token = mongoose.model("Token", tokenSchema);
 const Project = mongoose.model("Project", projectSchema);
-const ProjectAssignment = mongoose.model("ProjectAssignment", projectAssignmentSchema);
+const ProjectAssignment = mongoose.model(
+  "ProjectAssignment",
+  projectAssignmentSchema
+);
+const Column = mongoose.model("Column", columSchema);
+const Task = mongoose.model("Task", taskSchema);
+const TaskAssignment = mongoose.model("TaskAssignment", taskAssignmentSchema);
 
 module.exports = {
   User,
@@ -23,4 +32,7 @@ module.exports = {
   Token,
   Project,
   ProjectAssignment,
+  Column,
+  Task,
+  TaskAssignment,
 };

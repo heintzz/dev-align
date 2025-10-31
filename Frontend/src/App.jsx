@@ -34,7 +34,7 @@ function App() {
 
         {/* Halaman dengan layout utama */}
         <Route
-          path="/kanban"
+          path="/kanban/:projectId"
           element={
             <AppLayout>
               <Kanban />
