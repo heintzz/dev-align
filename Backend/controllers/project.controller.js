@@ -2,7 +2,6 @@ const { Project, ProjectAssignment, User, Task, TaskAssignment } = require('../m
 const mongoose = require('mongoose');
 
 // Task-related functions moved from project-task.controller.js
-const mongoose = require('mongoose');
 
 const createTask = async (req, res) => {
   try {
