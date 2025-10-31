@@ -2,6 +2,490 @@ const { Project, ProjectAssignment, User, Task, TaskAssignment } = require('../m
 const mongoose = require('mongoose');
 
 // Task-related functions moved from project-task.controller.js
+const mongoose = require('mongoose');
+
+const createTask = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+    const { title, description, requiredSkills, assigneeIds } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid project ID format'
+      });
+    }
+
+    // Check if user is assigned to this project
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId,
+      userId,
+      isTechLead: true,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Only tech leads can create tasks',
+      });
+    }
+
+    // Create task
+    const task = await Task.create({
+      projectId,
+      title,
+      description,
+      requiredSkills,
+      status: 'backlog',
+      createdBy: userId,
+    });
+
+    // If assignees provided, create task assignments
+    if (assigneeIds && assigneeIds.length > 0) {
+      // Verify all assignees are project members
+      const projectMembers = await ProjectAssignment.find({
+        projectId,
+        userId: { $in: assigneeIds },
+      });
+
+      const validAssigneeIds = projectMembers.map(pm => pm.userId.toString());
+      const invalidAssigneeIds = assigneeIds.filter(id => !validAssigneeIds.includes(id));
+
+      if (invalidAssigneeIds.length > 0) {
+        await Task.findByIdAndDelete(task._id);
+        return res.status(400).json({
+          success: false,
+          error: 'Bad Request',
+          message: 'Some assignees are not project members',
+          invalidAssigneeIds,
+        });
+      }
+
+      // Create task assignments
+      await TaskAssignment.insertMany(
+        validAssigneeIds.map(userId => ({
+          taskId: task._id,
+          userId,
+        }))
+      );
+    }
+
+    // Get populated task with assignees
+    const populatedTask = await Task.findById(task._id)
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
+
+    const taskAssignments = await TaskAssignment.find({ taskId: task._id })
+      .populate('userId', 'name email');
+
+    const response = {
+      id: populatedTask._id,
+      title: populatedTask.title,
+      description: populatedTask.description,
+      status: populatedTask.status,
+      startDate: populatedTask.startDate,
+      endDate: populatedTask.endDate,
+      requiredSkills: populatedTask.requiredSkills.map(s => ({
+        id: s._id,
+        name: s.name,
+      })),
+      createdBy: {
+        id: populatedTask.createdBy._id,
+        name: populatedTask.createdBy.name,
+        email: populatedTask.createdBy.email,
+      },
+      assignees: taskAssignments.map(ta => ({
+        id: ta.userId._id,
+        name: ta.userId.name,
+        email: ta.userId.email,
+      })),
+      createdAt: populatedTask.createdAt,
+      updatedAt: populatedTask.updatedAt,
+    };
+
+    return res.status(201).json({
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+const getTaskDetails = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid task ID format'
+      });
+    }
+
+    // Get task with project info
+    const task = await Task.findById(taskId)
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Task not found',
+      });
+    }
+
+    // Check if user is assigned to this project
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You are not assigned to this project',
+      });
+    }
+
+    // Get task assignees
+    const taskAssignments = await TaskAssignment.find({ taskId })
+      .populate('userId', 'name email');
+
+    const response = {
+      id: task._id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      requiredSkills: task.requiredSkills.map(s => ({
+        id: s._id,
+        name: s.name,
+      })),
+      createdBy: {
+        id: task.createdBy._id,
+        name: task.createdBy.name,
+        email: task.createdBy.email,
+      },
+      assignees: taskAssignments.map(ta => ({
+        id: ta.userId._id,
+        name: ta.userId.name,
+        email: ta.userId.email,
+      })),
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    };
+
+    return res.json({
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+const updateTaskDetails = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id;
+    const { title, description, requiredSkills } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid task ID format'
+      });
+    }
+
+    // Get task with project info
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Task not found',
+      });
+    }
+
+    // Check if user is tech lead
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId,
+      isTechLead: true,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Only tech leads can update task details',
+      });
+    }
+
+    // Update task
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      {
+        title,
+        description,
+        requiredSkills,
+      },
+      { new: true }
+    )
+    .populate('requiredSkills', 'name')
+    .populate('createdBy', 'name email');
+
+    // Get task assignees
+    const taskAssignments = await TaskAssignment.find({ taskId })
+      .populate('userId', 'name email');
+
+    const response = {
+      id: updatedTask._id,
+      title: updatedTask.title,
+      description: updatedTask.description,
+      status: updatedTask.status,
+      startDate: updatedTask.startDate,
+      endDate: updatedTask.endDate,
+      requiredSkills: updatedTask.requiredSkills.map(s => ({
+        id: s._id,
+        name: s.name,
+      })),
+      createdBy: {
+        id: updatedTask.createdBy._id,
+        name: updatedTask.createdBy.name,
+        email: updatedTask.createdBy.email,
+      },
+      assignees: taskAssignments.map(ta => ({
+        id: ta.userId._id,
+        name: ta.userId.name,
+        email: ta.userId.email,
+      })),
+      createdAt: updatedTask.createdAt,
+      updatedAt: updatedTask.updatedAt,
+    };
+
+    return res.json({
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+const deleteTask = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid task ID format'
+      });
+    }
+
+    // Get task with project info
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Task not found',
+      });
+    }
+
+    // Check if user is tech lead
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId,
+      isTechLead: true,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Only tech leads can delete tasks',
+      });
+    }
+
+    // Delete task assignments first
+    await TaskAssignment.deleteMany({ taskId });
+
+    // Delete task
+    await Task.findByIdAndDelete(taskId);
+
+    return res.status(204).send();
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+const assignUsersToTask = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id;
+    const { userIds } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid task ID format'
+      });
+    }
+
+    // Get task with project info
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Task not found',
+      });
+    }
+
+    // Check if user is tech lead
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId,
+      isTechLead: true,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Only tech leads can assign users to tasks',
+      });
+    }
+
+    // Verify all users are project members
+    const projectMembers = await ProjectAssignment.find({
+      projectId: task.projectId,
+      userId: { $in: userIds },
+    });
+
+    const validUserIds = projectMembers.map(pm => pm.userId.toString());
+    const invalidUserIds = userIds.filter(id => !validUserIds.includes(id));
+
+    if (invalidUserIds.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Some users are not project members',
+        invalidUserIds,
+      });
+    }
+
+    // Create task assignments
+    await TaskAssignment.insertMany(
+      validUserIds.map(userId => ({
+        taskId,
+        userId,
+      }))
+    );
+
+    // Get updated task with assignees
+    const taskAssignments = await TaskAssignment.find({ taskId })
+      .populate('userId', 'name email');
+
+    return res.json({
+      success: true,
+      data: {
+        taskId,
+        assignees: taskAssignments.map(ta => ({
+          id: ta.userId._id,
+          name: ta.userId.name,
+          email: ta.userId.email,
+        })),
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+const removeUserFromTask = async (req, res) => {
+  try {
+    const { taskId, userId: targetUserId } = req.params;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId) || !mongoose.Types.ObjectId.isValid(targetUserId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid ID format'
+      });
+    }
+
+    // Get task with project info
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Task not found',
+      });
+    }
+
+    // Check if user is tech lead
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId,
+      isTechLead: true,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Only tech leads can remove users from tasks',
+      });
+    }
+
+    // Remove task assignment
+    await TaskAssignment.findOneAndDelete({
+      taskId,
+      userId: targetUserId,
+    });
+
+    return res.status(204).send();
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
 const getProjectTasks = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -893,6 +1377,13 @@ module.exports = {
   updateProject,
   deleteProject,
   assignTechLead,
-  getProjectTasks,    // Added for DEV-79
-  updateTaskStatus,   // Added for DEV-80
+  // Task Management
+  getProjectTasks,    // DEV-79
+  updateTaskStatus,   // DEV-80
+  createTask,
+  getTaskDetails,
+  updateTaskDetails,
+  deleteTask,
+  assignUsersToTask,
+  removeUserFromTask
 };

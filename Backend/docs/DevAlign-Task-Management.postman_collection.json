@@ -1,0 +1,608 @@
+{
+  "info": {
+    "_postman_id": "f8b2c567-d892-4d89-a4cd-1234567890ab",
+    "name": "DevAlign - Task Management",
+    "description": "Task management endpoints for DevAlign project. Includes complete test suite for task lifecycle management.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Global pre-request script",
+          "if (!pm.environment.get('baseUrl')) {",
+          "    console.warn('baseUrl environment variable is not set!')",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login as Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has valid structure', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('object');",
+                  "    pm.expect(jsonData.data).to.be.an('object');",
+                  "    pm.expect(jsonData.data.token).to.be.a('string');",
+                  "    pm.expect(jsonData.data.user).to.be.an('object');",
+                  "    pm.expect(jsonData.data.user.id).to.be.a('string');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set('managerToken', jsonData.data.token);",
+                  "    pm.environment.set('userId', jsonData.data.user.id);",
+                  "}",
+                  "",
+                  "console.log('Manager token set:', pm.environment.get('managerToken'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tonyoditanto@gmail.com\",\n  \"password\": \"nejryy5u\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login as Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set('staffToken', jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Task Management",
+      "item": [
+        {
+          "name": "Create New Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has valid task structure', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('object');",
+                  "    pm.expect(jsonData.data.id).to.be.a('string');",
+                  "    pm.expect(jsonData.data.title).to.be.a('string');",
+                  "    pm.expect(jsonData.data.description).to.be.a('string');",
+                  "    pm.expect(jsonData.data.status).to.equal('backlog');",
+                  "    pm.expect(jsonData.data.requiredSkills).to.be.an('array');",
+                  "    pm.expect(jsonData.data.assignees).to.be.an('array');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('taskId', jsonData.data.id);",
+                  "    console.log('Task ID set:', jsonData.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Task starts in backlog status', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.status).to.equal('backlog');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design User Interface\",\n  \"description\": \"Create UI mockups for the mobile app\",\n  \"requiredSkills\": [\"507f1f77bcf86cd799439015\", \"507f1f77bcf86cd799439016\"],\n  \"assigneeIds\": [\"69016bcc7157f337f7e2e4ec\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/{{projectId}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "{{projectId}}", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Get Task Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Task Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design User Interface - Updated\",\n  \"description\": \"Create UI mockups for iOS and Android apps\",\n  \"requiredSkills\": [\"507f1f77bcf86cd799439015\", \"507f1f77bcf86cd799439016\", \"507f1f77bcf86cd799439017\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Project Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project/{{projectId}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "{{projectId}}", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Update Task Status (Backlog → In Progress)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Task Status (In Progress → Review)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"review\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Task Status (Review → Done)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Assign Users to Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"69016bcc7157f337f7e2e4ec\", \"69016bcc7157f337f7e2e4ed\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/assignees",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "assignees"]
+            }
+          }
+        },
+        {
+          "name": "Remove User from Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/assignees/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "assignees", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Task Validation Tests",
+      "item": [
+        {
+          "name": "Create Task - Empty Title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions title', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.include('title');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"Test description\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/{{projectId}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "{{projectId}}", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Create Task - Invalid Required Skills",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions skills', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.include('skill');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test Task\",\n  \"description\": \"Test description\",\n  \"requiredSkills\": [\"invalid_skill_id\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/{{projectId}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "{{projectId}}", "tasks"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Status Workflow Tests",
+      "item": [
+        {
+          "name": "Complete Status Workflow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const transitions = [",
+                  "    { from: 'backlog', to: 'in_progress' },",
+                  "    { from: 'in_progress', to: 'review' },",
+                  "    { from: 'review', to: 'done' }",
+                  "];",
+                  "",
+                  "let currentTransition = pm.variables.get('currentTransition') || 0;",
+                  "",
+                  "pm.test('Status transition successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.status).to.equal(transitions[currentTransition].to);",
+                  "});",
+                  "",
+                  "if (currentTransition < transitions.length - 1) {",
+                  "    pm.variables.set('currentTransition', currentTransition + 1);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"{{nextStatus}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "item": [
+        {
+          "name": "Create Task (Not Tech Lead)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test Task\",\n  \"description\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/{{projectId}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "{{projectId}}", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Invalid Status Transition",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Assign Non-Project Members",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"invalid_user_id\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/project/tasks/{{taskId}}/assignees",
+              "host": ["{{baseUrl}}"],
+              "path": ["project", "tasks", "{{taskId}}", "assignees"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

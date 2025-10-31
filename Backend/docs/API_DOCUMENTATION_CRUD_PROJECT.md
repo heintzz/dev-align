@@ -1082,7 +1082,161 @@ Project: Mobile App Development
 
 Base path: `/project`
 
-### 15. Get Project Tasks (DEV-79)
+### 15. Create Task
+
+Creates a new task in a project. Only tech leads can create tasks.
+
+**Endpoint**: `POST /project/:projectId/tasks`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | MongoDB ObjectId of the project |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | Yes | Task title (max 100 chars) |
+| `description` | string | No | Task description |
+| `requiredSkills` | array | No | Array of skill IDs |
+| `assigneeIds` | array | No | Array of user IDs to assign |
+
+**Request Example**:
+```http
+POST /project/6901b5caf7ed0f35753d38a3/tasks
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "title": "Design User Interface",
+  "description": "Create UI mockups for the mobile app",
+  "requiredSkills": [
+    "507f1f77bcf86cd799439015",  // UI Design
+    "507f1f77bcf86cd799439016"   // Figma
+  ],
+  "assigneeIds": [
+    "69016bcc7157f337f7e2e4ec"   // Jane Designer
+  ]
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6901c5f7ed0f35753d38c5",
+    "title": "Design User Interface",
+    "description": "Create UI mockups for the mobile app",
+    "status": "backlog",
+    "startDate": null,
+    "endDate": null,
+    "requiredSkills": [
+      {
+        "id": "507f1f77bcf86cd799439015",
+        "name": "UI Design"
+      },
+      {
+        "id": "507f1f77bcf86cd799439016",
+        "name": "Figma"
+      }
+    ],
+    "createdBy": {
+      "id": "69016bcc7157f337f7e2e4ea",
+      "name": "Tony Yoditanto",
+      "email": "tonyoditanto@gmail.com"
+    },
+    "assignees": [
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com"
+      }
+    ],
+    "createdAt": "2025-10-30T10:00:00.000Z",
+    "updatedAt": "2025-10-30T10:00:00.000Z"
+  }
+}
+```
+
+### 16. Get Task Details
+
+Retrieves detailed information about a specific task.
+
+**Endpoint**: `GET /project/tasks/:taskId`
+
+**Access**: Project members
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6901c5f7ed0f35753d38c5",
+    "title": "Design User Interface",
+    "description": "Create UI mockups for the mobile app",
+    "status": "backlog",
+    "startDate": null,
+    "endDate": null,
+    "requiredSkills": [...],
+    "createdBy": {...},
+    "assignees": [...],
+    "createdAt": "2025-10-30T10:00:00.000Z",
+    "updatedAt": "2025-10-30T10:00:00.000Z"
+  }
+}
+```
+
+### 17. Update Task Details
+
+Updates a task's details. Only tech leads can update tasks.
+
+**Endpoint**: `PUT /project/tasks/:taskId`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | No | New task title |
+| `description` | string | No | New task description |
+| `requiredSkills` | array | No | New array of skill IDs |
+
+**Request Example**:
+```http
+PUT /project/tasks/6901c5f7ed0f35753d38c5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "title": "Design User Interface - Mobile App",
+  "description": "Create UI mockups for iOS and Android apps",
+  "requiredSkills": [
+    "507f1f77bcf86cd799439015",
+    "507f1f77bcf86cd799439016",
+    "507f1f77bcf86cd799439017"
+  ]
+}
+```
+
+### 18. Get Project Tasks (DEV-79)
 
 Retrieves all tasks for a specific project with their assignees and required skills.
 
@@ -1152,7 +1306,89 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 }
 ```
 
-### 16. Update Task Status (DEV-80)
+### 19. Assign Users to Task
+
+Assigns multiple users to a task. Only project members can be assigned.
+
+**Endpoint**: `POST /project/tasks/:taskId/assignees`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `userIds` | array | Yes | Array of user IDs to assign |
+
+**Request Example**:
+```http
+POST /project/tasks/6901c5f7ed0f35753d38c5/assignees
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "userIds": [
+    "69016bcc7157f337f7e2e4ec",
+    "69016bcc7157f337f7e2e4ed"
+  ]
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "taskId": "6901c5f7ed0f35753d38c5",
+    "assignees": [
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com"
+      },
+      {
+        "id": "69016bcc7157f337f7e2e4ed",
+        "name": "Bob Tester",
+        "email": "bob@example.com"
+      }
+    ]
+  }
+}
+```
+
+### 20. Remove User from Task
+
+Removes a user from a task's assignees.
+
+**Endpoint**: `DELETE /project/tasks/:taskId/assignees/:userId`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+| `userId` | string | Yes | MongoDB ObjectId of the user to remove |
+
+**Request Example**:
+```http
+DELETE /project/tasks/6901c5f7ed0f35753d38c5/assignees/69016bcc7157f337f7e2e4ed
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+```
+
+**Response** (204 No Content):
+```
+(Empty response body)
+```
+
+### 21. Update Task Status (DEV-80)
 
 Updates the status of a task with valid status transitions.
 
@@ -1774,7 +2010,13 @@ Content-Type: application/json
 | 6 | `/project/:projectId` | PUT | Manager/HR | **Update project (staff mgmt + skill transfer)** |
 | 7 | `/project/:projectId` | DELETE | Manager/HR | **Delete project (cascading deletes)** |
 | 8 | `/project/:projectId/tasks` | GET | Project Members | **Get all tasks for a project (DEV-79)** |
-| 9 | `/project/tasks/:taskId/status` | PUT | Task Assignees/Tech Leads | **Update task status (DEV-80)** |
+| 9 | `/project/:projectId/tasks` | POST | Tech Leads | **Create new task** |
+| 10 | `/project/tasks/:taskId` | GET | Project Members | **Get task details** |
+| 11 | `/project/tasks/:taskId` | PUT | Tech Leads | **Update task details** |
+| 12 | `/project/tasks/:taskId` | DELETE | Tech Leads | **Delete task** |
+| 13 | `/project/tasks/:taskId/status` | PUT | Task Assignees/Tech Leads | **Update task status (DEV-80)** |
+| 14 | `/project/tasks/:taskId/assignees` | POST | Tech Leads | **Assign users to task** |
+| 15 | `/project/tasks/:taskId/assignees/:userId` | DELETE | Tech Leads | **Remove user from task** |
 | 10 | `/project-assignment` | GET | All | Get all assignments (with filters) |
 | 11 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
 | 12 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
