@@ -1,109 +1,74 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import projectService from "../../services/project.service";
 
 export default function ListProjects() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [filters, setFilters] = useState({
-    status: "",
     deadline: "",
     teamSize: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // TODO: Fetch projects from API on component mount
+  // Fetch projects from API on component mount
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  // TODO: API - Fetch all projects
+  // API - Fetch all projects
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
-      // const response = await projectService.getAllProjects();
-      // setProjects(response.data);
-      // setFilteredProjects(response.data);
+      const response = await projectService.getAllProjects();
+      // Response: { success: true, data: { page, perPage, total, projects: [...] } }
+      const projectsList = response.data.projects || [];
 
-      // TEMPORARY: Mock data
-      const mockProjects = [
-        {
-          _id: "1",
-          name: "HRIS System Redesign",
-          description:
-            "Developing a new human resources information system to improve user experience and functionality.",
-          status: "In Progress",
-          deadline: "2024-12-15",
-          teamMembers: [
-            { _id: "1", name: "John Doe" },
-            { _id: "2", name: "Jane Smith" },
-            { _id: "3", name: "Mike Johnson" },
-          ],
-        },
-        {
-          _id: "2",
-          name: "Onboarding Process",
-          description:
-            "Automating the new employee onboarding process to reduce manual work and improve efficiency.",
-          status: "Completed",
-          deadline: "2024-10-31",
-          teamMembers: [
-            { _id: "4", name: "Sarah Williams" },
-            { _id: "5", name: "David Brown" },
-            { _id: "6", name: "Emily Davis" },
-          ],
-        },
-        {
-          _id: "3",
-          name: "Mobile App Development",
-          description:
-            "Creating a new mobile application for employees to access company resources on-the-go.",
-          status: "On Hold",
-          deadline: "2025-03-01",
-          teamMembers: [
-            { _id: "7", name: "Chris Wilson" },
-            { _id: "8", name: "Lisa Anderson" },
-          ],
-        },
-        {
-          _id: "4",
-          name: "Q4 Performance Review Cycle",
-          description:
-            "Planning and executing the Q4 quarterly performance review process for all departments.",
-          status: "Overdue",
-          deadline: "2023-11-30",
-          teamMembers: [
-            { _id: "9", name: "Robert Taylor" },
-            { _id: "10", name: "Jennifer Martinez" },
-          ],
-        },
-      ];
-      setProjects(mockProjects);
-      setFilteredProjects(mockProjects);
+      // Transform projects to add computed fields
+      const transformedProjects = projectsList.map((project) => ({
+        ...project,
+        // Map status to display status
+        displayStatus: getDisplayStatus(project.status, project.deadline),
+        // Ensure teamMembers exists (may need separate API call for full details)
+        teamMembers: project.teamMembers || [],
+      }));
+
+      setProjects(transformedProjects);
+      setFilteredProjects(transformedProjects);
     } catch (error) {
       console.error("Error fetching projects:", error);
+      alert(error.message || "Failed to fetch projects");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Filter projects based on active filter
-  useEffect(() => {
-    filterProjects();
-  }, [activeFilter, filters, projects]);
+  // Convert backend status to display status
+  const getDisplayStatus = (status, deadline) => {
+    // Backend only has: 'active', 'completed'
+    if (status === "completed") return "Completed";
+    if (status === "active") {
+      // Check if overdue
+      if (deadline && new Date(deadline) < new Date()) {
+        return "Overdue";
+      }
+      return "In Progress";
+    }
+    return "In Progress";
+  };
 
-  const filterProjects = () => {
+  // Filter projects based on active filter
+  const filterProjects = useCallback(() => {
     let filtered = [...projects];
 
     // Filter by status tab
     if (activeFilter !== "All") {
-      filtered = filtered.filter((p) => p.status === activeFilter);
+      filtered = filtered.filter((p) => p.displayStatus === activeFilter);
     }
 
-    // Filter by dropdown filters
-    if (filters.status) {
-      filtered = filtered.filter((p) => p.status === filters.status);
-    }
-
+    // Filter by deadline sort
     if (filters.deadline) {
       filtered = filtered.sort((a, b) => {
         if (filters.deadline === "Earliest") {
@@ -114,18 +79,25 @@ export default function ListProjects() {
       });
     }
 
+    // Filter by team size sort
     if (filters.teamSize) {
       filtered = filtered.sort((a, b) => {
+        const aSize = a.teamMemberCount || 0;
+        const bSize = b.teamMemberCount || 0;
         if (filters.teamSize === "Smallest") {
-          return a.teamMembers.length - b.teamMembers.length;
+          return aSize - bSize;
         } else {
-          return b.teamMembers.length - a.teamMembers.length;
+          return bSize - aSize;
         }
       });
     }
 
     setFilteredProjects(filtered);
-  };
+  }, [activeFilter, filters, projects]);
+
+  useEffect(() => {
+    filterProjects();
+  }, [filterProjects]);
 
   const handleFilterChange = (filterName, value) => {
     setFilters((prev) => ({
@@ -138,13 +110,13 @@ export default function ListProjects() {
     const colors = {
       "In Progress": "bg-blue-100 text-blue-700",
       Completed: "bg-green-100 text-green-700",
-      "On Hold": "bg-yellow-100 text-yellow-700",
       Overdue: "bg-red-100 text-red-700",
     };
     return colors[status] || "bg-gray-100 text-gray-700";
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "No deadline";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -153,22 +125,19 @@ export default function ListProjects() {
     });
   };
 
-  // TODO: Navigate to project details
+  // Navigate to project details
   const handleViewDetails = (projectId) => {
-    console.log("View details for project:", projectId);
-    // navigate(`/projects/${projectId}/details`);
+    navigate(`/projects/${projectId}/details`);
   };
 
-  // TODO: Navigate to project kanban board
+  // Navigate to project kanban board
   const handleViewKanban = (projectId) => {
-    console.log("View kanban for project:", projectId);
-    // navigate(`/projects/${projectId}/kanban`);
+    navigate(`/projects/${projectId}/kanban`);
   };
 
-  // TODO: Navigate to create project page
+  // Navigate to create project page
   const handleCreateProject = () => {
-    console.log("Navigate to create project");
-    // navigate('/create-project');
+    navigate("/create-project");
   };
 
   return (
@@ -187,39 +156,25 @@ export default function ListProjects() {
 
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
-          {/* Status Tabs */}
+          {/* Status Tabs - removed "On Hold" since backend doesn't have it */}
           <div className="flex gap-2">
-            {["All", "In Progress", "Completed", "On Hold", "Overdue"].map(
-              (status) => (
-                <button
-                  key={status}
-                  onClick={() => setActiveFilter(status)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeFilter === status
-                      ? "bg-[#2C3F48] text-white"
-                      : "bg-white text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {status}
-                </button>
-              )
-            )}
+            {["All", "In Progress", "Completed", "Overdue"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setActiveFilter(status)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeFilter === status
+                    ? "bg-[#2C3F48] text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {status}
+              </button>
+            ))}
           </div>
 
           {/* Dropdown Filters */}
           <div className="flex gap-3">
-            {/* <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange("status", e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Status</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="On Hold">On Hold</option>
-              <option value="Overdue">Overdue</option>
-            </select> */}
-
             <select
               value={filters.deadline}
               onChange={(e) => handleFilterChange("deadline", e.target.value)}
@@ -250,6 +205,12 @@ export default function ListProjects() {
         ) : filteredProjects.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">No projects found.</p>
+            <button
+              onClick={handleCreateProject}
+              className="mt-4 px-6 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
+            >
+              Create Your First Project
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -265,10 +226,10 @@ export default function ListProjects() {
                   </h3>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(
-                      project.status
+                      project.displayStatus
                     )}`}
                   >
-                    {project.status}
+                    {project.displayStatus}
                   </span>
                 </div>
 
@@ -313,7 +274,7 @@ export default function ListProjects() {
                     />
                   </svg>
                   <span className="text-sm text-gray-600">
-                    {project.teamMembers.length} Members
+                    {project.teamMemberCount || 0} Members
                   </span>
                 </div>
 

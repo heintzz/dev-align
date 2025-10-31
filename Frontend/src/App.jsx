@@ -10,11 +10,14 @@ import Kanban from "@/pages/Kanban";
 import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
-import ManageEmployee from "@/pages/HR/ManageEmployee";
+import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
+import EmployeeDetail from "./pages/HR/Employee/EmployeeDetail";
+import AddEmployee from "./pages/HR/Employee/AddEmployee";
 import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
 import StaffDashboard from "./pages/Staff/Dashboard";
 import CreateProject from "./pages/PM/CreateProject";
+import ListProjects from "./pages/PM/ListProject";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";

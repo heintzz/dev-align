@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import projectService from "../../services/project.service";
 
 export default function CreateProject() {
   const navigate = useNavigate();
@@ -27,25 +28,27 @@ export default function CreateProject() {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // TODO: Fetch skills from database
+  // Fetch skills from database
   useEffect(() => {
     fetchSkills();
   }, []);
 
-  // TODO: Fetch positions from database
+  // Fetch positions from database
   useEffect(() => {
     fetchPositions();
   }, []);
 
-  // TODO: API - Fetch all skills from database
+  // API - Fetch all skills from database
   const fetchSkills = async () => {
     try {
-      // const response = await fetch('/api/skills');
-      // const data = await response.json();
-      // setSkills(data);
-
-      // TEMPORARY: Mock data
+      const response = await projectService.getAllSkills();
+      // Sesuaikan dengan struktur response dari controller: response.skills
+      setSkills(response.skills || []); // Mengambil array skills dari objek response
+    } catch (error) {
+      console.error("Error fetching skills:", error);
+      // Fallback to mock data if error
       setSkills([
         { _id: "1", name: "React.js" },
         { _id: "2", name: "Node.js" },
@@ -58,19 +61,18 @@ export default function CreateProject() {
         { _id: "9", name: "Cypress" },
         { _id: "10", name: "CI/CD" },
       ]);
-    } catch (error) {
-      console.error("Error fetching skills:", error);
     }
   };
 
-  // TODO: API - Fetch all positions from database
+  // API - Fetch all positions from database
   const fetchPositions = async () => {
     try {
-      // const response = await fetch('/api/positions');
-      // const data = await response.json();
-      // setPositions(data);
-
-      // TEMPORARY: Mock data
+      const response = await projectService.getAllPositions();
+      // Sesuaikan dengan struktur response dari controller: response.positions
+      setPositions(response.positions || []); // Mengambil array positions dari objek response
+    } catch (error) {
+      console.error("Error fetching positions:", error);
+      // Fallback to mock data if error
       setPositions([
         { _id: "1", name: "Frontend Developer" },
         { _id: "2", name: "Backend Developer" },
@@ -80,19 +82,31 @@ export default function CreateProject() {
         { _id: "6", name: "DevOps Engineer" },
         { _id: "7", name: "Project Manager" },
       ]);
-    } catch (error) {
-      console.error("Error fetching positions:", error);
     }
   };
 
-  // TODO: API - Fetch all employees (will be replaced with AI recommendations)
+  // API - Fetch all employees (will be replaced with AI recommendations)
   const fetchAllEmployees = async () => {
     try {
-      // const response = await fetch('/api/employees');
-      // const data = await response.json();
-      // setEmployees(data);
+      // response sekarang adalah langsung array karyawan
+      const employeesList = await projectService.getAllEmployees();
 
-      // TEMPORARY: Mock data - showing all employees
+      // Transform employees to match UI format
+      const transformedEmployees = employeesList.map((emp) => ({
+        _id: emp.id,
+        name: emp.name,
+        position: emp.position || { name: "Not Assigned" },
+        skills: emp.skills || [],
+        // TODO: Calculate workload from active projects
+        currentWorkload: 0,
+        availability: "Available",
+        matchingPercentage: 100,
+      }));
+
+      setEmployees(transformedEmployees);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      // Fallback to mock data if error
       setEmployees([
         {
           _id: "1",
@@ -130,8 +144,6 @@ export default function CreateProject() {
           matchingPercentage: 80,
         },
       ]);
-    } catch (error) {
-      console.error("Error fetching employees:", error);
     }
   };
 
@@ -178,27 +190,24 @@ export default function CreateProject() {
   const handleGenerateRecommendations = async () => {
     setIsGenerating(true);
 
-    // TODO: API - Call AI recommendation endpoint
+    // TODO: API - Call AI recommendation endpoint (not ready yet)
     try {
-      // const response = await fetch('/api/projects/recommend-team', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     skills: selectedSkills.map(s => s._id),
-      //     positions: teamPositions,
-      //     projectId: formData.projectId // if editing
-      //   })
-      // });
-      // const data = await response.json();
-      // setEmployees(data.recommendations);
-
-      // TEMPORARY: Just fetch all employees
+      // For now, just fetch all employees
+      // Later replace with: await projectService.getTeamRecommendations({...})
       await fetchAllEmployees();
     } catch (error) {
       console.error("Error generating recommendations:", error);
+      alert(error.message || "Failed to generate recommendations");
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleCheckboxClick = (e, employeeId) => {
+    // e.stopPropagation() mencegah event click naik ke <div> parent
+    e.stopPropagation();
+    // Panggil fungsi toggle yang sudah ada
+    handleToggleEmployee(employeeId);
   };
 
   const handleToggleEmployee = (employeeId) => {
@@ -210,51 +219,69 @@ export default function CreateProject() {
   };
 
   const handleAutoAssignBestTeam = () => {
-    // TODO: API - Auto assign best team based on AI
-    // For now, select top 2 available employees
+    // TODO: API - Auto assign best team based on AI (not ready yet)
+    // For now, select top 3 available employees
     const availableEmployees = employees
       .filter((e) => e.availability === "Available")
-      .slice(0, 2)
+      .slice(0, 3)
       .map((e) => e._id);
     setSelectedEmployees(availableEmployees);
   };
 
   const handleSubmit = async () => {
-    // TODO: API - Create project
-    try {
-      // const response = await fetch('/api/projects', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('token')}`
-      //   },
-      //   body: JSON.stringify({
-      //     name: formData.projectName,
-      //     description: formData.projectDescription,
-      //     startDate: formData.startDate,
-      //     deadline: formData.deadline,
-      //     requiredSkills: selectedSkills.map(s => s._id),
-      //     teamPositions: teamPositions,
-      //     teamMembers: selectedEmployees,
-      //   })
-      // });
-      // const data = await response.json();
+    // Validation
+    if (!formData.projectName.trim()) {
+      alert("Project name is required");
+      return;
+    }
 
-      console.log("Project Data to Submit:", {
+    if (!formData.projectDescription.trim()) {
+      alert("Project description is required");
+      return;
+    }
+
+    if (selectedEmployees.length === 0) {
+      alert("At least one staff member must be assigned to the project");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare project data according to backend API
+      const projectData = {
         name: formData.projectName,
         description: formData.projectDescription,
-        startDate: formData.startDate,
-        deadline: formData.deadline,
-        requiredSkills: selectedSkills.map((s) => s._id),
-        teamPositions: teamPositions,
-        teamMembers: selectedEmployees,
-      });
+        staffIds: selectedEmployees, // Array of employee IDs
+      };
 
-      alert("Project created successfully! (Mock)");
-      // navigate('/dashboard-pm');
+      // Add optional fields only if they have values
+      if (formData.startDate) {
+        projectData.startDate = formData.startDate;
+      }
+
+      if (formData.deadline) {
+        projectData.deadline = formData.deadline;
+      }
+
+      console.log("Submitting project data:", projectData);
+
+      // Call API to create project with assignments
+      const response = await projectService.createProjectWithAssignments(
+        projectData
+      );
+
+      if (response.success) {
+        alert(
+          `Project "${response.data.project.name}" created successfully with ${selectedEmployees.length} staff members assigned!`
+        );
+        navigate("/projects"); // Navigate to projects list
+      }
     } catch (error) {
       console.error("Error creating project:", error);
-      alert("Failed to create project");
+      alert(error.message || "Failed to create project. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -388,7 +415,7 @@ export default function CreateProject() {
                     </select>
                     <button
                       onClick={handleAddSkill}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                      className="px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
                     >
                       Add Skill
                     </button>
@@ -446,7 +473,7 @@ export default function CreateProject() {
                     />
                     <button
                       onClick={handleAddPosition}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                      className="px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
                     >
                       Add
                     </button>
@@ -511,9 +538,10 @@ export default function CreateProject() {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Create Project
+                    {isSubmitting ? "Creating Project..." : "Create Project"}
                   </button>
                 </div>
               </div>
@@ -534,14 +562,17 @@ export default function CreateProject() {
                           ? "border-blue-500 bg-blue-50"
                           : getMatchingColor(employee.matchingPercentage)
                       }`}
-                      onClick={() => handleToggleEmployee(employee._id)}
+                      onClick={() => handleToggleEmployee(employee._id)} // <-- Biarkan handler ini tetap ada untuk klik di area kartu
                     >
                       <div className="flex items-start gap-4">
                         <div className="relative">
                           <input
                             type="checkbox"
                             checked={selectedEmployees.includes(employee._id)}
-                            onChange={() => {}}
+                            // Gunakan fungsi baru untuk menangani klik pada checkbox
+                            onChange={(e) =>
+                              handleCheckboxClick(e, employee._id)
+                            } // <--- PERUBAHAN DI SINI
                             className="absolute top-0 left-0 w-5 h-5"
                           />
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold ml-6">
