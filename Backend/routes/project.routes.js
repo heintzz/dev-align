@@ -9,6 +9,8 @@ const {
   updateProject,
   deleteProject,
   assignTechLead,
+  getProjectTasks,    // Added for DEV-79
+  updateTaskStatus,   // Added for DEV-80
 } = require('../controllers/project.controller');
 const auth = require('../middlewares/authorization');
 const verifyToken = require('../middlewares/token');
@@ -396,6 +398,67 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  *         description: One or more staff members not found
  */
 router.post('/with-assignments', verifyToken, auth('manager'), createProjectWithAssignments);
+
+/**
+ * @swagger
+ * /project/{projectId}/tasks:
+ *   get:
+ *     summary: Get all tasks for a specific project
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of tasks with assignees and required skills
+ *       403:
+ *         description: User not assigned to project
+ *       404:
+ *         description: Project not found
+ */
+router.get('/:projectId/tasks', verifyToken, getProjectTasks);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}/status:
+ *   put:
+ *     summary: Update task status (e.g., backlog -> in_progress)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [backlog, in_progress, review, done]
+ *     responses:
+ *       200:
+ *         description: Task status updated
+ *       400:
+ *         description: Invalid status transition
+ *       403:
+ *         description: User not assigned to task/project
+ *       404:
+ *         description: Task not found
+ */
+router.put('/tasks/:taskId/status', verifyToken, updateTaskStatus);
+
 
 /**
  * @swagger

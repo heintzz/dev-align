@@ -1,4 +1,199 @@
 const { Project, ProjectAssignment, User, Task, TaskAssignment } = require('../models');
+const mongoose = require('mongoose');
+
+// Task-related functions moved from project-task.controller.js
+const getProjectTasks = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid project ID format' 
+      });
+    }
+
+    // Check if user is assigned to this project
+    const assignment = await ProjectAssignment.findOne({ projectId, userId });
+    if (!assignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You are not assigned to this project',
+      });
+    }
+
+    // Get all tasks for the project
+    const tasks = await Task.find({ projectId })
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    // Get task assignments in one query
+    const taskAssignments = await TaskAssignment.find({
+      taskId: { $in: tasks.map(t => t._id) }
+    }).populate('userId', 'name email');
+
+    // Map tasks with assignments
+    const mappedTasks = tasks.map(task => ({
+      id: task._id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      requiredSkills: task.requiredSkills.map(s => ({
+        id: s._id,
+        name: s.name,
+      })),
+      createdBy: {
+        id: task.createdBy._id,
+        name: task.createdBy.name,
+        email: task.createdBy.email,
+      },
+      assignees: taskAssignments
+        .filter(ta => ta.taskId.equals(task._id))
+        .map(ta => ({
+          id: ta.userId._id,
+          name: ta.userId.name,
+          email: ta.userId.email,
+        })),
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    }));
+
+    return res.json({
+      success: true,
+      data: mappedTasks,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
+const updateTaskStatus = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid task ID format' 
+      });
+    }
+
+    // Get task with project info
+    const task = await Task.findById(taskId).select('projectId status');
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Task not found',
+      });
+    }
+
+    // Check if user is assigned to this project
+    const projectAssignment = await ProjectAssignment.findOne({ 
+      projectId: task.projectId, 
+      userId 
+    });
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You are not assigned to this project',
+      });
+    }
+
+    // Check if user is assigned to this task
+    const taskAssignment = await TaskAssignment.findOne({ taskId, userId });
+    if (!taskAssignment && !projectAssignment.isTechLead) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You are not assigned to this task',
+      });
+    }
+
+    // Validate status transition
+    const validTransitions = {
+      'backlog': ['in_progress'],
+      'in_progress': ['review', 'backlog'],
+      'review': ['done', 'in_progress'],
+      'done': ['in_progress'],
+    };
+
+    if (!validTransitions[task.status]?.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid Status Transition',
+        message: `Cannot transition from ${task.status} to ${status}`,
+        allowedTransitions: validTransitions[task.status],
+      });
+    }
+
+    // Update task status
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      { 
+        status,
+        ...(status === 'in_progress' ? { startDate: new Date() } : {}),
+        ...(status === 'done' ? { endDate: new Date() } : {}),
+      },
+      { new: true }
+    )
+    .populate('requiredSkills', 'name')
+    .populate('createdBy', 'name email');
+
+    // Get task assignees
+    const assignees = await TaskAssignment.find({ taskId })
+      .populate('userId', 'name email');
+
+    // Format response
+    const response = {
+      id: updatedTask._id,
+      title: updatedTask.title,
+      description: updatedTask.description,
+      status: updatedTask.status,
+      startDate: updatedTask.startDate,
+      endDate: updatedTask.endDate,
+      requiredSkills: updatedTask.requiredSkills.map(s => ({
+        id: s._id,
+        name: s.name,
+      })),
+      createdBy: {
+        id: updatedTask.createdBy._id,
+        name: updatedTask.createdBy.name,
+        email: updatedTask.createdBy.email,
+      },
+      assignees: assignees.map(a => ({
+        id: a.userId._id,
+        name: a.userId.name,
+        email: a.userId.email,
+      })),
+      createdAt: updatedTask.createdAt,
+      updatedAt: updatedTask.updatedAt,
+    };
+
+    return res.json({
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
 
 const createProject = async (req, res) => {
   const { name, description, startDate, deadline, teamMemberCount } = req.body;
@@ -698,4 +893,6 @@ module.exports = {
   updateProject,
   deleteProject,
   assignTechLead,
+  getProjectTasks,    // Added for DEV-79
+  updateTaskStatus,   // Added for DEV-80
 };

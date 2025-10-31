@@ -1078,6 +1078,181 @@ Project: Mobile App Development
 
 ---
 
+## Project Task Endpoints
+
+Base path: `/project`
+
+### 15. Get Project Tasks (DEV-79)
+
+Retrieves all tasks for a specific project with their assignees and required skills.
+
+**Endpoint**: `GET /project/:projectId/tasks`
+
+**Access**: Project members only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | MongoDB ObjectId of the project |
+
+**Request Example**:
+```http
+GET /project/6901b5caf7ed0f35753d38a3/tasks
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6901c5f7ed0f35753d38c5",
+      "title": "Design User Interface",
+      "description": "Create UI mockups for the mobile app",
+      "status": "in_progress",
+      "startDate": "2025-10-30T10:00:00.000Z",
+      "endDate": null,
+      "requiredSkills": [
+        {
+          "id": "507f1f77bcf86cd799439015",
+          "name": "UI Design"
+        },
+        {
+          "id": "507f1f77bcf86cd799439016",
+          "name": "Figma"
+        }
+      ],
+      "createdBy": {
+        "id": "69016bcc7157f337f7e2e4ea",
+        "name": "Tony Yoditanto",
+        "email": "tonyoditanto@gmail.com"
+      },
+      "assignees": [
+        {
+          "id": "69016bcc7157f337f7e2e4ec",
+          "name": "Jane Designer",
+          "email": "jane@example.com"
+        }
+      ],
+      "createdAt": "2025-10-30T10:00:00.000Z",
+      "updatedAt": "2025-10-30T10:15:00.000Z"
+    }
+  ]
+}
+```
+
+**Error** (403 Forbidden):
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "message": "You are not assigned to this project"
+}
+```
+
+### 16. Update Task Status (DEV-80)
+
+Updates the status of a task with valid status transitions.
+
+**Endpoint**: `PUT /project/tasks/:taskId/status`
+
+**Access**: Project members assigned to the task, or tech leads
+
+**⭐ Status Transitions**:
+- backlog → in_progress
+- in_progress → review, backlog
+- review → done, in_progress
+- done → in_progress
+
+**Automatic Date Updates**:
+- When status changes to 'in_progress': startDate is set to current date
+- When status changes to 'done': endDate is set to current date
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | string | Yes | New status for the task |
+
+**Status Values**: `backlog`, `in_progress`, `review`, `done`
+
+**Request Example**:
+```http
+PUT /project/tasks/6901c5f7ed0f35753d38c5/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "status": "in_progress"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6901c5f7ed0f35753d38c5",
+    "title": "Design User Interface",
+    "description": "Create UI mockups for the mobile app",
+    "status": "in_progress",
+    "startDate": "2025-10-30T10:15:00.000Z",
+    "endDate": null,
+    "requiredSkills": [
+      {
+        "id": "507f1f77bcf86cd799439015",
+        "name": "UI Design"
+      },
+      {
+        "id": "507f1f77bcf86cd799439016",
+        "name": "Figma"
+      }
+    ],
+    "createdBy": {
+      "id": "69016bcc7157f337f7e2e4ea",
+      "name": "Tony Yoditanto",
+      "email": "tonyoditanto@gmail.com"
+    },
+    "assignees": [
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com"
+      }
+    ],
+    "createdAt": "2025-10-30T10:00:00.000Z",
+    "updatedAt": "2025-10-30T10:15:00.000Z"
+  }
+}
+```
+
+**Error** (400 Bad Request - Invalid Transition):
+```json
+{
+  "success": false,
+  "error": "Invalid Status Transition",
+  "message": "Cannot transition from backlog to done",
+  "allowedTransitions": ["in_progress"]
+}
+```
+
+**Error** (403 Forbidden):
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "message": "You are not assigned to this task"
+}
+```
+
 ## Project Assignment Endpoints
 
 Base path: `/project-assignment`
@@ -1598,13 +1773,15 @@ Content-Type: application/json
 | 5 | `/project/with-assignments` | POST | Manager | **Create project with staff (auto-active, Recommended)** |
 | 6 | `/project/:projectId` | PUT | Manager/HR | **Update project (staff mgmt + skill transfer)** |
 | 7 | `/project/:projectId` | DELETE | Manager/HR | **Delete project (cascading deletes)** |
-| 8 | `/project-assignment` | GET | All | Get all assignments (with filters) |
-| 9 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
-| 10 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
-| 11 | `/project-assignment/:assignmentId` | PUT | Manager/HR | Update assignment |
-| 12 | `/project-assignment/:assignmentId` | DELETE | Manager/HR | Remove assignment |
-| 13 | `/position/batch` | POST | HR | **Create multiple positions (batch)** |
-| 14 | `/position/batch` | DELETE | HR | **Delete multiple positions (batch)** |
+| 8 | `/project/:projectId/tasks` | GET | Project Members | **Get all tasks for a project (DEV-79)** |
+| 9 | `/project/tasks/:taskId/status` | PUT | Task Assignees/Tech Leads | **Update task status (DEV-80)** |
+| 10 | `/project-assignment` | GET | All | Get all assignments (with filters) |
+| 11 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
+| 12 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
+| 13 | `/project-assignment/:assignmentId` | PUT | Manager/HR | Update assignment |
+| 14 | `/project-assignment/:assignmentId` | DELETE | Manager/HR | Remove assignment |
+| 15 | `/position/batch` | POST | HR | **Create multiple positions (batch)** |
+| 16 | `/position/batch` | DELETE | HR | **Delete multiple positions (batch)** |
 
 ---
 
