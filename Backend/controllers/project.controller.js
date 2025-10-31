@@ -59,6 +59,14 @@ const getProjects = async (req, res) => {
       filter.createdBy = req.user.id;
     }
 
+    // If user is staff, only show projects they are assigned to
+    if (req.user.role === 'staff') {
+      // Find all project assignments for this staff member
+      const staffAssignments = await ProjectAssignment.find({ userId: req.user.id });
+      const projectIds = staffAssignments.map(assignment => assignment.projectId);
+      filter._id = { $in: projectIds };
+    }
+
     // Optional filters
     if (req.query.status) {
       filter.status = req.query.status;
@@ -186,9 +194,16 @@ const getProjectDetails = async (req, res) => {
       });
     }
 
-    // Get all project assignments with user details
+    // Get all project assignments with user details and populate position
     const assignments = await ProjectAssignment.find({ projectId: project._id })
-      .populate('userId', '_id name email role position');
+      .populate({
+        path: 'userId',
+        select: '_id name email role position',
+        populate: {
+          path: 'position',
+          select: '_id name'
+        }
+      });
 
     // Extract manager (project creator)
     const managerId = project.createdBy._id;
@@ -228,7 +243,10 @@ const getProjectDetails = async (req, res) => {
           name: assignment.userId.name,
           email: assignment.userId.email,
           role: assignment.userId.role,
-          position: assignment.userId.position,
+          position: assignment.userId.position ? {
+            _id: assignment.userId.position._id,
+            name: assignment.userId.position.name
+          } : null,
           isTechLead: assignment.isTechLead,
         })),
       },
@@ -532,7 +550,14 @@ const createProjectWithAssignments = async (req, res) => {
     const populatedAssignments = await ProjectAssignment.find({
       projectId: project._id
     })
-      .populate('userId', 'name email role position')
+      .populate({
+        path: 'userId',
+        select: 'name email role position',
+        populate: {
+          path: 'position',
+          select: '_id name'
+        }
+      })
       .populate('projectId', 'name description status');
 
     return res.status(201).json({
@@ -637,7 +662,14 @@ const assignTechLead = async (req, res) => {
 
     // Get updated assignment with populated data
     const updatedAssignment = await ProjectAssignment.findById(staffAssignment._id)
-      .populate('userId', 'name email role position')
+      .populate({
+        path: 'userId',
+        select: 'name email role position',
+        populate: {
+          path: 'position',
+          select: '_id name'
+        }
+      })
       .populate('projectId', 'name description status');
 
     return res.status(200).json({

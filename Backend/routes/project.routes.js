@@ -26,7 +26,7 @@ const router = express.Router();
  * /project:
  *   get:
  *     summary: Get projects (role-based filtering)
- *     description: Managers see only their own projects. HR sees all projects and can filter by creator.
+ *     description: Managers see only their own projects. HR sees all projects and can filter by creator. Staff see only projects they are assigned to.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []

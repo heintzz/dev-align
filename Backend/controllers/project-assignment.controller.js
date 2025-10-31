@@ -88,7 +88,14 @@ const getProjectAssignments = async (req, res) => {
       ProjectAssignment.find(filter)
         .skip(skip)
         .limit(perPage)
-        .populate('userId', 'name email role position')
+        .populate({
+          path: 'userId',
+          select: 'name email role position',
+          populate: {
+            path: 'position',
+            select: '_id name'
+          }
+        })
         .populate('projectId', 'name description status deadline'),
     ]);
 
@@ -115,7 +122,14 @@ const getAssignmentById = async (req, res) => {
     const { assignmentId } = req.params;
 
     const assignment = await ProjectAssignment.findById(assignmentId)
-      .populate('userId', 'name email role position')
+      .populate({
+        path: 'userId',
+        select: 'name email role position',
+        populate: {
+          path: 'position',
+          select: '_id name'
+        }
+      })
       .populate('projectId', 'name description status deadline');
 
     if (!assignment) {
