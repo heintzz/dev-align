@@ -9,7 +9,7 @@ import {
   Calendar as CalendarIcon,
   ChevronDown,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, set } from "date-fns";
 
 import TaskCard from "@/components/kanban/TaskCard";
 
@@ -53,18 +53,16 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import api from "@/api/axios";
+import { useAssigneeStore } from "@/store/useAssigneeStore";
 
 const Column = ({
+  projectId,
   droppableId,
   column,
   listSkills,
-  updateColumn,
   className = "",
 }) => {
-  const [skills, setSkills] = useState([]);
-  const [openCalendar, setOpenCalendar] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [newTask, setNewTask] = useState({
+  const defaultTask = {
     projectId: "",
     columnKey: "",
     title: "",
@@ -72,13 +70,25 @@ const Column = ({
     skills: [],
     status: "todo",
     deadline: "",
-    assignedTo: [],
-  });
+    assignedTo: "",
+  };
+
+  const [skills, setSkills] = useState([]);
+  const [openAddTask, setOpenAddTask] = useState(false);
+  const [openCalendar, setOpenCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [newTask, setNewTask] = useState(defaultTask);
+
+  const { listAssigneeProject, fetchAssigneeProject } = useAssigneeStore();
+
+  const handleSelectChange = (field, value) => {
+    setNewTask((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleChange = (e) => {
-    console.log(e.name);
-    console.log(e.value);
-
     const { name, value } = e.target;
     setNewTask((prev) => ({
       ...prev,
@@ -113,24 +123,22 @@ const Column = ({
       ...newTask,
       columnKey: column.name.trim().toLowerCase().replace(/\s+/g, "-"),
       skills: skills.map((s) => s._id),
-      projectId: "6901b5caf7ed0f35753d38a3",
+      projectId: projectId,
     };
 
     console.log(formData);
     try {
       const { data } = await api.post("/task", formData);
       console.log(data);
+      setOpenAddTask(false);
     } catch (error) {
       console.error(error);
     }
   };
 
-  const deleteTask = (index) => {
-    updateColumn(
-      droppableId,
-      column.tasks.filter((_, i) => i !== index)
-    );
-  };
+  useEffect(() => {
+    fetchAssigneeProject(projectId);
+  }, []);
 
   return (
     <div className={`w-72 ${className}`}>
@@ -151,10 +159,10 @@ const Column = ({
               className={`rounded-md transition-colors ${
                 snapshot.isDraggingOver ? "bg-blue-50" : "bg-white"
               }`}
-              style={{ maxHeight: "60vh", overflow: "hidden" }}
+              style={{ overflow: "hidden" }}
             >
-              <ScrollArea className="h-[45vh]">
-                <div className="space-y-2">
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-2 w-61">
                   {column.tasks.map((task, index) => (
                     <Draggable
                       key={`${droppableId}-${index}-${task.title}`}
@@ -168,10 +176,7 @@ const Column = ({
                           {...provided.dragHandleProps}
                           className="mb-2"
                         >
-                          <TaskCard
-                            task={task}
-                            onDelete={() => deleteTask(index)}
-                          />
+                          <TaskCard task={task} projectId={projectId} />
                         </div>
                       )}
                     </Draggable>
@@ -185,12 +190,18 @@ const Column = ({
 
         {/* Add task input */}
         <div className="mt-3">
-          {/* <Input
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            placeholder="New task..."
-          /> */}
-          <Dialog>
+          <Dialog
+            open={openAddTask}
+            onOpenChange={(isOpen) => {
+              setOpenAddTask(isOpen);
+
+              if (!isOpen) {
+                setNewTask(defaultTask);
+                setSkills([]);
+                setSelectedDate(null);
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="w-full flex items-center justify-center gap-2 bg-primer cursor-pointer">
                 <CirclePlus size={18} />
@@ -258,10 +269,10 @@ const Column = ({
                 <div className="grid gap-3">
                   <Label htmlFor="assignee-1">Assignee</Label>
                   <Select
-                  // value={newTask.position}
-                  // onValueChange={(value) =>
-                  //   handleSelectChange("assignee", value)
-                  // }
+                    value={newTask.position}
+                    onValueChange={(value) =>
+                      handleSelectChange("assignedTo", value)
+                    }
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue
@@ -271,9 +282,9 @@ const Column = ({
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {listSkills.map((skills) => (
-                        <SelectItem key={skills._id} value={skills._id}>
-                          {skills.name}
+                      {listAssigneeProject.map((employee) => (
+                        <SelectItem key={employee._id} value={employee._id}>
+                          {employee.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

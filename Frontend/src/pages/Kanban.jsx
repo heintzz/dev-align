@@ -14,16 +14,19 @@ import { Input } from "@/components/ui/input";
 import Loading from "@/components/Loading";
 import { CirclePlus } from "lucide-react";
 
-import { Spinner } from "@/components/ui/spinner";
+import { useSkillStore } from "@/store/useSkillStore";
+import { useAssigneeStore } from "@/store/useAssigneeStore";
 
 export default function Kanban() {
   const [socket, setSocket] = useState(null);
   const [columns, setColumns] = useState([]);
   const [newListName, setNewListName] = useState("");
-  const [listSkills, setListSkills] = useState([]);
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const { projectId } = useParams();
+
+  const { listSkills, fetchSkills } = useSkillStore();
+
   const token = localStorage.getItem("token");
 
   const getTasks = async () => {
@@ -34,11 +37,6 @@ export default function Kanban() {
     } catch (error) {
       console.error(error);
     }
-  };
-
-  const getSkills = async () => {
-    const { data } = await api.get("/skill");
-    setListSkills(data.data.skills || []);
   };
 
   const addNewList = async () => {
@@ -78,7 +76,7 @@ export default function Kanban() {
     const toColumnKey = destination.droppableId;
     const fromIndex = source.index;
     const toIndex = destination.index;
-
+    console.log({ fromColumnKey, toColumnKey, fromIndex, toIndex });
     // Don't do anything if dropped in same position
     if (fromColumnKey === toColumnKey && fromIndex === toIndex) return;
 
@@ -108,7 +106,7 @@ export default function Kanban() {
 
   useEffect(() => {
     getTasks();
-    getSkills();
+    fetchSkills();
   }, [projectId]);
 
   useEffect(() => {
@@ -121,7 +119,7 @@ export default function Kanban() {
 
     // Listen for real-time updates
     newSocket.on("task:created", ({ task, columnKey }) => {
-      // console.log(task);
+      console.log(task);
       // console.log(columnKey);
       setColumns((prev) => ({
         ...prev,
@@ -131,9 +129,7 @@ export default function Kanban() {
             ...prev[columnKey].tasks,
             {
               ...task,
-              deadline: task.deadline
-                ? new Date(task.deadline).toLocaleDateString("en-GB")
-                : null,
+              deadline: task.deadline ? new Date(task.deadline) : null,
             },
           ],
         },
@@ -153,40 +149,62 @@ export default function Kanban() {
 
         setColumns((prev) => {
           const newColumns = { ...prev };
-          const fromColumn = newColumns[fromColumnKey];
-          const toColumn = newColumns[toColumnKey];
 
-          if (!fromColumn || !toColumn) {
-            console.warn("Invalid column keys:", {
-              fromColumnKey,
-              toColumnKey,
-            });
-            return prev;
+          if (fromColumnKey === toColumnKey) {
+            // Same column reorder
+            const tasks = [...(newColumns[fromColumnKey]?.tasks || [])];
+            const [moved] = tasks.splice(fromIndex, 1);
+            tasks.splice(toIndex, 0, moved);
+            newColumns[fromColumnKey] = {
+              ...newColumns[fromColumnKey],
+              tasks,
+            };
+          } else {
+            // Different columns
+            const fromTasks = [...(newColumns[fromColumnKey]?.tasks || [])];
+            const toTasks = [...(newColumns[toColumnKey]?.tasks || [])];
+            const [moved] = fromTasks.splice(fromIndex, 1);
+            toTasks.splice(toIndex, 0, moved);
+            newColumns[fromColumnKey] = {
+              ...newColumns[fromColumnKey],
+              tasks: fromTasks,
+            };
+            newColumns[toColumnKey] = {
+              ...newColumns[toColumnKey],
+              tasks: toTasks,
+            };
           }
 
-          const fromTasks = Array.isArray(fromColumn.tasks)
-            ? [...fromColumn.tasks]
-            : [];
-          const toTasks = Array.isArray(toColumn.tasks)
-            ? [...toColumn.tasks]
-            : [];
-
-          const [moved] = fromTasks.splice(fromIndex, 1);
-          if (!moved) {
-            console.warn("No task found to move:", { fromIndex, fromTasks });
-            return prev;
-          }
-
-          toTasks.splice(toIndex, 0, moved);
-
-          return {
-            ...prev,
-            [fromColumnKey]: { ...fromColumn, tasks: fromTasks },
-            [toColumnKey]: { ...toColumn, tasks: toTasks },
-          };
+          return newColumns;
         });
       }
     );
+
+    newSocket.on("task:updated", ({ taskId, task, columnKey }) => {
+      console.log("Task updated event received:", task);
+
+      setColumns((prev) => {
+        const newColumns = { ...prev };
+
+        // Find and update the task in all columns
+        Object.keys(newColumns).forEach((key) => {
+          const taskIndex = newColumns[key].tasks.findIndex(
+            (t) => t._id === taskId
+          );
+
+          if (taskIndex !== -1) {
+            // Update the task
+            newColumns[key].tasks[taskIndex] = {
+              ...newColumns[key].tasks[taskIndex],
+              ...task,
+              deadline: task.deadline ? new Date(task.deadline) : null,
+            };
+          }
+        });
+
+        return newColumns;
+      });
+    });
 
     setSocket(newSocket);
 
@@ -197,21 +215,24 @@ export default function Kanban() {
   }, []);
 
   return (
-    <div className="min-h-screen p-4 bg-[url('/assets/images/kanbanBG.jpg')] bg-cover bg-fixed">
+    <div className="p-4">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       <div className="overflow-x-auto">
         <div className="flex gap-6 items-start px-2 py-4 min-w-max">
           <DragDropContext onDragEnd={onDragEnd}>
             {Object.entries(columns).map(([key, column]) => (
-              <Column
-                key={key}
-                droppableId={key}
-                column={column}
-                listSkills={listSkills}
-                updateColumn={updateColumn}
-                className="shrink-0"
-              />
+              <>
+                <Column
+                  key={key}
+                  projectId={projectId}
+                  droppableId={key}
+                  column={column}
+                  listSkills={listSkills}
+                  className="shrink-0"
+                />
+                <p>{key}</p>
+              </>
             ))}
           </DragDropContext>
 

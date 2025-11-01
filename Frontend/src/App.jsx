@@ -47,7 +47,7 @@ function App() {
         />
 
         <Route
-          path="/dashboard-hr"
+          path="/dashboard"
           element={
             <AppLayout>
               {role == "hr" ? (
@@ -55,7 +55,7 @@ function App() {
               ) : role == "manager" ? (
                 <PMDashboard />
               ) : (
-                <Kanban />
+                <StaffDashboard />
               )}
             </AppLayout>
           }
