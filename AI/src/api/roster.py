@@ -2,16 +2,18 @@ import numpy as np
 import dspy 
 import string
 
-from bson import ObjectId
 from src.configs.mongodb import get_database
 from src.config import settings
+from src.agents.agent import configure_llm_roster
+from src.agents.recommendation_agent.model import RecommendationModel
 
-from datetime import datetime
+from bson import ObjectId
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from datetime import datetime
 from typing import Optional, List
 from collections import defaultdict
-from pydantic import BaseModel
 
 class PositionRequest(BaseModel):
     name: str
@@ -39,8 +41,6 @@ async def create_project_embeddings(request: EmbeddingProjectRequest):
       api_base=settings.LLM_BASE_URL_ROSTER,
       api_key=settings.LLM_API_KEY
     )
-
-    print(request.project_id)
 
     # Ngambil deskripsi task tiap2 user
     pipeline = [
@@ -172,14 +172,12 @@ def get_recommendations(request: SkillRequest):
 
         # 1. matching skills, FURTHER IMPROVEMENT: maybe we can use AI to match some typo skills
         skill_ids = user.get("skills", [])
-        skills = database.get_collection("skills").find({"_id": {"$in": skill_ids}}, {"name": 1})
+        skills = list(database.get_collection("skills").find({"_id": {"$in": skill_ids}}, {"name": 1}))
         user_skills = [clean_skills_name(skill["name"]) for skill in skills]
 
         matched_count = len(set(required_skills) & set(user_skills))
         total = len(set(required_skills))
         matched_count_score = matched_count / total
-
-        print("Matching skills score: ", matched_count_score)
 
         # 2. workload counter
         project_pipeline = [
@@ -236,8 +234,6 @@ def get_recommendations(request: SkillRequest):
         project_count = len(project_assignments)
         project_count_score = 1.0 if project_count == 0 else 1.0 / project_count
 
-        print("Workload weight:", project_count_score )
-
         # 3. Embedding vector
         embedder = dspy.Embedder(
             model=settings.EMBEDDING_MODEL, 
@@ -271,7 +267,9 @@ def get_recommendations(request: SkillRequest):
 
         # 5. Merge all the data
         result = {
+            "name": user.get("name"),
             "position": position_name,
+            "skills":  [skill["name"] for skill in skills],
             "skill_match": matched_count_score,
             "workload": project_count_score,
             "project_similarity": 0 if np.isnan(top_3_avg) else float(top_3_avg)
@@ -279,9 +277,14 @@ def get_recommendations(request: SkillRequest):
 
         scores.append(result)
 
+   
     # 5. sort by the overall scores then limit to a certain number (n_required * 2)
     for score in scores:
-        score["total_score"] = round(0.4 * score["skill_match"] + 0.3 * score["workload"] + 0.3 * score["project_similarity"], 2)
+        score["matching_percentage"] = round(0.4 * score["skill_match"] + 0.3 * score["workload"] + 0.3 * score["project_similarity"], 2)
+        score["skill_match"] = round(score["skill_match"], 2)
+        score["workload"] = round(score["workload"], 2)
+        score["project_similarity"] = round(score["project_similarity"], 2)
+        
         print(score)
         print("-" * 25)
 
@@ -298,13 +301,49 @@ def get_recommendations(request: SkillRequest):
             continue  # skip posisi yang tidak dibutuhkan
         
         n = required_map[position]
-        sorted_candidates = sorted(candidates, key=lambda x: x["total_score"], reverse=True)
+        sorted_candidates = sorted(candidates, key=lambda x: x["matching_percentage"], reverse=True)
         top_candidates[position] = sorted_candidates[:n*2]
 
     print("top candidates")
     print(top_candidates)
 
     # 6. let the AI rerank the recommendations
-    # menglelah 😭
+    # ga pake dspy juga aman aja 👌
+    configure_llm_roster()
+    reranker = dspy.Predict(RecommendationModel)
+
+    # berat ga yah :v
+    # bagusnya sebenernya ga desimal sih di skor kandidatnya tapi later lah
+    for position, candidates in top_candidates.items():
+        response = reranker(
+            project_description=project_description,
+            candidates=candidates
+        )
+
+        indexes = response.ordered_indexes
+        reasoning = response.reasoning
+
+        # Safety fallback kalau model ngasih teks mentah
+        if not isinstance(indexes, list):
+            import re, json
+            match = re.search(r"\[([0-9,\s]+)\]", str(indexes))
+            if match:
+                indexes = json.loads(f"[{match.group(1)}]")
+            else:
+                indexes = list(range(len(top_candidates[position])))
+
+        # Terapkan urutan ke kandidat
+        ordered = [top_candidates[position][i] for i in indexes]
+
+        # Tambahkan rank number
+        for idx, c in enumerate(ordered, start=1):
+            c["rank"] = idx
+            c["ai_thought"] = reasoning
+
+        top_candidates[position] = ordered
+    
+    print("-" * 25)
+    print("final top candidates")
+    print(top_candidates)
 
     return JSONResponse(content={"success": True, "data": top_candidates}, status_code=200)
