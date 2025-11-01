@@ -4,9 +4,6 @@ PORT = 8000
 
 .PHONY: build run stop clean
 
-dev:
-	uvicorn src.main:app --reload
-
 build:
 	docker build -t $(IMAGE_NAME):$(TAG) .
 
