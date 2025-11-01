@@ -1,0 +1,187 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "FastAPI", "version": "0.1.0" },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/cv/extract-data": {
+      "post": {
+        "summary": "Parse Document Endpoint",
+        "description": "Parse a CV document and return structured data. Accepts an UploadFile (production) or a local path (for tests).",
+        "operationId": "parse_document_endpoint_cv_extract_data_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_document_endpoint_cv_extract_data_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-embeddings": {
+      "post": {
+        "summary": "Create Project Embeddings",
+        "operationId": "create_project_embeddings_project_embeddings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmbeddingProjectRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roster-recommendations": {
+      "post": {
+        "summary": "Get Recommendations",
+        "operationId": "get_recommendations_roster_recommendations_post",
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SkillRequest" } }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_parse_document_endpoint_cv_extract_data_post": {
+        "properties": {
+          "file": {
+            "anyOf": [{ "type": "string", "format": "binary" }, { "type": "string" }],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_parse_document_endpoint_cv_extract_data_post"
+      },
+      "EmbeddingProjectRequest": {
+        "properties": { "project_id": { "type": "string", "title": "Project Id" } },
+        "type": "object",
+        "required": ["project_id"],
+        "title": "EmbeddingProjectRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PositionRequest": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "numOfRequest": { "type": "integer", "title": "Numofrequest" }
+        },
+        "type": "object",
+        "required": ["name", "numOfRequest"],
+        "title": "PositionRequest"
+      },
+      "SkillRequest": {
+        "properties": {
+          "description": { "type": "string", "title": "Description" },
+          "positions": {
+            "items": { "$ref": "#/components/schemas/PositionRequest" },
+            "type": "array",
+            "title": "Positions"
+          },
+          "skills": {
+            "anyOf": [{ "items": { "type": "string" }, "type": "array" }, { "type": "null" }],
+            "title": "Skills"
+          }
+        },
+        "type": "object",
+        "required": ["description", "positions", "skills"],
+        "title": "SkillRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
