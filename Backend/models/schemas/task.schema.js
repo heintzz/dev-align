@@ -23,8 +23,8 @@ const taskSchema = new Schema(
     ],
     status: {
       type: String,
-      enum: ['backlog', 'in_progress', 'review', 'done'],
-      default: 'backlog',
+      enum: ['todo', 'in_progress', 'done'],
+      default: 'todo',
     },
     startDate: {
       type: Date,

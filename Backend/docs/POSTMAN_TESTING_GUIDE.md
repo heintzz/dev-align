@@ -130,37 +130,37 @@ Content-Type: application/json
 
 Test each valid transition:
 
-1. Backlog → In Progress:
+1. Todo → In Progress:
 ```json
 {
   "status": "in_progress"
 }
 ```
 
-2. In Progress → Review:
-```json
-{
-  "status": "review"
-}
-```
-
-3. Review → Done:
+2. In Progress → Done:
 ```json
 {
   "status": "done"
 }
 ```
 
-4. Done → In Progress (Reopening):
+3. Done → In Progress (Reopening):
 ```json
 {
   "status": "in_progress"
 }
 ```
 
+4. In Progress → Todo (Moving back):
+```json
+{
+  "status": "todo"
+}
+```
+
 Test invalid transitions to verify error handling:
 
-1. Backlog → Done (Invalid):
+1. Todo → Done (Invalid):
 ```json
 {
   "status": "done"
@@ -172,7 +172,7 @@ Expected error (400 Bad Request):
 {
   "success": false,
   "error": "Invalid Status Transition",
-  "message": "Cannot transition from backlog to done",
+  "message": "Cannot transition from todo to done",
   "allowedTransitions": ["in_progress"]
 }
 ```
@@ -251,10 +251,10 @@ Content-Type: application/json
 
 ### Task Management
 - [ ] View project tasks
-- [ ] Update task status: backlog → in_progress
-- [ ] Update task status: in_progress → review
-- [ ] Update task status: review → done
+- [ ] Update task status: todo → in_progress
+- [ ] Update task status: in_progress → done
 - [ ] Update task status: done → in_progress
+- [ ] Update task status: in_progress → todo
 - [ ] Verify invalid transitions are blocked
 - [ ] Verify non-assigned users cannot update tasks
 - [ ] Verify tech leads can update any task

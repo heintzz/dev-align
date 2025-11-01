@@ -9,6 +9,7 @@ const {
   updateProject,
   deleteProject,
   assignTechLead,
+  getProjectStaff,
   getProjectTasks,    // Added for DEV-79
   updateTaskStatus,   // Added for DEV-80
   createTask,
@@ -232,6 +233,65 @@ router.get('/:projectId/details', verifyToken, getProjectDetails);
 
 /**
  * @swagger
+ * /project/{projectId}/staff:
+ *   get:
+ *     summary: Get all staff assigned to a project
+ *     description: Returns user ID and name for all staff members assigned to the project. Useful for task assignment.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: List of staff assigned to the project
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     projectId:
+ *                       type: string
+ *                     projectName:
+ *                       type: string
+ *                     totalStaff:
+ *                       type: integer
+ *                     staff:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           role:
+ *                             type: string
+ *                           isTechLead:
+ *                             type: boolean
+ *       400:
+ *         description: Invalid project ID format
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:projectId/staff', verifyToken, getProjectStaff);
+
+/**
+ * @swagger
  * /project/{projectId}/assign-tech-lead:
  *   put:
  *     summary: Assign or remove tech lead status for a staff member
@@ -433,7 +493,7 @@ router.get('/:projectId/tasks', verifyToken, getProjectTasks);
  * @swagger
  * /project/tasks/{taskId}/status:
  *   put:
- *     summary: Update task status (e.g., backlog -> in_progress)
+ *     summary: Update task status (e.g., todo -> in_progress)
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -452,7 +512,7 @@ router.get('/:projectId/tasks', verifyToken, getProjectTasks);
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [backlog, in_progress, review, done]
+ *                 enum: [todo, in_progress, done]
  *     responses:
  *       200:
  *         description: Task status updated

@@ -99,7 +99,7 @@ router.get('/projects/:projectId/tasks', verifyToken, getProjectTasks);
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [backlog, in_progress, review, done]
+ *                 enum: [todo, in_progress, done]
  *     responses:
  *       200:
  *         description: Updated task details
