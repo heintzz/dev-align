@@ -1,6 +1,6 @@
 const { Schema } = require("mongoose");
 
-const TaskSchema = new Schema(
+const taskSchema = new Schema(
   {
     projectId: {
       type: Schema.Types.ObjectId,
@@ -54,6 +54,6 @@ const TaskSchema = new Schema(
   }
 );
 
-TaskSchema.index({ projectId: 1, columnKey: 1, order: 1 });
+taskSchema.index({ projectId: 1, columnKey: 1, order: 1 });
 
-module.exports = TaskSchema;
+module.exports = taskSchema;

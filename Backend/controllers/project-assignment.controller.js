@@ -1,4 +1,4 @@
-const { ProjectAssignment, User } = require('../models');
+const { ProjectAssignment, User } = require("../models");
 
 const assignUserToProject = async (req, res) => {
   const { projectId, userId } = req.body;
@@ -6,8 +6,8 @@ const assignUserToProject = async (req, res) => {
   if (!projectId || !userId) {
     return res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: 'Project ID and User ID must be specified',
+      error: "Bad Request",
+      message: "Project ID and User ID must be specified",
     });
   }
 
@@ -21,8 +21,8 @@ const assignUserToProject = async (req, res) => {
     if (existingAssignment) {
       return res.status(400).json({
         success: false,
-        error: 'Bad Request',
-        message: 'User is already assigned to this project',
+        error: "Bad Request",
+        message: "User is already assigned to this project",
       });
     }
 
@@ -31,13 +31,14 @@ const assignUserToProject = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'User not found',
+        error: "Not Found",
+        message: "User not found",
       });
     }
 
     // Automatically set isTechLead to true if user role is 'manager'
-    const isTechLead = user.role === 'manager' ? true : (req.body.isTechLead || false);
+    const isTechLead =
+      user.role === "manager" ? true : req.body.isTechLead || false;
 
     const assignment = await ProjectAssignment.create({
       projectId,
@@ -46,8 +47,8 @@ const assignUserToProject = async (req, res) => {
     });
 
     const populatedAssignment = await ProjectAssignment.findById(assignment._id)
-      .populate('userId', 'name email role')
-      .populate('projectId', 'name description status');
+      .populate("userId", "name email role")
+      .populate("projectId", "name description status");
 
     return res.status(201).json({
       success: true,
@@ -56,7 +57,7 @@ const assignUserToProject = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -70,7 +71,6 @@ const getProjectAssignments = async (req, res) => {
   try {
     const filter = {};
 
-    // Optional filters
     if (req.query.projectId) {
       filter.projectId = req.query.projectId;
     }
@@ -80,7 +80,7 @@ const getProjectAssignments = async (req, res) => {
     }
 
     if (req.query.isTechLead !== undefined) {
-      filter.isTechLead = req.query.isTechLead === 'true';
+      filter.isTechLead = req.query.isTechLead === "true";
     }
 
     const [total, assignments] = await Promise.all([
@@ -89,15 +89,45 @@ const getProjectAssignments = async (req, res) => {
         .skip(skip)
         .limit(perPage)
         .populate({
-          path: 'userId',
-          select: 'name email role position',
+          path: "userId",
+          select: "name email role position",
           populate: {
-            path: 'position',
-            select: '_id name'
-          }
+            path: "position",
+            select: "_id name",
+          },
         })
-        .populate('projectId', 'name description status deadline'),
+        .populate("projectId", "name description status deadline"),
     ]);
+
+    const projectsMap = new Map();
+
+    assignments.forEach((assignment) => {
+      const project = assignment.projectId;
+      const user = assignment.userId;
+
+      if (!project || !user) return;
+
+      if (!projectsMap.has(project._id.toString())) {
+        projectsMap.set(project._id.toString(), {
+          _id: project._id,
+          name: project.name,
+          description: project.description,
+          status: project.status,
+          deadline: project.deadline,
+          assignedEmployees: [],
+        });
+      }
+
+      projectsMap.get(project._id.toString()).assignedEmployees.push({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        position: user.position,
+      });
+    });
+
+    const projects = Array.from(projectsMap.values());
 
     return res.status(200).json({
       success: true,
@@ -105,13 +135,14 @@ const getProjectAssignments = async (req, res) => {
         page,
         perPage,
         total,
-        assignments,
+        project: projects.length === 1 ? projects[0] : projects,
       },
     });
   } catch (err) {
+    console.error("Error fetching project assignments:", err);
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -123,20 +154,20 @@ const getAssignmentById = async (req, res) => {
 
     const assignment = await ProjectAssignment.findById(assignmentId)
       .populate({
-        path: 'userId',
-        select: 'name email role position',
+        path: "userId",
+        select: "name email role position",
         populate: {
-          path: 'position',
-          select: '_id name'
-        }
+          path: "position",
+          select: "_id name",
+        },
       })
-      .populate('projectId', 'name description status deadline');
+      .populate("projectId", "name description status deadline");
 
     if (!assignment) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Assignment not found',
+        error: "Not Found",
+        message: "Assignment not found",
       });
     }
 
@@ -147,7 +178,7 @@ const getAssignmentById = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -163,8 +194,8 @@ const updateAssignment = async (req, res) => {
     if (!assignment) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Assignment not found',
+        error: "Not Found",
+        message: "Assignment not found",
       });
     }
 
@@ -172,7 +203,7 @@ const updateAssignment = async (req, res) => {
     const user = await User.findById(assignment.userId);
 
     // If user is a manager, they must remain as tech lead
-    if (user.role === 'manager') {
+    if (user.role === "manager") {
       assignment.isTechLead = true;
     } else if (isTechLead !== undefined) {
       assignment.isTechLead = isTechLead;
@@ -181,8 +212,8 @@ const updateAssignment = async (req, res) => {
     await assignment.save();
 
     const updatedAssignment = await ProjectAssignment.findById(assignmentId)
-      .populate('userId', 'name email role')
-      .populate('projectId', 'name description status');
+      .populate("userId", "name email role")
+      .populate("projectId", "name description status");
 
     return res.status(200).json({
       success: true,
@@ -191,7 +222,7 @@ const updateAssignment = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -206,8 +237,8 @@ const removeAssignment = async (req, res) => {
     if (!assignment) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Assignment not found',
+        error: "Not Found",
+        message: "Assignment not found",
       });
     }
 
@@ -217,7 +248,7 @@ const removeAssignment = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }

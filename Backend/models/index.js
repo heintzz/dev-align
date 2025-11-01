@@ -9,8 +9,6 @@ const projectAssignmentSchema = require("./schemas/project-assignments.schema");
 const columSchema = require("./schemas/column.schema");
 const taskSchema = require("./schemas/task.schema");
 const taskAssignmentSchema = require("./schemas/task-assignments");
-const taskSchema = require("./schemas/task.schema");
-const taskAssignmentSchema = require("./schemas/task-assignments");
 const notificationSchema = require("./schemas/notification.schema");
 const borrowRequestSchema = require("./schemas/borrow-request.schema");
 

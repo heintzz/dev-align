@@ -61,13 +61,6 @@ export default function Kanban() {
     }
   };
 
-  const updateColumn = (colKey, tasks) => {
-    setColumns((prev) => ({
-      ...prev,
-      [colKey]: { ...prev[colKey], tasks },
-    }));
-  };
-
   const onDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;

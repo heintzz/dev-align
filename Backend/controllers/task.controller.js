@@ -127,6 +127,14 @@ const createTask = async (req, res) => {
   } = req.body;
 
   try {
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        error: "Validation Error",
+        message: "Task title is required",
+      });
+    }
+
     const projectAssignment = await ProjectAssignment.findOne({
       projectId: projectId,
       userId: req.user.id,
@@ -192,17 +200,55 @@ const createTask = async (req, res) => {
       createdBy: req.user.id,
     });
 
-    if (assignedTo && assignedTo.length > 0) {
-      const assignments = assignedTo.map((userId) => ({
-        taskId: task._id,
-        userId: userId,
-      }));
-      await TaskAssignment.insertMany(assignments);
-    }
+    // if (assignedTo && assignedTo.length > 0) {
+    //   const assignments = assignedTo.map((userId) => ({
+    //     taskId: task._id,
+    //     userId: userId,
+    //   }));
+    //   await TaskAssignment.insertMany(assignments);
+    // }
 
     const populatedTask = await Task.findById(task._id)
       .populate("requiredSkills", "name")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .lean();
+
+    let assignee = null;
+
+    if (assignedTo && assignedTo.trim() !== "") {
+      const assignment = new TaskAssignment({
+        taskId: task._id,
+        userId: assignedTo,
+      });
+
+      await assignment.save();
+
+      assignee = await ProjectAssignment.findOne({
+        projectId,
+        userId: assignedTo,
+      })
+        .populate({
+          path: "userId",
+          select: "name email role position",
+          populate: {
+            path: "position",
+            select: "_id name",
+          },
+        })
+        .lean();
+    }
+
+    if (assignee?.userId) {
+      populatedTask.assignee = {
+        _id: assignee.userId._id,
+        name: assignee.userId.name,
+        email: assignee.userId.email,
+        role: assignee.userId.role,
+        position: assignee.userId.position,
+      };
+    } else {
+      populatedTask.assignee = null;
+    }
 
     const io = req.app.get("io");
     if (io) {
@@ -289,6 +335,101 @@ const getTasks = async (req, res) => {
       success: false,
       error: "Internal Server Error",
       message: err.message,
+    });
+  }
+};
+
+const editTask = async (req, res) => {
+  const {
+    projectId,
+    taskId,
+    title,
+    description,
+    skills,
+    status,
+    deadline,
+    assignedTo,
+  } = req.body;
+
+  try {
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: projectId,
+      userId: req.user.id,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        error: "Unauthorized",
+        message: "Not authorized to edit tasks to this project",
+      });
+    }
+
+    const existingTask = await Task.findById(taskId);
+    if (!existingTask) {
+      return res.status(404).json({
+        success: false,
+        error: "Not Found",
+        message: `Task with id '${taskId}' not found`,
+      });
+    }
+
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (status !== undefined) updates.status = status;
+    if (deadline !== undefined)
+      updates.deadline = deadline ? new Date(deadline) : null;
+    if (skills !== undefined) updates.requiredSkills = skills;
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    )
+      .populate("requiredSkills", "name")
+      .populate("createdBy", "name email");
+
+    if (assignedTo !== undefined && assignedTo && assignedTo.trim() !== "") {
+      await TaskAssignment.deleteMany({ taskId });
+
+      const assignment = new TaskAssignment({
+        taskId: taskId,
+        userId: assignedTo,
+      });
+      await assignment.save();
+    }
+
+    const assignments = await TaskAssignment.find({ taskId }).populate(
+      "userId",
+      "name email"
+    );
+
+    const taskWithAssignments = {
+      ...updatedTask.toObject(),
+      assignedUsers: assignments.map((a) => a.userId),
+    };
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`project:${existingTask.projectId}`).emit("task:updated", {
+        taskId,
+        task: taskWithAssignments,
+        columnKey: existingTask.columnKey,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Task updated successfully",
+      data: taskWithAssignments,
+    });
+  } catch (err) {
+    console.error("Edit task error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
     });
   }
 };
@@ -424,6 +565,7 @@ module.exports = {
   createColumn,
   getColumns,
   moveTask,
+  editTask,
   //   updateTask,
   // updateTaskStatus,
 };
