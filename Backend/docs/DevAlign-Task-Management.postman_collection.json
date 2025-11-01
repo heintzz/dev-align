@@ -138,7 +138,7 @@
                   "    pm.expect(jsonData.data.id).to.be.a('string');",
                   "    pm.expect(jsonData.data.title).to.be.a('string');",
                   "    pm.expect(jsonData.data.description).to.be.a('string');",
-                  "    pm.expect(jsonData.data.status).to.equal('backlog');",
+                  "    pm.expect(jsonData.data.status).to.equal('todo');",
                   "    pm.expect(jsonData.data.requiredSkills).to.be.an('array');",
                   "    pm.expect(jsonData.data.assignees).to.be.an('array');",
                   "});",
@@ -149,9 +149,9 @@
                   "    console.log('Task ID set:', jsonData.data.id);",
                   "}",
                   "",
-                  "pm.test('Task starts in backlog status', function () {",
+                  "pm.test('Task starts in todo status', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data.status).to.equal('backlog');",
+                  "    pm.expect(jsonData.data.status).to.equal('todo');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -241,7 +241,7 @@
           }
         },
         {
-          "name": "Update Task Status (Backlog → In Progress)",
+          "name": "Update Task Status (Todo → In Progress)",
           "request": {
             "method": "PUT",
             "header": [
@@ -291,7 +291,7 @@
           }
         },
         {
-          "name": "Update Task Status (Review → Done)",
+          "name": "Update Task Status (Done → Done)",
           "request": {
             "method": "PUT",
             "header": [
@@ -478,9 +478,9 @@
               "script": {
                 "exec": [
                   "const transitions = [",
-                  "    { from: 'backlog', to: 'in_progress' },",
-                  "    { from: 'in_progress', to: 'review' },",
-                  "    { from: 'review', to: 'done' }",
+                  "    { from: 'todo', to: 'in_progress' },",
+                  "    { from: 'in_progress', to: 'done' },",
+                  "    { from: 'done', to: 'done' }",
                   "];",
                   "",
                   "let currentTransition = pm.variables.get('currentTransition') || 0;",

@@ -37,7 +37,7 @@ const createTask = async (req, res) => {
       title,
       description,
       requiredSkills,
-      status: 'backlog',
+      status: 'todo',
       createdBy: userId,
     });
 
@@ -607,9 +607,8 @@ const updateTaskStatus = async (req, res) => {
 
     // Validate status transition
     const validTransitions = {
-      'backlog': ['in_progress'],
-      'in_progress': ['review', 'backlog'],
-      'review': ['done', 'in_progress'],
+      'todo': ['in_progress'],
+      'in_progress': ['done', 'todo'],
       'done': ['in_progress'],
     };
 
@@ -995,6 +994,7 @@ const updateProject = async (req, res) => {
     } else {
       // Handle individual staff additions
       if (addStaffIds && Array.isArray(addStaffIds) && addStaffIds.length > 0) {
+        const { sendNotification } = require('../services/notification.service');
         const staffToAdd = await User.find({ _id: { $in: addStaffIds } });
 
         if (staffToAdd.length !== addStaffIds.length) {
@@ -1020,6 +1020,15 @@ const updateProject = async (req, res) => {
             userId: staffMember._id,
             isTechLead: staffMember.role === 'manager',
           });
+
+          // Notify the staff member about assignment
+          await sendNotification({
+            user: staffMember,
+            title: 'Added to Project',
+            message: `You have been added to the project "${project.name}".`,
+            type: 'announcement',
+            relatedProject: project._id,
+          });
         }
 
         project.teamMemberCount += newStaff.length;
@@ -1028,6 +1037,11 @@ const updateProject = async (req, res) => {
 
       // Handle staff removals
       if (removeStaffIds && Array.isArray(removeStaffIds) && removeStaffIds.length > 0) {
+        const { sendNotification } = require('../services/notification.service');
+
+        // Get staff details before removal for notifications
+        const removedStaff = await User.find({ _id: { $in: removeStaffIds } });
+
         // Remove project assignments
         const removeResult = await ProjectAssignment.deleteMany({
           projectId: project._id,
@@ -1042,6 +1056,17 @@ const updateProject = async (req, res) => {
           userId: { $in: removeStaffIds }
         });
 
+        // Notify removed staff members
+        for (const staffMember of removedStaff) {
+          await sendNotification({
+            user: staffMember,
+            title: 'Removed from Project',
+            message: `You have been removed from the project "${project.name}".`,
+            type: 'announcement',
+            relatedProject: project._id,
+          });
+        }
+
         project.teamMemberCount = Math.max(1, project.teamMemberCount - removeResult.deletedCount);
         messages.push(`Removed ${removeResult.deletedCount} staff members from project and tasks`);
       }
@@ -1049,10 +1074,15 @@ const updateProject = async (req, res) => {
 
     // Handle status change to 'completed' - transfer skills to users
     if (status !== undefined && status === 'completed' && project.status === 'active') {
-      // Get all tasks for this project
-      const tasks = await Task.find({ projectId: project._id }).populate('requiredSkills');
+      const { sendNotification } = require('../services/notification.service');
 
-      // Get all task assignments for this project
+      // Get all tasks for this project (only in_progress or done - exclude todo)
+      const tasks = await Task.find({
+        projectId: project._id,
+        status: { $in: ['in_progress', 'done'] }
+      }).populate('requiredSkills');
+
+      // Get all task assignments for these tasks
       const taskIds = tasks.map(task => task._id);
       const taskAssignments = await TaskAssignment.find({ taskId: { $in: taskIds } }).populate('userId');
 
@@ -1088,7 +1118,31 @@ const updateProject = async (req, res) => {
       }
 
       project.status = 'completed';
-      messages.push(`Project completed. Transferred skills to ${usersUpdated} users`);
+      messages.push(`Project completed. Transferred skills from ${tasks.length} task(s) to ${usersUpdated} user(s)`);
+
+      // Notify all team members about project completion
+      const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate('userId', 'name email');
+      for (const assignment of teamAssignments) {
+        await sendNotification({
+          user: assignment.userId,
+          title: 'Project Completed',
+          message: `The project "${project.name}" has been marked as completed. Your task skills have been transferred to your profile.`,
+          type: 'announcement',
+          relatedProject: project._id,
+        });
+      }
+
+      // Notify HR about project completion
+      const hrUsers = await User.find({ role: 'hr' });
+      for (const hrUser of hrUsers) {
+        await sendNotification({
+          user: hrUser,
+          title: 'Project Completed',
+          message: `The project "${project.name}" has been completed. Skills from ${tasks.length} task(s) have been transferred to ${usersUpdated} team member(s).`,
+          type: 'announcement',
+          relatedProject: project._id,
+        });
+      }
     } else if (status !== undefined) {
       project.status = status;
     }
@@ -1116,8 +1170,9 @@ const updateProject = async (req, res) => {
 const deleteProject = async (req, res) => {
   try {
     const { projectId } = req.params;
+    const { sendNotification } = require('../services/notification.service');
 
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(projectId).populate('createdBy', 'name email');
 
     if (!project) {
       return res.status(404).json({
@@ -1126,6 +1181,13 @@ const deleteProject = async (req, res) => {
         message: 'Project not found',
       });
     }
+
+    // Get all team members before deletion to send notifications
+    const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate('userId', 'name email');
+    const teamMembers = teamAssignments.map(a => a.userId);
+
+    // Get HR users
+    const hrUsers = await User.find({ role: 'hr' });
 
     // Cascade delete: Find all tasks for this project
     const tasks = await Task.find({ projectId: project._id });
@@ -1140,8 +1202,34 @@ const deleteProject = async (req, res) => {
     // Delete all project assignments
     await ProjectAssignment.deleteMany({ projectId: project._id });
 
+    // Delete all borrow requests related to this project
+    const { BorrowRequest } = require('../models');
+    await BorrowRequest.deleteMany({ projectId: project._id });
+
     // Delete the project itself
     await project.deleteOne();
+
+    // Send notifications to all team members
+    for (const member of teamMembers) {
+      await sendNotification({
+        user: member,
+        title: 'Project Deleted',
+        message: `The project "${project.name}" has been deleted by ${project.createdBy.name}. All associated tasks and assignments have been removed.`,
+        type: 'announcement',
+        relatedProject: null, // Project is deleted, so no reference
+      });
+    }
+
+    // Send notifications to HR
+    for (const hrUser of hrUsers) {
+      await sendNotification({
+        user: hrUser,
+        title: 'Project Deleted',
+        message: `The project "${project.name}" created by ${project.createdBy.name} has been deleted. ${teamMembers.length} team member(s) were affected.`,
+        type: 'announcement',
+        relatedProject: null,
+      });
+    }
 
     return res.status(204).send();
   } catch (err) {
@@ -1155,6 +1243,8 @@ const deleteProject = async (req, res) => {
 
 const createProjectWithAssignments = async (req, res) => {
   const { name, description, startDate, deadline, staffIds } = req.body;
+  const { sendNotification } = require('../services/notification.service');
+  const { BorrowRequest } = require('../models');
 
   // Validation
   if (!name || name.trim() === '') {
@@ -1182,8 +1272,8 @@ const createProjectWithAssignments = async (req, res) => {
   }
 
   try {
-    // Verify all staff members exist
-    const staff = await User.find({ _id: { $in: staffIds } });
+    // Verify all staff members exist and get their data
+    const staff = await User.find({ _id: { $in: staffIds } }).populate('managerId', 'name email');
 
     if (staff.length !== staffIds.length) {
       return res.status(404).json({
@@ -1193,13 +1283,16 @@ const createProjectWithAssignments = async (req, res) => {
       });
     }
 
+    // Get project creator details
+    const projectCreator = await User.findById(req.user.id);
+
     // Create project
     const projectData = {
       name,
       description,
       status: 'active', // Auto-set to active
       createdBy: req.user.id,
-      teamMemberCount: staffIds.length + 1, // Include manager in count
+      teamMemberCount: 1, // Start with just manager, will increment as staff are approved
     };
 
     if (startDate) projectData.startDate = startDate;
@@ -1207,18 +1300,98 @@ const createProjectWithAssignments = async (req, res) => {
 
     const project = await Project.create(projectData);
 
-    // Create assignments for all staff members
-    const assignments = [];
+    // Categorize staff: own staff vs need approval
+    const ownStaff = [];
+    const needApprovalStaff = [];
+
     for (const staffMember of staff) {
+      // Check if this staff is a direct subordinate (managerId matches creator's ID)
+      if (
+        staffMember.managerId &&
+        staffMember.managerId._id.toString() === req.user.id
+      ) {
+        ownStaff.push(staffMember);
+      } else {
+        needApprovalStaff.push(staffMember);
+      }
+    }
+
+    // Create assignments for own staff (direct subordinates)
+    const assignments = [];
+    for (const staffMember of ownStaff) {
       const assignmentData = {
         projectId: project._id,
         userId: staffMember._id,
-        // Automatically set isTechLead to true if user is a manager
         isTechLead: staffMember.role === 'manager',
       };
 
       const assignment = await ProjectAssignment.create(assignmentData);
       assignments.push(assignment);
+
+      // Notify staff about assignment
+      await sendNotification({
+        user: staffMember,
+        title: 'New Project Assignment',
+        message: `You have been assigned to the project "${name}". Your manager ${projectCreator.name} has created this project.`,
+        type: 'announcement',
+        relatedProject: project._id,
+      });
+    }
+
+    // Update team member count to include assigned staff
+    project.teamMemberCount = 1 + ownStaff.length;
+    await project.save();
+
+    // Create borrow requests for staff that need approval
+    const borrowRequests = [];
+    for (const staffMember of needApprovalStaff) {
+      if (!staffMember.managerId) {
+        // Skip if staff has no manager assigned
+        continue;
+      }
+
+      const borrowRequest = await BorrowRequest.create({
+        projectId: project._id,
+        staffId: staffMember._id,
+        requestedBy: req.user.id,
+        approvedBy: staffMember.managerId._id,
+        isApproved: null, // null = pending
+      });
+
+      borrowRequests.push(borrowRequest);
+
+      // Notify the staff's manager about approval request
+      await sendNotification({
+        user: staffMember.managerId,
+        title: 'Staff Assignment Approval Required',
+        message: `${projectCreator.name} wants to assign your team member ${staffMember.name} to the project "${name}". Please review and respond to this request.`,
+        type: 'project_approval',
+        relatedProject: project._id,
+        relatedBorrowRequest: borrowRequest._id,
+      });
+
+      // Notify the staff that they're pending approval
+      await sendNotification({
+        user: staffMember,
+        title: 'Pending Project Assignment',
+        message: `You have been nominated for the project "${name}" by ${projectCreator.name}. Waiting for approval from your manager.`,
+        type: 'announcement',
+        relatedProject: project._id,
+      });
+    }
+
+    // Get HR users to notify
+    const hrUsers = await User.find({ role: 'hr' });
+
+    // Notify HR about new project
+    for (const hrUser of hrUsers) {
+      await sendNotification({
+        user: hrUser,
+        title: 'New Project Created',
+        message: `${projectCreator.name} has created a new project: "${name}". ${ownStaff.length} staff member(s) assigned, ${needApprovalStaff.length} pending approval.`,
+        type: 'announcement',
+        relatedProject: project._id,
+      });
     }
 
     // Populate project and assignments for response
@@ -1243,7 +1416,8 @@ const createProjectWithAssignments = async (req, res) => {
       data: {
         project: populatedProject,
         assignments: populatedAssignments,
-        message: `Project created successfully with ${assignments.length} staff members assigned`,
+        borrowRequests: borrowRequests.length,
+        message: `Project created successfully. ${ownStaff.length} staff member(s) assigned immediately. ${needApprovalStaff.length} staff member(s) pending manager approval.`,
       },
     });
   } catch (err) {
@@ -1366,6 +1540,64 @@ const assignTechLead = async (req, res) => {
   }
 };
 
+/**
+ * Get all staff assigned to a specific project
+ * Returns user ID and name for easy task assignment
+ */
+const getProjectStaff = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid project ID format'
+      });
+    }
+
+    // Verify project exists
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Project not found',
+      });
+    }
+
+    // Get all project assignments with user details
+    const assignments = await ProjectAssignment.find({ projectId })
+      .populate('userId', '_id name email role')
+      .sort({ 'userId.name': 1 });
+
+    // Format response with just id and name
+    const staff = assignments.map(assignment => ({
+      id: assignment.userId._id,
+      name: assignment.userId.name,
+      email: assignment.userId.email,
+      role: assignment.userId.role,
+      isTechLead: assignment.isTechLead,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        projectId,
+        projectName: project.name,
+        totalStaff: staff.length,
+        staff,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   createProject,
   createProjectWithAssignments,
@@ -1376,6 +1608,7 @@ module.exports = {
   updateProject,
   deleteProject,
   assignTechLead,
+  getProjectStaff,
   // Task Management
   getProjectTasks,    // DEV-79
   updateTaskStatus,   // DEV-80

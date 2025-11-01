@@ -8,6 +8,8 @@ const projectSchema = require("./schemas/project.schema");
 const projectAssignmentSchema = require("./schemas/project-assignments.schema");
 const taskSchema = require("./schemas/task.schema");
 const taskAssignmentSchema = require("./schemas/task-assignments");
+const notificationSchema = require("./schemas/notification.schema");
+const borrowRequestSchema = require("./schemas/borrow-request.schema");
 
 const User = mongoose.model("User", userSchema);
 const Skill = mongoose.model("Skill", skillSchema);
@@ -18,6 +20,8 @@ const Project = mongoose.model("Project", projectSchema);
 const ProjectAssignment = mongoose.model("ProjectAssignment", projectAssignmentSchema);
 const Task = mongoose.model("Task", taskSchema);
 const TaskAssignment = mongoose.model("TaskAssignment", taskAssignmentSchema);
+const Notification = mongoose.model("Notification", notificationSchema);
+const BorrowRequest = mongoose.model("BorrowRequest", borrowRequestSchema);
 
 module.exports = {
   User,
@@ -29,4 +33,6 @@ module.exports = {
   ProjectAssignment,
   Task,
   TaskAssignment,
+  Notification,
+  BorrowRequest,
 };

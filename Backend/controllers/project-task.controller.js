@@ -281,9 +281,8 @@ const updateTaskStatus = async (req, res) => {
 
     // Validate status transition
     const validTransitions = {
-      'backlog': ['in_progress'],
-      'in_progress': ['review', 'backlog'],
-      'review': ['done', 'in_progress'],
+      'todo': ['in_progress'],
+      'in_progress': ['done', 'todo'],
       'done': ['in_progress'],
     };
 

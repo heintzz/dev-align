@@ -11,6 +11,8 @@ const menuRoutes = require('./routes/menu.routes');
 const positionRoutes = require('./routes/position.routes');
 const projectRoutes = require('./routes/project.routes');
 const projectAssignmentRoutes = require('./routes/project-assignment.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const borrowRequestRoutes = require('./routes/borrow-request.routes');
 const swaggerUi = require('swagger-ui-express');
 
 dotenv.config();
@@ -38,6 +40,8 @@ app.use('/position', positionRoutes);
 app.use('/menu', menuRoutes);
 app.use('/project', projectRoutes);
 app.use('/project-assignment', projectAssignmentRoutes);
+app.use('/notification', notificationRoutes);
+app.use('/borrow-request', borrowRequestRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);

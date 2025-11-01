@@ -1132,7 +1132,7 @@ Content-Type: application/json
     "id": "6901c5f7ed0f35753d38c5",
     "title": "Design User Interface",
     "description": "Create UI mockups for the mobile app",
-    "status": "backlog",
+    "status": "todo",
     "startDate": null,
     "endDate": null,
     "requiredSkills": [
@@ -1185,7 +1185,7 @@ Retrieves detailed information about a specific task.
     "id": "6901c5f7ed0f35753d38c5",
     "title": "Design User Interface",
     "description": "Create UI mockups for the mobile app",
-    "status": "backlog",
+    "status": "todo",
     "startDate": null,
     "endDate": null,
     "requiredSkills": [...],
@@ -1397,9 +1397,8 @@ Updates the status of a task with valid status transitions.
 **Access**: Project members assigned to the task, or tech leads
 
 **⭐ Status Transitions**:
-- backlog → in_progress
-- in_progress → review, backlog
-- review → done, in_progress
+- todo → in_progress
+- in_progress → done, todo
 - done → in_progress
 
 **Automatic Date Updates**:
@@ -1418,7 +1417,7 @@ Updates the status of a task with valid status transitions.
 |-------|------|----------|-------------|
 | `status` | string | Yes | New status for the task |
 
-**Status Values**: `backlog`, `in_progress`, `review`, `done`
+**Status Values**: `todo`, `in_progress`, `done`
 
 **Request Example**:
 ```http
@@ -1475,7 +1474,7 @@ Content-Type: application/json
 {
   "success": false,
   "error": "Invalid Status Transition",
-  "message": "Cannot transition from backlog to done",
+  "message": "Cannot transition from todo to done",
   "allowedTransitions": ["in_progress"]
 }
 ```
