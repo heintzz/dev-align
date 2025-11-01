@@ -1,16 +1,25 @@
-const { Schema } = require('mongoose');
+const { Schema } = require("mongoose");
 
-const taskSchema = new Schema(
+const TaskSchema = new Schema(
   {
     projectId: {
       type: Schema.Types.ObjectId,
-      ref: 'Project',
+      ref: "Project",
       required: true,
+    },
+    columnId: {
+      type: Schema.Types.ObjectId,
+      ref: "Column",
+      required: true,
+    },
+    columnKey: {
+      type: String,
+      required: true,
+      trim: true,
     },
     title: {
       type: String,
       required: true,
-      maxlength: 100,
     },
     description: {
       type: String,
@@ -18,23 +27,25 @@ const taskSchema = new Schema(
     requiredSkills: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'Skill',
+        ref: "Skill",
       },
     ],
     status: {
       type: String,
-      enum: ['todo', 'in_progress', 'done'],
-      default: 'todo',
+      enum: ["todo", "in_progress", "review", "done"],
+      default: "todo",
     },
-    startDate: {
-      type: Date,
+    order: {
+      type: Number,
+      required: true,
+      default: 0,
     },
-    endDate: {
+    deadline: {
       type: Date,
     },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
   },
@@ -43,4 +54,6 @@ const taskSchema = new Schema(
   }
 );
 
-module.exports = taskSchema;
+TaskSchema.index({ projectId: 1, columnKey: 1, order: 1 });
+
+module.exports = TaskSchema;

@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { DragDropContext } from "@hello-pangea/dnd";
-import { CirclePlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { io } from "socket.io-client";
+import api from "@/api/axios";
 
+import { DragDropContext } from "@hello-pangea/dnd";
 import Column from "@/components/kanban/Column";
 
 // shadcn/ui components
@@ -9,46 +11,56 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import Loading from "@/components/Loading";
+import { CirclePlus } from "lucide-react";
+
+import { Spinner } from "@/components/ui/spinner";
+
 export default function Kanban() {
-  const [columns, setColumns] = useState({
-    backlog: {
-      name: "Backlog",
-      tasks: [
-        { title: "Buy groceries", status: "todo", deadline: "20-07-2025" },
-        { title: "Finish report", status: "todo", deadline: "20-07-2025" },
-      ],
-    },
-    staging: {
-      name: "Staging",
-      tasks: [
-        {
-          title: "Build Kanban app",
-          status: "in-progress",
-          deadline: "20-07-2025",
-        },
-      ],
-    },
-    onTesting: {
-      name: "On Testing",
-      tasks: [{ title: "Learn React", status: "done", deadline: "20-07-2025" }],
-    },
-    deployed: {
-      name: "Deployed",
-      tasks: [{ title: "Learn React", status: "done", deadline: "20-07-2025" }],
-    },
-  });
-
+  const [socket, setSocket] = useState(null);
+  const [columns, setColumns] = useState([]);
   const [newListName, setNewListName] = useState("");
+  const [listSkills, setListSkills] = useState([]);
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+  const { projectId } = useParams();
+  const token = localStorage.getItem("token");
 
-  const addNewList = () => {
+  const getTasks = async () => {
+    try {
+      const { data } = await api.get(`task?projectId=${projectId}`);
+      // console.log(data);
+      setColumns(data.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const getSkills = async () => {
+    const { data } = await api.get("/skill");
+    setListSkills(data.data.skills || []);
+  };
+
+  const addNewList = async () => {
     const key = newListName.trim().toLowerCase().replace(/\s+/g, "-");
+    // console.log(key);
     if (!key || columns[key]) return;
 
-    setColumns((prev) => ({
-      ...prev,
-      [key]: { name: newListName, tasks: [] },
-    }));
-    setNewListName("");
+    try {
+      const { data } = await api.post("/task/column", {
+        projectId: projectId,
+        key,
+        name: newListName,
+      });
+
+      if (data.success) {
+        getTasks();
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setNewListName("");
+    }
   };
 
   const updateColumn = (colKey, tasks) => {
@@ -58,36 +70,136 @@ export default function Kanban() {
     }));
   };
 
-  const onDragEnd = (result) => {
+  const onDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
 
-    // same column reorder
-    if (source.droppableId === destination.droppableId) {
-      const column = columns[source.droppableId];
-      const copied = [...column.tasks];
-      const [moved] = copied.splice(source.index, 1);
-      copied.splice(destination.index, 0, moved);
-      updateColumn(source.droppableId, copied);
-      return;
-    }
+    const fromColumnKey = source.droppableId;
+    const toColumnKey = destination.droppableId;
+    const fromIndex = source.index;
+    const toIndex = destination.index;
 
-    // move between columns
-    const fromCol = columns[source.droppableId];
-    const toCol = columns[destination.droppableId];
-    const fromTasks = [...fromCol.tasks];
-    const toTasks = [...toCol.tasks];
-    const [moved] = fromTasks.splice(source.index, 1);
-    toTasks.splice(destination.index, 0, moved);
-    updateColumn(source.droppableId, fromTasks);
-    updateColumn(destination.droppableId, toTasks);
+    // Don't do anything if dropped in same position
+    if (fromColumnKey === toColumnKey && fromIndex === toIndex) return;
+
+    // Get the task being moved
+    const task = columns[fromColumnKey].tasks[fromIndex];
+    console.log(task);
+
+    try {
+      setLoadingState(true);
+      setLoadingText("Moving Task...");
+      const { data } = await api.patch("/task/move", {
+        taskId: task._id,
+        fromColumnKey,
+        toColumnKey,
+        fromIndex,
+        toIndex,
+      });
+
+      console.log(data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
+    }
   };
+
+  useEffect(() => {
+    getTasks();
+    getSkills();
+  }, [projectId]);
+
+  useEffect(() => {
+    // Setup Socket.IO
+    const newSocket = io("http://localhost:5000", {
+      auth: { token },
+    });
+
+    newSocket.emit("join:project", projectId);
+
+    // Listen for real-time updates
+    newSocket.on("task:created", ({ task, columnKey }) => {
+      // console.log(task);
+      // console.log(columnKey);
+      setColumns((prev) => ({
+        ...prev,
+        [columnKey]: {
+          ...prev[columnKey],
+          tasks: [
+            ...prev[columnKey].tasks,
+            {
+              ...task,
+              deadline: task.deadline
+                ? new Date(task.deadline).toLocaleDateString("en-GB")
+                : null,
+            },
+          ],
+        },
+      }));
+    });
+
+    newSocket.on(
+      "task:moved",
+      ({ taskId, fromColumnKey, toColumnKey, fromIndex, toIndex }) => {
+        console.log("Task moved:", {
+          taskId,
+          fromColumnKey,
+          toColumnKey,
+          fromIndex,
+          toIndex,
+        });
+
+        setColumns((prev) => {
+          const newColumns = { ...prev };
+          const fromColumn = newColumns[fromColumnKey];
+          const toColumn = newColumns[toColumnKey];
+
+          if (!fromColumn || !toColumn) {
+            console.warn("Invalid column keys:", {
+              fromColumnKey,
+              toColumnKey,
+            });
+            return prev;
+          }
+
+          const fromTasks = Array.isArray(fromColumn.tasks)
+            ? [...fromColumn.tasks]
+            : [];
+          const toTasks = Array.isArray(toColumn.tasks)
+            ? [...toColumn.tasks]
+            : [];
+
+          const [moved] = fromTasks.splice(fromIndex, 1);
+          if (!moved) {
+            console.warn("No task found to move:", { fromIndex, fromTasks });
+            return prev;
+          }
+
+          toTasks.splice(toIndex, 0, moved);
+
+          return {
+            ...prev,
+            [fromColumnKey]: { ...fromColumn, tasks: fromTasks },
+            [toColumnKey]: { ...toColumn, tasks: toTasks },
+          };
+        });
+      }
+    );
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.emit("leave:project", projectId);
+      newSocket.close();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen p-4 bg-[url('/assets/images/kanbanBG.jpg')] bg-cover bg-fixed">
-      {/* Responsive wrapper:
-          - horizontal scroll on small screens (mobile)
-          - spacing and wrapping behavior on larger screens */}
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
       <div className="overflow-x-auto">
         <div className="flex gap-6 items-start px-2 py-4 min-w-max">
           <DragDropContext onDragEnd={onDragEnd}>
@@ -96,13 +208,13 @@ export default function Kanban() {
                 key={key}
                 droppableId={key}
                 column={column}
+                listSkills={listSkills}
                 updateColumn={updateColumn}
                 className="shrink-0"
               />
             ))}
           </DragDropContext>
 
-          {/* Add new list card */}
           <Card className="w-72 shrink-0 p-4">
             <div className="flex flex-col gap-2">
               <Input
@@ -112,7 +224,7 @@ export default function Kanban() {
               />
               <Button
                 onClick={addNewList}
-                className="w-full flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2 bg-primer"
               >
                 <CirclePlus size={18} />
                 Add list

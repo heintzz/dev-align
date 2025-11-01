@@ -1,15 +1,15 @@
-const { Schema } = require('mongoose');
+const { Schema } = require("mongoose");
 
 const taskAssignmentSchema = new Schema(
   {
     taskId: {
       type: Schema.Types.ObjectId,
-      ref: 'Task',
+      ref: "Task",
       required: true,
     },
     userId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     assignedAt: {
