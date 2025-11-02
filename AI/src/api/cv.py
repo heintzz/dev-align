@@ -1,32 +1,24 @@
 import os
-from typing import Union
-from fastapi import APIRouter, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+
 from src.config import settings
-from src.models.document import InvalidFileTypeError
+from src.models.document import InvalidFileTypeError, CVResponse
 from src.services.extractor import upload_document
-from src.agents.agent import configure_dspy
+from src.agents.agent import configure_llm
 from src.agents.parser_agent.parser import CVParserAgent
 from src.utils.util import extract_text_from_pdf
 
+from typing import Union
+from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
 
-router = APIRouter()
-cv_router = APIRouter(prefix="/cv")
+router = APIRouter(prefix="/cv")
 
-@router.get("/")
-def root():
-    return {"message": "Welcome to the main API!"}
-
-@router.get("/health")
-def health_check():
-    return JSONResponse(content={"status": "ok", "message": "Service is healthy"}, status_code=200)
-
-@cv_router.post("/extract-data")
+@router.post("/extract-data", response_model=CVResponse)
 def parse_document_endpoint(file: Union[UploadFile, str]):
     """Parse a CV document and return structured data. Accepts an UploadFile (production) or a local path (for tests)."""
     
     try:
-        configure_dspy()
+        configure_llm()
        
         if isinstance(file, str):
             if not os.path.exists(file):
@@ -47,7 +39,7 @@ def parse_document_endpoint(file: Union[UploadFile, str]):
         if isinstance(cv_data, dict) and "error" in cv_data:
             raise HTTPException(status_code=500, detail=f"Failed to parse CV: {cv_data['error']}")
 
-        return JSONResponse(content={"success": True, "message": "CV has been extracted successfully", "data": cv_data})
+        return {"success": True, "message": "CV has been extracted successfully", "data": cv_data}
 
     except InvalidFileTypeError as e:
         raise HTTPException(status_code=422, detail=str(e))
