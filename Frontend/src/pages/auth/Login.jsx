@@ -4,12 +4,16 @@ import { Link } from "react-router-dom";
 import logoKiri from "../../assets/img/loginkiri.png";
 import logoKecil from "../../assets/img/loginkanan.png";
 import authService from "../../services/auth.service";
+import Loading from "@/components/Loading";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function Login() {
+  const { login } = useAuthStore();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -20,36 +24,32 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
-
     try {
-      const response = await authService.login(formData.email, formData.password);
-      
+      setLoadingState(true);
+      setLoadingText("Login");
+      const response = await authService.login(
+        formData.email,
+        formData.password
+      );
+
       if (response.success) {
-        const role = response.data.role;
-        
-        // Redirect berdasarkan role
-        if (role === 'hr') {
-          navigate('/dashboard-hr');
-        } else if (role === 'manager') {
-          navigate('/dashboard-pm');
-        } else if (role === 'staff') {
-          navigate('/dashboard-staff');
-        } else {
-          // Fallback jika role tidak dikenali
-          navigate('/kanban');
-        }
+        const { token, id, role } = response.data;
+        login(token, id, role);
+        navigate("/dashboard", { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
-      console.error('Login error:', err);
+      setError(err.message || "Login failed. Please check your credentials.");
+      console.error("Login error:", err);
     } finally {
-      setIsLoading(false);
+      setLoadingText("");
+      setLoadingState(false);
     }
   };
 
   return (
     <div className="flex min-h-screen">
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
       {/* Left Side - Logo Section */}
       <div className="flex-1 overflow-hidden">
         <img
@@ -78,7 +78,10 @@ export default function Login() {
           </div>
 
           {/* Login Title */}
-          <h2 className="text-3xl font-semibold mb-8" style={{ color: "#2C3F48" }}>
+          <h2
+            className="text-3xl font-semibold mb-8"
+            style={{ color: "#2C3F48" }}
+          >
             Login
           </h2>
 
@@ -99,7 +102,7 @@ export default function Login() {
                 placeholder="Email"
                 value={formData.email}
                 onChange={handleChange}
-                disabled={isLoading}
+                disabled={loadingState}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
@@ -112,7 +115,7 @@ export default function Login() {
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
-                disabled={isLoading}
+                disabled={loadingState}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
@@ -129,11 +132,11 @@ export default function Login() {
 
             <button
               onClick={handleSubmit}
-              disabled={isLoading}
-              className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loadingState}
+              className="w-full text-white cursor-pointer font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2C3F48" }}
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {loadingState ? "Logging in..." : "Login"}
             </button>
           </div>
         </div>

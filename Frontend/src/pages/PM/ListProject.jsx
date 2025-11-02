@@ -132,7 +132,7 @@ export default function ListProjects() {
 
   // Navigate to project kanban board
   const handleViewKanban = (projectId) => {
-    navigate(`/projects/${projectId}/kanban`);
+    navigate(`/kanban/${projectId}`);
   };
 
   // Navigate to create project page
@@ -288,7 +288,7 @@ export default function ListProjects() {
                   </button>
                   <button
                     onClick={() => handleViewKanban(project._id)}
-                    className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] text-sm font-medium"
+                    className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] text-sm font-medium cursor-pointer"
                   >
                     Kanban
                   </button>
