@@ -24,8 +24,8 @@ export default function Kanban() {
   const [socket, setSocket] = useState(null);
   const [columns, setColumns] = useState([]);
   const [newListName, setNewListName] = useState("");
-  const [loadingState, setLoadingState] = useState(false);
   const [listColumns, setListColumns] = useState([]);
+  const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const { projectId } = useParams();
 
@@ -54,14 +54,9 @@ export default function Kanban() {
   };
 
   const addNewList = async () => {
-    // const key = newListName.trim().toLowerCase().replace(/\s+/g, "-");
-    // console.log(key);
-    // if (!key || columns[key]) return;
-
     try {
       const { data } = await api.post("/task/column", {
         projectId: projectId,
-        // key,
         name: newListName,
       });
 
@@ -84,10 +79,9 @@ export default function Kanban() {
     const fromIndex = source.index;
     const toIndex = destination.index;
     console.log({ fromColumnKey, toColumnKey, fromIndex, toIndex });
-    // Don't do anything if dropped in same position
+
     if (fromColumnKey === toColumnKey && fromIndex === toIndex) return;
 
-    // Get the task being moved
     const task = columns[fromColumnKey].tasks[fromIndex];
     console.log(task);
 
@@ -118,14 +112,12 @@ export default function Kanban() {
   }, [projectId]);
 
   useEffect(() => {
-    // Setup Socket.IO
     const newSocket = io("http://localhost:5000", {
       auth: { token },
     });
 
     newSocket.emit("join:project", projectId);
 
-    // Listen for real-time updates
     newSocket.on("column:created", ({ column }) => {
       console.log("New column created:", column);
       setColumns((prev) => ({
@@ -181,7 +173,6 @@ export default function Kanban() {
           const newColumns = { ...prev };
 
           if (movedTo) {
-            // Tasks were moved to another column
             const movedTasks = newColumns[columnKey]?.tasks || [];
             newColumns[movedTo] = {
               ...newColumns[movedTo],
@@ -191,8 +182,6 @@ export default function Kanban() {
               ].sort((a, b) => a.order - b.order),
             };
           }
-
-          // Remove the deleted column
           delete newColumns[columnKey];
 
           return newColumns;
@@ -249,7 +238,6 @@ export default function Kanban() {
           const newColumns = { ...prev };
 
           if (fromColumnKey === toColumnKey) {
-            // Same column reorder
             const tasks = [...(newColumns[fromColumnKey]?.tasks || [])];
             const [moved] = tasks.splice(fromIndex, 1);
             tasks.splice(toIndex, 0, moved);
@@ -258,7 +246,6 @@ export default function Kanban() {
               tasks,
             };
           } else {
-            // Different columns
             const fromTasks = [...(newColumns[fromColumnKey]?.tasks || [])];
             const toTasks = [...(newColumns[toColumnKey]?.tasks || [])];
             const [moved] = fromTasks.splice(fromIndex, 1);
@@ -290,14 +277,12 @@ export default function Kanban() {
       setColumns((prev) => {
         const newColumns = { ...prev };
 
-        // Find and update the task in all columns
         Object.keys(newColumns).forEach((key) => {
           const taskIndex = newColumns[key].tasks.findIndex(
             (t) => t._id === taskId
           );
 
           if (taskIndex !== -1) {
-            // Update the task
             newColumns[key].tasks[taskIndex] = {
               ...newColumns[key].tasks[taskIndex],
               ...task,
@@ -320,7 +305,6 @@ export default function Kanban() {
     newSocket.on("task:deleted", ({ task, taskId, columnKey }) => {
       console.log("Task deleted:", { task, taskId, columnKey });
       setColumns((prev) => {
-        // Check if column exists
         if (!prev[columnKey]) {
           console.warn(`Column ${columnKey} not found`);
           return prev;
