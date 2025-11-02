@@ -5,6 +5,9 @@ import {
   Navigate,
 } from "react-router-dom";
 
+// Components
+import CustomToaster from "@/components/CustomToaster";
+
 // Pages
 import Kanban from "@/pages/Kanban";
 import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
@@ -29,87 +32,90 @@ function App() {
     setRole(localStorage.getItem("role"));
   }, []);
   return (
-    <Router>
-      <Routes>
-        {/* Halaman Login tanpa layout */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <>
+      <Router>
+        <Routes>
+          {/* Halaman Login tanpa layout */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Halaman dengan layout utama */}
-        <Route
-          path="/kanban/:projectId"
-          element={
-            <AppLayout>
-              <Kanban />
-            </AppLayout>
-          }
-        />
+          {/* Halaman dengan layout utama */}
+          <Route
+            path="/kanban/:projectId"
+            element={
+              <AppLayout>
+                <Kanban />
+              </AppLayout>
+            }
+          />
 
-        <Route
-          path="/dashboard"
-          element={
-            <AppLayout>
-              {role == "hr" ? (
-                <HRDashboard />
-              ) : role == "manager" ? (
-                <PMDashboard />
-              ) : (
-                <StaffDashboard />
-              )}
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/dashboard"
+            element={
+              <AppLayout>
+                {role == "hr" ? (
+                  <HRDashboard />
+                ) : role == "manager" ? (
+                  <PMDashboard />
+                ) : (
+                  <StaffDashboard />
+                )}
+              </AppLayout>
+            }
+          />
 
-        <Route
-          path="/employees"
-          element={
-            <AppLayout>
-              <ManageEmployee />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/employees"
+            element={
+              <AppLayout>
+                <ManageEmployee />
+              </AppLayout>
+            }
+          />
 
-        <Route
-          path="/employees/detail/:id"
-          element={
-            <AppLayout>
-              <EmployeeDetail />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/employees/detail/:id"
+            element={
+              <AppLayout>
+                <EmployeeDetail />
+              </AppLayout>
+            }
+          />
 
-        <Route
-          path="/addEmployee"
-          element={
-            <AppLayout>
-              <AddEmployee />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/addEmployee"
+            element={
+              <AppLayout>
+                <AddEmployee />
+              </AppLayout>
+            }
+          />
 
-        <Route
-          path="/create-project"
-          element={
-            <AppLayout>
-              <CreateProject />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/create-project"
+            element={
+              <AppLayout>
+                <CreateProject />
+              </AppLayout>
+            }
+          />
 
-        <Route
-          path="/projects"
-          element={
-            <AppLayout>
-              <ListProjects />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/projects"
+            element={
+              <AppLayout>
+                <ListProjects />
+              </AppLayout>
+            }
+          />
 
-        {/* Redirect default ke /login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+          {/* Redirect default ke /login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Router>
+      <CustomToaster />
+    </>
   );
 }
 

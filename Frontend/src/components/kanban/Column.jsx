@@ -6,8 +6,10 @@ import {
   PlusCircle,
   Check,
   X,
+  Save,
   Calendar as CalendarIcon,
   ChevronDown,
+  Trash,
 } from "lucide-react";
 import { format, set } from "date-fns";
 
@@ -38,6 +40,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -59,6 +71,7 @@ const Column = ({
   projectId,
   droppableId,
   column,
+  listColumns,
   listSkills,
   className = "",
 }) => {
@@ -78,6 +91,10 @@ const Column = ({
   const [openCalendar, setOpenCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [newTask, setNewTask] = useState(defaultTask);
+  const [isEdited, setIsEdited] = useState(false);
+  const [columnName, setColumnName] = useState(column.name);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [moveToColumn, setMoveToColumn] = useState("");
 
   const { listAssigneeProject, fetchAssigneeProject } = useAssigneeStore();
 
@@ -119,9 +136,11 @@ const Column = ({
 
   const addTask = async () => {
     // if (!newTask.trim()) return;
+    const columnDetail = listColumns.filter((col) => col._id === column._id);
+    console.log(columnDetail[0].key);
     const formData = {
       ...newTask,
-      columnKey: column.name.trim().toLowerCase().replace(/\s+/g, "-"),
+      columnKey: columnDetail[0].key,
       skills: skills.map((s) => s._id),
       projectId: projectId,
     };
@@ -136,6 +155,38 @@ const Column = ({
     }
   };
 
+  const editColumn = async () => {
+    console.log("edit column", columnName);
+    try {
+      const { data } = await api.patch("/task/column", {
+        columnId: column._id,
+        name: columnName,
+      });
+      if (data.success) {
+        setIsEdited(false);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const deleteColumn = async () => {
+    try {
+      const url = moveToColumn
+        ? `/task/column/${column._id}?moveTasksTo=${moveToColumn}`
+        : `/task/column/${column._id}`;
+
+      console.log("delete column", url);
+
+      await api.delete(url);
+      setShowDeleteDialog(false);
+      // UI updates via socket
+    } catch (error) {
+      console.error("Failed to delete column:", error);
+      alert(error.response?.data?.message || "Failed to delete column");
+    }
+  };
+
   useEffect(() => {
     fetchAssigneeProject(projectId);
   }, []);
@@ -144,10 +195,55 @@ const Column = ({
     <div className={`w-72 ${className}`}>
       <Card className="bg-white p-5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-gray-800">{column.name}</h3>
-          <button className="p-1 rounded hover:bg-gray-100">
-            <Pencil />
-          </button>
+          {isEdited ? (
+            <div className="flex items-center w-full space-x-2">
+              <Input
+                value={columnName}
+                onChange={(e) => setColumnName(e.target.value)}
+                className="flex-1"
+                autoFocus
+              />
+              <Button
+                onClick={editColumn}
+                className="bg-primer flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Save size={16} />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEdited(false);
+                }}
+                className="cursor-pointer"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h3 className="text-lg font-semibold text-gray-800">
+                {column.name}
+              </h3>
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setIsEdited(!isEdited)}
+                  className="p-1 rounded hover:bg-gray-100 cursor-pointer"
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="p-1 rounded text-red-500 hover:text-red-700  cursor-pointer"
+                >
+                  <Trash />
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Droppable + Scrollable area */}
@@ -277,7 +373,7 @@ const Column = ({
                     <SelectTrigger className="w-full">
                       <SelectValue
                         placeholder="Select Employee"
-                        value={newTask.skills}
+                        value={newTask.assignedTo}
                         required
                       />
                     </SelectTrigger>
@@ -372,6 +468,56 @@ const Column = ({
           </Dialog>
         </div>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Column "{column.name}"?</AlertDialogTitle>
+
+            {/* ✅ Only plain text inside AlertDialogDescription */}
+            <AlertDialogDescription>
+              {column.tasks?.length > 0
+                ? "This column has tasks. Please choose where to move them."
+                : "This column is empty and will be permanently deleted."}
+            </AlertDialogDescription>
+
+            {/* ✅ Put complex layout OUTSIDE */}
+            {column.tasks?.length > 0 && (
+              <div className="space-y-4 mt-3">
+                <p className="text-sm text-gray-600">
+                  This column has {column.tasks.length} task(s). Where should
+                  they be moved?
+                </p>
+                <select
+                  className="w-full p-2 border rounded"
+                  value={moveToColumn}
+                  onChange={(e) => setMoveToColumn(e.target.value)}
+                >
+                  <option value="">Select a column...</option>
+                  {listColumns
+                    .filter((col) => col._id !== column._id)
+                    .map((col) => (
+                      <option key={col.key} value={col.key}>
+                        {col.key} - {col.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteColumn}
+              disabled={column.tasks?.length > 0 && !moveToColumn}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Column
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

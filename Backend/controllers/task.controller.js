@@ -9,7 +9,7 @@ const { Column } = require("../models");
 const { ProjectAssignment } = require("../models/");
 
 const createColumn = async (req, res) => {
-  const { projectId, name, key, color } = req.body;
+  const { projectId, name, color } = req.body;
 
   if (!name || name.trim() === "") {
     return res.status(400).json({
@@ -43,25 +43,14 @@ const createColumn = async (req, res) => {
       });
     }
 
+    const key = `col_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     if (!key) {
       return res.status(400).json({
         success: false,
         error: "Validation Error",
         message:
           "columnKey is required (e.g., 'backlog', 'in_progress', 'review', 'done')",
-      });
-    }
-
-    const existingColumn = await Column.findOne({
-      projectId,
-      key: key,
-    });
-
-    if (existingColumn) {
-      return res.status(404).json({
-        success: false,
-        error: "Not Found",
-        message: `Column with key '${key}' already existed`,
       });
     }
 
@@ -80,6 +69,11 @@ const createColumn = async (req, res) => {
       order,
       color,
     });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`project:${projectId}`).emit("column:created", { column });
+    }
 
     res.status(201).json({
       success: true,
@@ -110,6 +104,180 @@ const getColumns = async (req, res) => {
       success: false,
       error: "Internal Server Error",
       message: err.message,
+    });
+  }
+};
+
+const updateColumn = async (req, res) => {
+  const { columnId, name, color } = req.body;
+
+  try {
+    const column = await Column.findById(columnId);
+    if (!column) {
+      return res.status(404).json({
+        success: false,
+        message: "Column not found",
+      });
+    }
+
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: column.projectId,
+      userId: req.user.id,
+    });
+
+    if (!projectAssignment || !projectAssignment.isTechLead) {
+      return res.status(403).json({
+        success: false,
+        message: "Only Tech Leads can update columns",
+      });
+    }
+
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (color !== undefined) updates.color = color;
+
+    const updatedColumn = await Column.findByIdAndUpdate(
+      columnId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`project:${column.projectId}`).emit("column:updated", {
+        column,
+        columnId,
+        columnKey: updatedColumn.key,
+        updates: updatedColumn,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Column updated successfully",
+      data: updatedColumn,
+    });
+  } catch (error) {
+    console.error("Update column error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+const deleteColumn = async (req, res) => {
+  const { columnId } = req.params;
+  const { moveTasksTo } = req.query; // Optional: move tasks to another column
+
+  console.log("Delete column request:", { columnId, moveTasksTo });
+
+  try {
+    const column = await Column.findById(columnId);
+    if (!column) {
+      return res.status(404).json({
+        success: false,
+        message: "Column not found",
+      });
+    }
+
+    // Check authorization
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: column.projectId,
+      userId: req.user.id,
+    });
+
+    if (!projectAssignment || !projectAssignment.isTechLead) {
+      return res.status(403).json({
+        success: false,
+        message: "Only Tech Leads can delete columns",
+      });
+    }
+
+    // Check if column has tasks
+    const tasksInColumn = await Task.find({
+      projectId: column.projectId,
+      columnKey: column.key,
+    });
+
+    console.log("Tasks in column:", tasksInColumn.length);
+
+    if (tasksInColumn.length > 0) {
+      if (!moveTasksTo) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete column with ${tasksInColumn.length} tasks. Either move tasks first or provide 'moveTasksTo' query parameter.`,
+          tasksCount: tasksInColumn.length,
+        });
+      }
+
+      // Move tasks to another column
+      const targetColumn = await Column.findOne({
+        projectId: column.projectId,
+        key: moveTasksTo,
+      });
+
+      if (!targetColumn) {
+        return res.status(404).json({
+          success: false,
+          message: `Target column '${moveTasksTo}' not found`,
+        });
+      }
+
+      // Get max order in target column
+      const maxOrderTask = await Task.findOne({
+        projectId: column.projectId,
+        columnKey: moveTasksTo,
+      })
+        .sort({ order: -1 })
+        .select("order");
+
+      let newOrder = maxOrderTask ? maxOrderTask.order + 1 : 0;
+
+      // Update all tasks
+      for (const task of tasksInColumn) {
+        task.columnId = targetColumn._id;
+        task.columnKey = targetColumn.key;
+        task.order = newOrder++;
+        await task.save();
+      }
+
+      // Broadcast task moves
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`project:${column.projectId}`).emit("column:tasks-moved", {
+          column,
+          fromColumnKey: column.key,
+          toColumnKey: targetColumn.key,
+          taskIds: tasksInColumn.map((t) => t._id),
+        });
+      }
+    }
+
+    // Delete the column
+    await Column.findByIdAndDelete(columnId);
+
+    // Broadcast column deletion
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`project:${column.projectId}`).emit("column:deleted", {
+        column,
+        columnId,
+        columnKey: column.key,
+        movedTo: moveTasksTo || null,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Column deleted successfully",
+      movedTasks: tasksInColumn.length,
+    });
+  } catch (error) {
+    console.error("Delete column error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 };
@@ -211,9 +379,10 @@ const createTask = async (req, res) => {
     const populatedTask = await Task.findById(task._id)
       .populate("requiredSkills", "name")
       .populate("createdBy", "name email")
+      .populate("columnId", "name key")
       .lean();
 
-    let assignee = null;
+    let assignedUsers = null;
 
     if (assignedTo && assignedTo.trim() !== "") {
       const assignment = new TaskAssignment({
@@ -223,7 +392,7 @@ const createTask = async (req, res) => {
 
       await assignment.save();
 
-      assignee = await ProjectAssignment.findOne({
+      assignedUsers = await ProjectAssignment.findOne({
         projectId,
         userId: assignedTo,
       })
@@ -238,16 +407,18 @@ const createTask = async (req, res) => {
         .lean();
     }
 
-    if (assignee?.userId) {
-      populatedTask.assignee = {
-        _id: assignee.userId._id,
-        name: assignee.userId.name,
-        email: assignee.userId.email,
-        role: assignee.userId.role,
-        position: assignee.userId.position,
-      };
+    if (assignedUsers?.userId) {
+      populatedTask.assignedUsers = [
+        {
+          _id: assignedUsers.userId._id,
+          name: assignedUsers.userId.name,
+          email: assignedUsers.userId.email,
+          role: assignedUsers.userId.role,
+          position: assignedUsers.userId.position,
+        },
+      ];
     } else {
-      populatedTask.assignee = null;
+      populatedTask.assignedUsers = null;
     }
 
     const io = req.app.get("io");
@@ -530,6 +701,7 @@ const moveTask = async (req, res) => {
       const io = req.app.get("io");
       if (io) {
         io.to(`project:${projectId}`).emit("task:moved", {
+          task,
           taskId,
           fromColumnKey,
           toColumnKey,
@@ -559,13 +731,94 @@ const moveTask = async (req, res) => {
   }
 };
 
+const deleteTask = async (req, res) => {
+  const { taskId } = req.params;
+  try {
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
+    }
+
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId: req.user.id,
+    });
+
+    if (!projectAssignment) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete tasks in this project",
+      });
+    }
+
+    if (
+      !projectAssignment.isTechLead &&
+      task.createdBy.toString() !== req.user.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Only Tech Leads or task creator can delete this task",
+      });
+    }
+
+    // Store data before deletion
+    const projectId = task.projectId;
+    const columnKey = task.columnKey;
+    const taskOrder = task.order;
+
+    // 3. Delete task assignments first (cascade delete)
+    await TaskAssignment.deleteMany({ taskId: task._id });
+
+    // 4. Delete the task
+    await Task.findByIdAndDelete(taskId);
+
+    // 5. Reorder remaining tasks in the column (fill the gap)
+    await Task.updateMany(
+      {
+        projectId: projectId,
+        columnKey: columnKey,
+        order: { $gt: taskOrder },
+      },
+      { $inc: { order: -1 } } // Decrease order by 1 for tasks after deleted task
+    );
+
+    // 6. Broadcast via Socket.IO
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`project:${projectId}`).emit("task:deleted", {
+        task,
+        taskId,
+        columnKey,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Task deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete task error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
-  getTasks,
-  createTask,
   createColumn,
   getColumns,
+  updateColumn,
+  deleteColumn,
+  getTasks,
+  createTask,
   moveTask,
   editTask,
+  deleteTask,
   //   updateTask,
   // updateTaskStatus,
 };

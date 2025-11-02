@@ -84,7 +84,9 @@ const TaskCard = ({ task, projectId }) => {
 
     const updatedTask = {
       ...editedTask,
-      assignedTo: editedTask?.assignedUsers[0]?._id || [],
+      assignedTo: editedTask?.assignedUsers?.[0]?._id
+        ? editedTask.assignedUsers[0]._id
+        : "",
       taskId: editedTask._id,
       projectId,
       skills,
@@ -103,10 +105,16 @@ const TaskCard = ({ task, projectId }) => {
   };
 
   // Handle delete
-  const handleDelete = () => {
-    onDelete?.(task.id);
-    setConfirmDelete(false);
-    setOpen(false);
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/task/${task._id}`);
+
+      setConfirmDelete(false);
+      setOpen(false);
+    } catch (error) {
+      alert("Failed to delete task");
+      setConfirmDelete(false);
+    }
   };
 
   return (
@@ -155,7 +163,7 @@ const TaskCard = ({ task, projectId }) => {
                     .map((n) => n[0])
                     .join("")}
                 </div>
-                <p className="text-sm font-medium text-gray-700 truncate max-w-[80px]">
+                <p className="text-sm font-medium text-gray-700 truncate max-w-20">
                   {task.assignedUsers[0]?.name}
                 </p>
               </div>
@@ -328,7 +336,7 @@ const TaskCard = ({ task, projectId }) => {
                     value={editedTask.status}
                     onValueChange={(v) => handleChange("status", v)}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full cursor-pointer">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -384,7 +392,7 @@ const TaskCard = ({ task, projectId }) => {
                       handleChange("assignedUsers", [{ _id: v }])
                     }
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full cursor-pointer">
                       <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
@@ -405,23 +413,11 @@ const TaskCard = ({ task, projectId }) => {
                 <label className="text-sm font-semibold text-gray-700 mb-1 block">
                   Deadline
                 </label>
-                {/* <Input
-                  type="date"
-                  value={
-                    editedTask.deadline
-                      ? format(new Date(editedTask.deadline), "yyyy-MM-dd")
-                      : ""
-                  }
-                  onChange={(e) =>
-                    handleChange("deadline", new Date(e.target.value))
-                  }
-                  className="focus-visible:ring-primer"
-                /> */}
                 <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-full justify-between"
+                      className="w-full justify-between cursor-pointer"
                     >
                       <div className="flex items-center space-x-2">
                         <CalendarIcon />

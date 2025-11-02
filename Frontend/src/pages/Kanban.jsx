@@ -12,16 +12,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import Loading from "@/components/Loading";
-import { CirclePlus } from "lucide-react";
+
+import { toast } from "@/lib/toast";
+import { CirclePlus, CircleCheckBig } from "lucide-react";
 
 import { useSkillStore } from "@/store/useSkillStore";
 import { useAssigneeStore } from "@/store/useAssigneeStore";
+import { set } from "date-fns";
 
 export default function Kanban() {
   const [socket, setSocket] = useState(null);
   const [columns, setColumns] = useState([]);
   const [newListName, setNewListName] = useState("");
   const [loadingState, setLoadingState] = useState(false);
+  const [listColumns, setListColumns] = useState([]);
   const [loadingText, setLoadingText] = useState("");
   const { projectId } = useParams();
 
@@ -29,10 +33,20 @@ export default function Kanban() {
 
   const token = localStorage.getItem("token");
 
+  const getColumns = async () => {
+    try {
+      const { data } = await api.get(`/task/columns?projectId=${projectId}`);
+      console.log(data.data);
+      setListColumns(data.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const getTasks = async () => {
     try {
       const { data } = await api.get(`task?projectId=${projectId}`);
-      // console.log(data);
+      console.log(data.data);
       setColumns(data.data);
     } catch (error) {
       console.error(error);
@@ -40,14 +54,14 @@ export default function Kanban() {
   };
 
   const addNewList = async () => {
-    const key = newListName.trim().toLowerCase().replace(/\s+/g, "-");
+    // const key = newListName.trim().toLowerCase().replace(/\s+/g, "-");
     // console.log(key);
-    if (!key || columns[key]) return;
+    // if (!key || columns[key]) return;
 
     try {
       const { data } = await api.post("/task/column", {
         projectId: projectId,
-        key,
+        // key,
         name: newListName,
       });
 
@@ -100,6 +114,7 @@ export default function Kanban() {
   useEffect(() => {
     getTasks();
     fetchSkills();
+    getColumns();
   }, [projectId]);
 
   useEffect(() => {
@@ -111,9 +126,89 @@ export default function Kanban() {
     newSocket.emit("join:project", projectId);
 
     // Listen for real-time updates
+    newSocket.on("column:created", ({ column }) => {
+      console.log("New column created:", column);
+      setColumns((prev) => ({
+        ...prev,
+        [column.key]: { ...column, tasks: [] },
+      }));
+      getColumns();
+      toast(`Column ${column.name} has been created`, {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "bottom-right",
+        duration: 5000,
+      });
+    });
+
+    newSocket.on(
+      "column:updated",
+      ({ column, columnId, columnKey, updates }) => {
+        console.log("Column updated:", {
+          column,
+          columnId,
+          columnKey,
+          updates,
+        });
+        setColumns((prev) => ({
+          ...prev,
+          [columnKey]: {
+            ...prev[columnKey],
+            ...updates,
+            tasks: prev[columnKey]?.tasks || [],
+          },
+        }));
+        getColumns();
+        toast(`Column ${column.name} has renamed to ${updates.name}`, {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "bottom-right",
+          duration: 5000,
+        });
+      }
+    );
+
+    newSocket.on(
+      "column:deleted",
+      ({ column, columnId, columnKey, movedTo }) => {
+        console.log("Column deleted:", {
+          column,
+          columnId,
+          columnKey,
+          movedTo,
+        });
+        setColumns((prev) => {
+          const newColumns = { ...prev };
+
+          if (movedTo) {
+            // Tasks were moved to another column
+            const movedTasks = newColumns[columnKey]?.tasks || [];
+            newColumns[movedTo] = {
+              ...newColumns[movedTo],
+              tasks: [
+                ...(newColumns[movedTo]?.tasks || []),
+                ...movedTasks,
+              ].sort((a, b) => a.order - b.order),
+            };
+          }
+
+          // Remove the deleted column
+          delete newColumns[columnKey];
+
+          return newColumns;
+        });
+        getColumns();
+        toast(`Column ${column.name} has been deleted`, {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "bottom-right",
+          duration: 5000,
+        });
+      }
+    );
+
     newSocket.on("task:created", ({ task, columnKey }) => {
-      console.log(task);
-      // console.log(columnKey);
+      console.log(task, columnKey);
       setColumns((prev) => ({
         ...prev,
         [columnKey]: {
@@ -127,12 +222,22 @@ export default function Kanban() {
           ],
         },
       }));
+      toast(
+        `Task ${task.title} has been created on Column ${task.columnId.name}`,
+        {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "bottom-right",
+          duration: 5000,
+        }
+      );
     });
 
     newSocket.on(
       "task:moved",
-      ({ taskId, fromColumnKey, toColumnKey, fromIndex, toIndex }) => {
+      ({ task, taskId, fromColumnKey, toColumnKey, fromIndex, toIndex }) => {
         console.log("Task moved:", {
+          task,
           taskId,
           fromColumnKey,
           toColumnKey,
@@ -167,8 +272,14 @@ export default function Kanban() {
               tasks: toTasks,
             };
           }
-
           return newColumns;
+        });
+
+        toast(`Task ${task.title} has been moved`, {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "bottom-right",
+          duration: 5000,
         });
       }
     );
@@ -197,6 +308,39 @@ export default function Kanban() {
 
         return newColumns;
       });
+
+      toast(`Task ${task.title} has been updated`, {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "bottom-right",
+        duration: 5000,
+      });
+    });
+
+    newSocket.on("task:deleted", ({ task, taskId, columnKey }) => {
+      console.log("Task deleted:", { task, taskId, columnKey });
+      setColumns((prev) => {
+        // Check if column exists
+        if (!prev[columnKey]) {
+          console.warn(`Column ${columnKey} not found`);
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [columnKey]: {
+            ...prev[columnKey],
+            tasks: prev[columnKey].tasks.filter((task) => task._id !== taskId),
+          },
+        };
+      });
+
+      toast(`Task ${task.title} has been deleted`, {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "bottom-right",
+        duration: 5000,
+      });
     });
 
     setSocket(newSocket);
@@ -209,6 +353,7 @@ export default function Kanban() {
 
   return (
     <div className="p-4">
+      {/* <Toaster /> */}
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       <div className="overflow-x-auto">
@@ -221,10 +366,10 @@ export default function Kanban() {
                   projectId={projectId}
                   droppableId={key}
                   column={column}
+                  listColumns={listColumns}
                   listSkills={listSkills}
                   className="shrink-0"
                 />
-                <p>{key}</p>
               </>
             ))}
           </DragDropContext>

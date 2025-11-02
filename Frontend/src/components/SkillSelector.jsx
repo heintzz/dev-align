@@ -52,7 +52,7 @@ export function SkillSelector({
           <Button
             variant="outline"
             role="combobox"
-            className="w-full justify-between"
+            className="w-full justify-between cursor-pointer"
             disabled={!isEditing}
           >
             Add skill
@@ -73,7 +73,7 @@ export function SkillSelector({
               </div>
             </CommandEmpty>
 
-            <CommandGroup>
+            <CommandGroup className="max-h-[40vh] overflow-y-auto ">
               {listSkills
                 .filter((skill) =>
                   skill.name.toLowerCase().includes(search.toLowerCase())
@@ -86,7 +86,7 @@ export function SkillSelector({
                     <CommandItem
                       key={skill._id}
                       onSelect={() => handleAddSkill(skill)}
-                      className={`flex justify-between ${
+                      className={`flex justify-between cursor-pointer ${
                         isSelected ? "bg-primer/10 text-primer" : ""
                       }`}
                     >
