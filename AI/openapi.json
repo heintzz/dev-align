@@ -1,6 +1,9 @@
 {
   "openapi": "3.1.0",
-  "info": { "title": "FastAPI", "version": "0.1.0" },
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
   "paths": {
     "/": {
       "get": {
@@ -9,7 +12,13 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RootResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -21,7 +30,13 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -44,13 +59,21 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -64,7 +87,9 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/EmbeddingProjectRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingProjectRequest"
+              }
             }
           },
           "required": true
@@ -72,13 +97,21 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEmbeddingsResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -91,20 +124,32 @@
         "operationId": "get_recommendations_roster_recommendations_post",
         "requestBody": {
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SkillRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillRequest"
+              }
+            }
           },
           "required": true
         },
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterRecommendationsResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -117,7 +162,15 @@
       "Body_parse_document_endpoint_cv_extract_data_post": {
         "properties": {
           "file": {
-            "anyOf": [{ "type": "string", "format": "binary" }, { "type": "string" }],
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "title": "File"
           }
         },
@@ -125,8 +178,117 @@
         "required": ["file"],
         "title": "Body_parse_document_endpoint_cv_extract_data_post"
       },
+      "CVData": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "title": "Phonenumber"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skills"
+          }
+        },
+        "type": "object",
+        "required": ["name", "email", "phoneNumber", "description", "skills"],
+        "title": "CVData"
+      },
+      "CVResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CVData"
+          }
+        },
+        "type": "object",
+        "required": ["success", "message", "data"],
+        "title": "CVResponse"
+      },
+      "Candidate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skills"
+          },
+          "skillMatch": {
+            "type": "number",
+            "title": "Skillmatch"
+          },
+          "currentWorkload": {
+            "type": "number",
+            "title": "Currentworkload"
+          },
+          "projectSimilarity": {
+            "type": "number",
+            "title": "Projectsimilarity"
+          },
+          "matchingPercentage": {
+            "type": "number",
+            "title": "Matchingpercentage"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "position",
+          "skills",
+          "skillMatch",
+          "currentWorkload",
+          "projectSimilarity",
+          "matchingPercentage",
+          "rank",
+          "reason"
+        ],
+        "title": "Candidate"
+      },
       "EmbeddingProjectRequest": {
-        "properties": { "project_id": { "type": "string", "title": "Project Id" } },
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          }
+        },
         "type": "object",
         "required": ["project_id"],
         "title": "EmbeddingProjectRequest"
@@ -134,7 +296,9 @@
       "HTTPValidationError": {
         "properties": {
           "detail": {
-            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
             "type": "array",
             "title": "Detail"
           }
@@ -142,25 +306,108 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HealthCheckResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": ["status", "message"],
+        "title": "HealthCheckResponse"
+      },
       "PositionRequest": {
         "properties": {
-          "name": { "type": "string", "title": "Name" },
-          "numOfRequest": { "type": "integer", "title": "Numofrequest" }
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "numOfRequest": {
+            "type": "integer",
+            "title": "Numofrequest"
+          }
         },
         "type": "object",
         "required": ["name", "numOfRequest"],
         "title": "PositionRequest"
       },
+      "ProjectEmbeddingsResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          }
+        },
+        "type": "object",
+        "required": ["status", "project_id"],
+        "title": "ProjectEmbeddingsResponse"
+      },
+      "RootResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": ["message"],
+        "title": "RootResponse"
+      },
+      "RosterRecommendationsResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/Candidate"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": ["success", "data"],
+        "title": "RosterRecommendationsResponse"
+      },
       "SkillRequest": {
         "properties": {
-          "description": { "type": "string", "title": "Description" },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
           "positions": {
-            "items": { "$ref": "#/components/schemas/PositionRequest" },
+            "items": {
+              "$ref": "#/components/schemas/PositionRequest"
+            },
             "type": "array",
             "title": "Positions"
           },
           "skills": {
-            "anyOf": [{ "items": { "type": "string" }, "type": "array" }, { "type": "null" }],
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Skills"
           }
         },
@@ -171,12 +418,27 @@
       "ValidationError": {
         "properties": {
           "loc": {
-            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
             "type": "array",
             "title": "Location"
           },
-          "msg": { "type": "string", "title": "Message" },
-          "type": { "type": "string", "title": "Error Type" }
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
         },
         "type": "object",
         "required": ["loc", "msg", "type"],

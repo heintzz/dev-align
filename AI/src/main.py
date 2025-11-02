@@ -1,5 +1,6 @@
 from src.configs.mongodb import connect_to_mongo, close_mongo_connection
 from src.api import cv, roster
+from src.models.main import RootResponse, HealthCheckResponse
 from fastapi import FastAPI, APIRouter
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,13 +27,13 @@ async def startup_event():
 async def shutdown_event():
     close_mongo_connection()
 
-@router.get("/")
+@router.get("/", response_model=RootResponse)
 def root():
-    return {"message": "Welcome to the main API!"}
+    return {"message": "Welcome to the DevAlign AI!"}
 
-@router.get("/health")
+@router.get("/health", response_model=HealthCheckResponse)
 def health_check():
-    return JSONResponse(content={"status": "ok", "message": "Service is healthy"}, status_code=200)
+    return {"status": "ok", "message": "Service is healthy"}
 
 app.include_router(router)
 app.include_router(cv.router)

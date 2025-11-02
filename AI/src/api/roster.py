@@ -2,6 +2,8 @@ import numpy as np
 import dspy 
 import string
 
+from src.models.roster import ProjectEmbeddingsResponse, RosterRecommendationsResponse
+
 from src.configs.mongodb import get_database
 from src.config import settings
 from src.agents.agent import configure_llm_roster
@@ -32,7 +34,7 @@ def clean_skills_name(str):
     
 router = APIRouter()
 
-@router.post("/project-embeddings")
+@router.post("/project-embeddings", response_model=ProjectEmbeddingsResponse)
 async def create_project_embeddings(request: EmbeddingProjectRequest):
     database = get_database()
 
@@ -151,7 +153,7 @@ async def create_project_embeddings(request: EmbeddingProjectRequest):
         "project_id": request.project_id
     }
 
-@router.post("/roster-recommendations")
+@router.post("/roster-recommendations", response_model=RosterRecommendationsResponse)
 def get_recommendations(request: SkillRequest):
     database = get_database()
     user_collection = database.get_collection("users")
@@ -270,9 +272,9 @@ def get_recommendations(request: SkillRequest):
             "name": user.get("name"),
             "position": position_name,
             "skills":  [skill["name"] for skill in skills],
-            "skill_match": matched_count_score,
-            "workload": project_count_score,
-            "project_similarity": 0 if np.isnan(top_3_avg) else float(top_3_avg)
+            "skillMatch": matched_count_score,
+            "currentWorkload": project_count_score,
+            "projectSimilarity": 0 if np.isnan(top_3_avg) else float(top_3_avg)
         }
 
         scores.append(result)
@@ -280,10 +282,10 @@ def get_recommendations(request: SkillRequest):
    
     # 5. sort by the overall scores then limit to a certain number (n_required * 2)
     for score in scores:
-        score["matching_percentage"] = round(0.4 * score["skill_match"] + 0.3 * score["workload"] + 0.3 * score["project_similarity"], 2)
-        score["skill_match"] = round(score["skill_match"], 2)
-        score["workload"] = round(score["workload"], 2)
-        score["project_similarity"] = round(score["project_similarity"], 2)
+        score["matchingPercentage"] = round(0.4 * score["skillMatch"] + 0.3 * score["currentWorkload"] + 0.3 * score["projectSimilarity"], 2)
+        score["skillMatch"] = round(score["skillMatch"], 2)
+        score["currentWorkload"] = round(score["currentWorkload"], 2)
+        score["projectSimilarity"] = round(score["projectSimilarity"], 2)
         
         print(score)
         print("-" * 25)
@@ -301,7 +303,7 @@ def get_recommendations(request: SkillRequest):
             continue  # skip posisi yang tidak dibutuhkan
         
         n = required_map[position]
-        sorted_candidates = sorted(candidates, key=lambda x: x["matching_percentage"], reverse=True)
+        sorted_candidates = sorted(candidates, key=lambda x: x["matchingPercentage"], reverse=True)
         top_candidates[position] = sorted_candidates[:n*2]
 
     print("top candidates")
@@ -338,7 +340,7 @@ def get_recommendations(request: SkillRequest):
         # Tambahkan rank number
         for idx, c in enumerate(ordered, start=1):
             c["rank"] = idx
-            c["ai_thought"] = reasoning
+            c["reason"] = reasoning
 
         top_candidates[position] = ordered
     
@@ -346,4 +348,4 @@ def get_recommendations(request: SkillRequest):
     print("final top candidates")
     print(top_candidates)
 
-    return JSONResponse(content={"success": True, "data": top_candidates}, status_code=200)
+    return {"success": True, "data": top_candidates}
