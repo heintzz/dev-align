@@ -28,6 +28,7 @@ const { topContributors } = require('../controllers/dashboard.controller');
  *       200:
  *         description: List of top contributors
  */
-router.get('/top-contributors', verifyToken, auth(), topContributors);
+// Allow any authenticated user to access this endpoint (no role restriction)
+router.get('/top-contributors', verifyToken, topContributors);
 
 module.exports = router;
