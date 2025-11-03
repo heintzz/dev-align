@@ -1,58 +1,161 @@
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
+
+// Components
+import CustomToaster from "@/components/CustomToaster";
 
 // Pages
 import Kanban from "@/pages/Kanban";
 import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
-import ManageEmployee from "@/pages/HR/ManageEmployee";
-import HRDashboard from "@/pages/HR/Dashboard"
+import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
+import EmployeeDetail from "./pages/HR/Employee/EmployeeDetail";
+import AddEmployee from "./pages/HR/Employee/AddEmployee";
+import HRDashboard from "@/pages/HR/Dashboard";
 import PMDashboard from "./pages/PM/Dashboard";
+import StaffDashboard from "./pages/Staff/Dashboard";
+import CreateProject from "./pages/PM/CreateProject";
+import ListProjects from "./pages/PM/ListProject";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
+import { useEffect, useState } from "react";
+
+import { useAuthStore } from "@/store/useAuthStore";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import GuestRoute from "@/components/GuestRoute";
 
 function App() {
+  const { token, role } = useAuthStore();
+
   return (
-    <Router>
-      <Routes>
-        {/* Halaman Login tanpa layout */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <>
+      <Router>
+        <Routes>
+          {/* Halaman Login tanpa layout */}
+          <Route
+            path="/login"
+            element={
+              <GuestRoute>
+                <Login />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <GuestRoute>
+                <ForgotPassword />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <GuestRoute>
+                <ResetPassword />
+              </GuestRoute>
+            }
+          />
 
-        {/* Halaman dengan layout utama */}
-        <Route
-          path="/kanban"
-          element={
-            <AppLayout>
-              <Kanban />
-            </AppLayout>
-          }
-        />
+          {/* Halaman dengan layout utama */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  {role == "hr" ? (
+                    <HRDashboard />
+                  ) : role == "manager" ? (
+                    <PMDashboard />
+                  ) : (
+                    <StaffDashboard />
+                  )}
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/dashboard-hr"
-          element={
-            <AppLayout>
-              <HRDashboard />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/kanban/:projectId"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Kanban />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/dashboard-pm"
-          element={
-            <AppLayout>
-              <PMDashboard />
-            </AppLayout>
-          }
-        />
+          <Route
+            path="/employees"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ManageEmployee />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Redirect default ke /login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+          <Route
+            path="/employees/detail/:id"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <EmployeeDetail />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/addEmployee"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <AddEmployee />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/create-project"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <CreateProject />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ListProjects />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Redirect default ke /login */}
+          <Route
+            path="*"
+            element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
+          />
+        </Routes>
+      </Router>
+      <CustomToaster />
+    </>
   );
 }
 

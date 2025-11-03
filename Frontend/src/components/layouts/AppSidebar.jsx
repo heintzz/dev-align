@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import * as LucideIcons from "lucide-react";
 
 import {
@@ -30,6 +30,7 @@ export default function AppSidebar() {
   const [loading, setLoading] = useState(true);
   const [openMenu, setOpenMenu] = useState(null);
   const isCollapsed = state === "collapsed";
+  const location = useLocation();
 
   useEffect(() => {
     const fetchMenus = async () => {
@@ -75,7 +76,7 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="shadow-lg">
       <SidebarHeader>
-        <Link to="#" className="flex items-center py-5 space-x-1.5">
+        <Link to="#" className="flex items-center py-3.5 space-x-1.5">
           <img
             src={logoIcon}
             alt="DevAlign Logo"
@@ -98,6 +99,10 @@ export default function AppSidebar() {
                 const Icon = LucideIcons[item.icon] || LucideIcons.Circle;
                 const hasChildren = item.children && item.children.length > 0;
                 const isOpen = openMenu === item._id;
+                const isActive = location.pathname.startsWith(item.path || "");
+                console.log(location);
+                console.log(item);
+                console.log(isActive);
 
                 // ✅ CASE 1: If sidebar is collapsed → use Popover
                 if (isCollapsed && hasChildren) {
@@ -106,7 +111,12 @@ export default function AppSidebar() {
                       <Popover>
                         <PopoverTrigger asChild>
                           <SidebarMenuButton
-                            className="flex text-primer hover:bg-primer hover:text-white items-center justify-center cursor-pointer"
+                            className={`flex items-center justify-center cursor-pointer transition-colors
+                        ${
+                          isActive
+                            ? "bg-primer text-white"
+                            : "text-primer hover:bg-primer hover:text-white"
+                        }`}
                             tooltip={item.title}
                           >
                             <Icon className="h-4 w-4" />
@@ -124,6 +134,8 @@ export default function AppSidebar() {
                             {item.children.map((child) => {
                               const ChildIcon =
                                 LucideIcons[child.icon] || LucideIcons.Circle;
+                              const isChildActive =
+                                location.pathname.startsWith(child.path || "");
                               return (
                                 <Link
                                   key={child._id}
@@ -131,7 +143,12 @@ export default function AppSidebar() {
                                   onClick={
                                     () => document.activeElement?.blur() // auto-close popover
                                   }
-                                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 text-sm text-gray-700"
+                                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm 
+                                  ${
+                                    isChildActive
+                                      ? "bg-primer text-white"
+                                      : "text-gray-700 hover:bg-gray-100"
+                                  }`}
                                 >
                                   <ChildIcon className="h-3.5 w-3.5 text-primer" />
                                   {child.title}
@@ -153,7 +170,11 @@ export default function AppSidebar() {
                         hasChildren ? toggleMenu(item._id) : null
                       }
                       asChild={!hasChildren}
-                      className="text-primer hover:bg-primer hover:text-white font-semibold flex items-center "
+                      className={`flex items-center font-semibold transition-colors ${
+                        isActive
+                          ? "bg-primer text-white"
+                          : "text-primer hover:bg-primer hover:text-white"
+                      }`}
                       tooltip={item.title}
                     >
                       {hasChildren ? (
@@ -189,11 +210,18 @@ export default function AppSidebar() {
                         {item.children.map((child) => {
                           const ChildIcon =
                             LucideIcons[child.icon] || LucideIcons.Circle;
+                          const isChildActive = location.pathname.startsWith(
+                            child.path || ""
+                          );
                           return (
                             <Link
                               key={child._id}
                               to={child.path || "#"}
-                              className="flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg px-3 py-1"
+                              className={`flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg px-3 py-1  ${
+                                isChildActive
+                                  ? "bg-primer text-white"
+                                  : "text-gray-700 hover:bg-gray-100"
+                              }`}
                             >
                               <ChildIcon className="h-3.5 w-3.5 text-primer" />
                               <span>{child.title}</span>

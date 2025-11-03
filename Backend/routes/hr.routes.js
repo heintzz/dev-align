@@ -136,6 +136,8 @@ router.get('/employee/:id', verifyToken, getEmployee);
  */
 router.put('/employee/:id', verifyToken, auth('hr'), updateEmployee);
 
+
+
 /**
  * @swagger
  * /hr/employee/{id}:

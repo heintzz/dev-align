@@ -1,12 +1,14 @@
-const express = require('express');
+const express = require("express");
 const {
   getPositions,
   createPosition,
+  createMultiplePositions,
   updatePosition,
   deletePosition,
-} = require('../controllers/position.controller');
-const auth = require('../middlewares/authorization');
-const verifyToken = require('../middlewares/token');
+  deleteMultiplePositions,
+} = require("../controllers/position.controller");
+const auth = require("../middlewares/authorization");
+const verifyToken = require("../middlewares/token");
 const router = express.Router();
 
 /**
@@ -62,7 +64,7 @@ const router = express.Router();
  *                           name:
  *                             type: string
  */
-router.get('/', verifyToken, auth('hr'), getPositions);
+router.get("/", verifyToken, auth("hr", "manager"), getPositions);
 
 /**
  * @swagger
@@ -88,7 +90,7 @@ router.get('/', verifyToken, auth('hr'), getPositions);
  *       400:
  *         description: Bad request
  */
-router.post('/', verifyToken, auth('hr'), createPosition);
+router.post("/", verifyToken, auth("hr"), createPosition);
 
 /**
  * @swagger
@@ -120,7 +122,7 @@ router.post('/', verifyToken, auth('hr'), createPosition);
  *       404:
  *         description: Position not found
  */
-router.put('/:positionId', verifyToken, auth('hr'), updatePosition);
+router.put("/:positionId", verifyToken, auth("hr"), updatePosition);
 
 /**
  * @swagger
@@ -142,6 +144,62 @@ router.put('/:positionId', verifyToken, auth('hr'), updatePosition);
  *       404:
  *         description: Position not found
  */
-router.delete('/:positionId', verifyToken, auth('hr'), deletePosition);
+router.delete("/:positionId", verifyToken, auth("hr"), deletePosition);
+
+/**
+ * @swagger
+ * /position/batch:
+ *   post:
+ *     summary: Create multiple positions at once
+ *     tags: [Positions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               positions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Frontend Developer", "Backend Developer", "DevOps Engineer"]
+ *     responses:
+ *       201:
+ *         description: Positions created (with summary of created/skipped)
+ *       400:
+ *         description: Bad request
+ */
+router.post("/batch", verifyToken, auth("hr"), createMultiplePositions);
+
+/**
+ * @swagger
+ * /position/batch:
+ *   delete:
+ *     summary: Delete multiple positions at once
+ *     tags: [Positions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               positionIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["507f1f77bcf86cd799439011", "507f1f77bcf86cd799439012"]
+ *     responses:
+ *       200:
+ *         description: Positions deleted successfully
+ *       400:
+ *         description: Bad request
+ */
+router.delete("/batch", verifyToken, auth("hr"), deleteMultiplePositions);
 
 module.exports = router;
