@@ -7,10 +7,43 @@ const XLSX = require("xlsx");
 const pdfParse = require("pdf-parse");
 const path = require("path");
 
-const createEmployee = async (req, res) => {
-  const { email } = req.body;
+const skillMatching = (skills, existingSkills) => {
+  const clean = (arr) =>
+    arr.map((skill) =>
+      skill
+        .toLowerCase()
+        .replace(/[^\w\s]/g, "")
+        .trim()
+    );
+  console.log({ existingSkills });
+  const cleanedSkills = clean(skills);
+  console.log({ cleanedSkills });
+  const cleanedExisting = clean(existingSkills);
+  console.log({ existingSkills });
+  console.log({ cleanedExisting });
 
+  const matchedSkills = [];
+  const newSkills = [];
+
+  cleanedSkills.forEach((skill, i) => {
+    const matchIndex = cleanedExisting.indexOf(skill);
+    if (matchIndex !== -1) {
+      // Match ditemukan → push versi DB
+      matchedSkills.push(existingSkills[matchIndex]);
+    } else {
+      // Tidak ditemukan → push versi user
+      newSkills.push(skills[i]);
+    }
+  });
+
+  console.log({ matchedSkills, newSkills });
+
+  return { matchedSkills, newSkills };
+};
+
+const createEmployee = async (req, res) => {
   try {
+    const { email } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -23,8 +56,33 @@ const createEmployee = async (req, res) => {
     const password = generatePassword();
     const hashedPassword = await hashPassword(password);
 
+    const existingSkills = await Skill.find({});
+    const existingSkillNames = existingSkills.map((skill) => skill.name);
+
+    const { matchedSkills, newSkills } = skillMatching(
+      req.body.skills,
+      existingSkillNames
+    );
+
+    let insertedIds = [];
+    if (newSkills.length > 0) {
+      const skillDocs = newSkills.map((name) => ({ name }));
+      const insertedSkills = await Skill.insertMany(skillDocs);
+      insertedIds = insertedSkills.map((doc) => doc._id);
+    }
+
+    if (matchedSkills?.length > 0) {
+      insertedIds = [
+        ...insertedIds,
+        ...existingSkills
+          .filter((skill) => matchedSkills.includes(skill.name))
+          .map((skill) => skill._id),
+      ];
+    }
+
     const user = new User({
       ...req.body,
+      skills: insertedIds,
       password: hashedPassword,
     });
 
@@ -175,7 +233,6 @@ const updateEmployee = async (req, res) => {
       "email",
       "phoneNumber",
       "placeOfBirth",
-      "skills",
       "dateOfBirth",
       "position",
       "managerId",
@@ -617,13 +674,11 @@ const parseCv = async (req, res) => {
       });
     }
 
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error:
-          "Unsupported file type for CV parsing. Only PDF supported for now.",
-      });
+    return res.status(400).json({
+      success: false,
+      error:
+        "Unsupported file type for CV parsing. Only PDF supported for now.",
+    });
   } catch (err) {
     return res
       .status(500)
@@ -632,6 +687,11 @@ const parseCv = async (req, res) => {
         error: "Failed to parse CV",
         message: err.message,
       });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to parse CV",
+      message: err.message,
+    });
   }
 };
 
