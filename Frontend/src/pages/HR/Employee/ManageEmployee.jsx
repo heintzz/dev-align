@@ -60,16 +60,18 @@ import UploadFile from "@/components/UploadFile";
 import AddEmployee from "./AddEmployee";
 
 export default function ManageEmployee() {
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize] = useState(5);
+  const [total, setTotal] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0); // 0-based
+  const [pageSize, setPageSize] = useState(10);
+  const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sorting, setSorting] = useState([]);
-  const [rowSelection, setRowSelection] = useState({});
+
   const [employees, setEmployees] = useState([]);
   const [openAddExcel, setOpenAddExcel] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
 
+  const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
 
@@ -179,9 +181,24 @@ export default function ManageEmployee() {
   ];
 
   const getEmployees = async () => {
-    const { data } = await api.get("/hr/employees");
-    console.log(data);
-    setEmployees(data.data);
+    try {
+      setLoading(true);
+      const params = {
+        page: pageIndex + 1, // backend is 1-based
+        limit: pageSize,
+        search: globalFilter || undefined,
+        active: statusFilter === "all" ? undefined : statusFilter === "active",
+      };
+
+      const { data } = await api.get("/hr/employees", { params });
+      setEmployees(data.data);
+      setTotal(data.meta.total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      console.log("finish");
+    }
   };
 
   const getExcelTemplate = async () => {
@@ -263,28 +280,32 @@ export default function ManageEmployee() {
   }, [employees, globalFilter, statusFilter]);
 
   const table = useReactTable({
-    data: filteredData,
+    data: employees,
     columns,
-    state: { sorting, pagination: { pageIndex, pageSize }, rowSelection },
-    onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualPagination: true, // ✅ important
+    manualSorting: true, // optional if backend handles sorting
+    manualFiltering: true,
+    pageCount: Math.ceil(total / pageSize),
+    state: {
+      pagination: { pageIndex, pageSize },
+      sorting,
+    },
     onPaginationChange: (updater) => {
       const newState =
         typeof updater === "function"
           ? updater({ pageIndex, pageSize })
           : updater;
       setPageIndex(newState.pageIndex);
+      setPageSize(newState.pageSize);
     },
-    pageCount: Math.ceil(filteredData.length / pageSize),
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   useEffect(() => {
     getEmployees();
-  }, []);
+  }, [pageIndex, pageSize, globalFilter, statusFilter]);
 
   return (
     <>
@@ -393,12 +414,10 @@ export default function ManageEmployee() {
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -406,7 +425,19 @@ export default function ManageEmployee() {
               </TableHeader>
 
               <TableBody>
-                {table.getRowModel().rows.length ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : employees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center">
+                      No data
+                    </TableCell>
+                  </TableRow>
+                ) : (
                   table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
@@ -414,45 +445,42 @@ export default function ManageEmployee() {
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
-                          ) || cell.getValue()}
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
-                    </TableCell>
-                  </TableRow>
                 )}
               </TableBody>
             </Table>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-end space-x-2 py-2 mr-5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <span className="text-sm">
-                Page {pageIndex + 1} of {table.getPageCount() || 1}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between p-5">
+              <div className="text-sm text-muted-foreground">
+                Page {pageIndex + 1} of {Math.ceil(total / pageSize)}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageIndex((p) => Math.max(p - 1, 0))}
+                  disabled={pageIndex === 0}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPageIndex((p) =>
+                      p + 1 < Math.ceil(total / pageSize) ? p + 1 : p
+                    )
+                  }
+                  disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         </div>

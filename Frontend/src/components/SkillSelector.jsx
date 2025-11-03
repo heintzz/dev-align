@@ -27,6 +27,8 @@ export function SkillSelector({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { listSkills, fetchSkills } = useSkillStore();
+  console.log("selected: ");
+  console.log(selectedSkills);
 
   useEffect(() => {
     if (!listSkills.length) fetchSkills();

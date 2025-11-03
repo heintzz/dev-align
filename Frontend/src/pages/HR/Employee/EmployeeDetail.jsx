@@ -36,6 +36,8 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 
+import { SkillSelector } from "@/components/SkillSelector";
+
 // 🧭 icons
 import {
   X,
@@ -66,15 +68,12 @@ export default function EmployeeDetail() {
 
   const [positions, setPositions] = useState([]);
   const [managers, setManagers] = useState([]);
-  const [listSkills, setListSkills] = useState([]);
   const [skills, setSkills] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
 
   // UI Controls
   const [isEditing, setIsEditing] = useState(false);
-  const [openSkillPopover, setOpenSkillPopover] = useState(false);
   const [openCalendar, setOpenCalendar] = useState(false);
-  const [searchSkill, setSearchSkill] = useState("");
 
   // 🧭 Fetch employee detail
   const getEmployee = async () => {
@@ -93,7 +92,8 @@ export default function EmployeeDetail() {
       managerId: emp.managerId || "",
       role: emp.role || "",
     });
-    setSkills(emp.skills.map((name) => ({ name })));
+    console.log(emp.skills);
+    setSkills(emp.skills);
     if (emp.dateOfBirth) setSelectedDate(new Date(emp.dateOfBirth));
   };
 
@@ -110,17 +110,11 @@ export default function EmployeeDetail() {
     setManagers(data.data || []);
   };
 
-  const getSkills = async () => {
-    const { data } = await api.get("/skill");
-    setListSkills(data.data.skills || []);
-  };
-
   // 🚀 On mount
   useEffect(() => {
     getEmployee();
     getPositions();
     getManagers();
-    getSkills();
   }, []);
 
   // 🧠 Handlers
@@ -131,7 +125,14 @@ export default function EmployeeDetail() {
   };
   const handleSave = async () => {
     try {
-      await api.put(`/hr/employee/${id}`, employeeForm);
+      console.log(employeeForm);
+      const skillName = skills.map((skill) => skill.name);
+      console.log(skillName);
+      const updatedEmployee = {
+        ...employeeForm,
+        skills: skillName,
+      };
+      await api.put(`/hr/employee/${id}`, updatedEmployee);
       setIsEditing(false);
       await getEmployee();
     } catch (error) {
@@ -155,39 +156,6 @@ export default function EmployeeDetail() {
       dateOfBirth: date ? format(date, "yyyy-MM-dd") : "",
     }));
     setOpenCalendar(false);
-  };
-
-  const handleAddSkill = (skill) => {
-    const isSelected = skills.some((s) => s.name === skill.name);
-    const updatedSkills = isSelected
-      ? skills.filter((s) => s.name !== skill.name)
-      : [...skills, { name: skill.name }];
-    setSkills(updatedSkills);
-    setOpenSkillPopover(false);
-    setSearchSkill("");
-  };
-
-  const handleRemoveSkill = (skill) => {
-    setSkills((prev) => prev.filter((s) => s.name !== skill.name));
-  };
-
-  const handleCustomAddSkill = async () => {
-    try {
-      const { data } = await api.post("/skill", { name: searchSkill });
-      await getSkills();
-
-      setSkills((prev) => {
-        if (!prev.some((s) => s.name === searchSkill)) {
-          return [...prev, { name: searchSkill }];
-        }
-        return prev;
-      });
-
-      setSearchSkill("");
-      setOpenSkillPopover(false);
-    } catch (error) {
-      console.error("Error adding new skill:", error);
-    }
   };
 
   // 🖼 UI
@@ -361,7 +329,13 @@ export default function EmployeeDetail() {
                   {/* Skills Section */}
                   <Field>
                     <FieldLabel>Skills</FieldLabel>
-                    <Popover
+                    <SkillSelector
+                      selectedSkills={skills}
+                      onChange={setSkills}
+                      isEditing={isEditing}
+                      className="max-h-12"
+                    />
+                    {/* <Popover
                       open={openSkillPopover}
                       onOpenChange={setOpenSkillPopover}
                     >
@@ -447,7 +421,7 @@ export default function EmployeeDetail() {
                       <p className="text-sm text-muted-foreground mt-2">
                         No skills added yet.
                       </p>
-                    )}
+                    )} */}
                   </Field>
                 </div>
               </div>
