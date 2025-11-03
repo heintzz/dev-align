@@ -1,5 +1,7 @@
 const { Project, ProjectAssignment, User, Task, TaskAssignment } = require('../models');
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+dotenv.config();
 
 // Task-related functions moved from project-task.controller.js
 
@@ -12,7 +14,7 @@ const createTask = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid project ID format'
+        error: 'Invalid project ID format',
       });
     }
 
@@ -49,8 +51,8 @@ const createTask = async (req, res) => {
         userId: { $in: assigneeIds },
       });
 
-      const validAssigneeIds = projectMembers.map(pm => pm.userId.toString());
-      const invalidAssigneeIds = assigneeIds.filter(id => !validAssigneeIds.includes(id));
+      const validAssigneeIds = projectMembers.map((pm) => pm.userId.toString());
+      const invalidAssigneeIds = assigneeIds.filter((id) => !validAssigneeIds.includes(id));
 
       if (invalidAssigneeIds.length > 0) {
         await Task.findByIdAndDelete(task._id);
@@ -64,7 +66,7 @@ const createTask = async (req, res) => {
 
       // Create task assignments
       await TaskAssignment.insertMany(
-        validAssigneeIds.map(userId => ({
+        validAssigneeIds.map((userId) => ({
           taskId: task._id,
           userId,
         }))
@@ -76,8 +78,10 @@ const createTask = async (req, res) => {
       .populate('requiredSkills', 'name')
       .populate('createdBy', 'name email');
 
-    const taskAssignments = await TaskAssignment.find({ taskId: task._id })
-      .populate('userId', 'name email');
+    const taskAssignments = await TaskAssignment.find({ taskId: task._id }).populate(
+      'userId',
+      'name email'
+    );
 
     const response = {
       id: populatedTask._id,
@@ -86,7 +90,7 @@ const createTask = async (req, res) => {
       status: populatedTask.status,
       startDate: populatedTask.startDate,
       endDate: populatedTask.endDate,
-      requiredSkills: populatedTask.requiredSkills.map(s => ({
+      requiredSkills: populatedTask.requiredSkills.map((s) => ({
         id: s._id,
         name: s.name,
       })),
@@ -95,7 +99,7 @@ const createTask = async (req, res) => {
         name: populatedTask.createdBy.name,
         email: populatedTask.createdBy.email,
       },
-      assignees: taskAssignments.map(ta => ({
+      assignees: taskAssignments.map((ta) => ({
         id: ta.userId._id,
         name: ta.userId.name,
         email: ta.userId.email,
@@ -125,7 +129,7 @@ const getTaskDetails = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid task ID format'
+        error: 'Invalid task ID format',
       });
     }
 
@@ -157,8 +161,7 @@ const getTaskDetails = async (req, res) => {
     }
 
     // Get task assignees
-    const taskAssignments = await TaskAssignment.find({ taskId })
-      .populate('userId', 'name email');
+    const taskAssignments = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     const response = {
       id: task._id,
@@ -167,7 +170,7 @@ const getTaskDetails = async (req, res) => {
       status: task.status,
       startDate: task.startDate,
       endDate: task.endDate,
-      requiredSkills: task.requiredSkills.map(s => ({
+      requiredSkills: task.requiredSkills.map((s) => ({
         id: s._id,
         name: s.name,
       })),
@@ -176,7 +179,7 @@ const getTaskDetails = async (req, res) => {
         name: task.createdBy.name,
         email: task.createdBy.email,
       },
-      assignees: taskAssignments.map(ta => ({
+      assignees: taskAssignments.map((ta) => ({
         id: ta.userId._id,
         name: ta.userId.name,
         email: ta.userId.email,
@@ -207,7 +210,7 @@ const updateTaskDetails = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid task ID format'
+        error: 'Invalid task ID format',
       });
     }
 
@@ -246,12 +249,11 @@ const updateTaskDetails = async (req, res) => {
       },
       { new: true }
     )
-    .populate('requiredSkills', 'name')
-    .populate('createdBy', 'name email');
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
 
     // Get task assignees
-    const taskAssignments = await TaskAssignment.find({ taskId })
-      .populate('userId', 'name email');
+    const taskAssignments = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     const response = {
       id: updatedTask._id,
@@ -260,7 +262,7 @@ const updateTaskDetails = async (req, res) => {
       status: updatedTask.status,
       startDate: updatedTask.startDate,
       endDate: updatedTask.endDate,
-      requiredSkills: updatedTask.requiredSkills.map(s => ({
+      requiredSkills: updatedTask.requiredSkills.map((s) => ({
         id: s._id,
         name: s.name,
       })),
@@ -269,7 +271,7 @@ const updateTaskDetails = async (req, res) => {
         name: updatedTask.createdBy.name,
         email: updatedTask.createdBy.email,
       },
-      assignees: taskAssignments.map(ta => ({
+      assignees: taskAssignments.map((ta) => ({
         id: ta.userId._id,
         name: ta.userId.name,
         email: ta.userId.email,
@@ -299,7 +301,7 @@ const deleteTask = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid task ID format'
+        error: 'Invalid task ID format',
       });
     }
 
@@ -353,7 +355,7 @@ const assignUsersToTask = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid task ID format'
+        error: 'Invalid task ID format',
       });
     }
 
@@ -388,8 +390,8 @@ const assignUsersToTask = async (req, res) => {
       userId: { $in: userIds },
     });
 
-    const validUserIds = projectMembers.map(pm => pm.userId.toString());
-    const invalidUserIds = userIds.filter(id => !validUserIds.includes(id));
+    const validUserIds = projectMembers.map((pm) => pm.userId.toString());
+    const invalidUserIds = userIds.filter((id) => !validUserIds.includes(id));
 
     if (invalidUserIds.length > 0) {
       return res.status(400).json({
@@ -402,21 +404,20 @@ const assignUsersToTask = async (req, res) => {
 
     // Create task assignments
     await TaskAssignment.insertMany(
-      validUserIds.map(userId => ({
+      validUserIds.map((userId) => ({
         taskId,
         userId,
       }))
     );
 
     // Get updated task with assignees
-    const taskAssignments = await TaskAssignment.find({ taskId })
-      .populate('userId', 'name email');
+    const taskAssignments = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     return res.json({
       success: true,
       data: {
         taskId,
-        assignees: taskAssignments.map(ta => ({
+        assignees: taskAssignments.map((ta) => ({
           id: ta.userId._id,
           name: ta.userId.name,
           email: ta.userId.email,
@@ -437,10 +438,13 @@ const removeUserFromTask = async (req, res) => {
     const { taskId, userId: targetUserId } = req.params;
     const userId = req.user.id;
 
-    if (!mongoose.Types.ObjectId.isValid(taskId) || !mongoose.Types.ObjectId.isValid(targetUserId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(taskId) ||
+      !mongoose.Types.ObjectId.isValid(targetUserId)
+    ) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid ID format'
+        error: 'Invalid ID format',
       });
     }
 
@@ -491,9 +495,9 @@ const getProjectTasks = async (req, res) => {
     const userId = req.user.id;
 
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid project ID format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid project ID format',
       });
     }
 
@@ -515,18 +519,18 @@ const getProjectTasks = async (req, res) => {
 
     // Get task assignments in one query
     const taskAssignments = await TaskAssignment.find({
-      taskId: { $in: tasks.map(t => t._id) }
+      taskId: { $in: tasks.map((t) => t._id) },
     }).populate('userId', 'name email');
 
     // Map tasks with assignments
-    const mappedTasks = tasks.map(task => ({
+    const mappedTasks = tasks.map((task) => ({
       id: task._id,
       title: task.title,
       description: task.description,
       status: task.status,
       startDate: task.startDate,
       endDate: task.endDate,
-      requiredSkills: task.requiredSkills.map(s => ({
+      requiredSkills: task.requiredSkills.map((s) => ({
         id: s._id,
         name: s.name,
       })),
@@ -536,8 +540,8 @@ const getProjectTasks = async (req, res) => {
         email: task.createdBy.email,
       },
       assignees: taskAssignments
-        .filter(ta => ta.taskId.equals(task._id))
-        .map(ta => ({
+        .filter((ta) => ta.taskId.equals(task._id))
+        .map((ta) => ({
           id: ta.userId._id,
           name: ta.userId.name,
           email: ta.userId.email,
@@ -566,9 +570,9 @@ const updateTaskStatus = async (req, res) => {
     const userId = req.user.id;
 
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid task ID format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid task ID format',
       });
     }
 
@@ -583,9 +587,9 @@ const updateTaskStatus = async (req, res) => {
     }
 
     // Check if user is assigned to this project
-    const projectAssignment = await ProjectAssignment.findOne({ 
-      projectId: task.projectId, 
-      userId 
+    const projectAssignment = await ProjectAssignment.findOne({
+      projectId: task.projectId,
+      userId,
     });
     if (!projectAssignment) {
       return res.status(403).json({
@@ -607,9 +611,9 @@ const updateTaskStatus = async (req, res) => {
 
     // Validate status transition
     const validTransitions = {
-      'todo': ['in_progress'],
-      'in_progress': ['done', 'todo'],
-      'done': ['in_progress'],
+      todo: ['in_progress'],
+      in_progress: ['done', 'todo'],
+      done: ['in_progress'],
     };
 
     if (!validTransitions[task.status]?.includes(status)) {
@@ -624,19 +628,18 @@ const updateTaskStatus = async (req, res) => {
     // Update task status
     const updatedTask = await Task.findByIdAndUpdate(
       taskId,
-      { 
+      {
         status,
         ...(status === 'in_progress' ? { startDate: new Date() } : {}),
         ...(status === 'done' ? { endDate: new Date() } : {}),
       },
       { new: true }
     )
-    .populate('requiredSkills', 'name')
-    .populate('createdBy', 'name email');
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
 
     // Get task assignees
-    const assignees = await TaskAssignment.find({ taskId })
-      .populate('userId', 'name email');
+    const assignees = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     // Format response
     const response = {
@@ -646,7 +649,7 @@ const updateTaskStatus = async (req, res) => {
       status: updatedTask.status,
       startDate: updatedTask.startDate,
       endDate: updatedTask.endDate,
-      requiredSkills: updatedTask.requiredSkills.map(s => ({
+      requiredSkills: updatedTask.requiredSkills.map((s) => ({
         id: s._id,
         name: s.name,
       })),
@@ -655,7 +658,7 @@ const updateTaskStatus = async (req, res) => {
         name: updatedTask.createdBy.name,
         email: updatedTask.createdBy.email,
       },
-      assignees: assignees.map(a => ({
+      assignees: assignees.map((a) => ({
         id: a.userId._id,
         name: a.userId.name,
         email: a.userId.email,
@@ -740,7 +743,7 @@ const getProjects = async (req, res) => {
     if (req.user.role === 'staff') {
       // Find all project assignments for this staff member
       const staffAssignments = await ProjectAssignment.find({ userId: req.user.id });
-      const projectIds = staffAssignments.map(assignment => assignment.projectId);
+      const projectIds = staffAssignments.map((assignment) => assignment.projectId);
       filter._id = { $in: projectIds };
     }
 
@@ -761,7 +764,9 @@ const getProjects = async (req, res) => {
         .skip(skip)
         .limit(perPage)
         .populate('createdBy', 'name email role')
-        .select('name description status startDate deadline teamMemberCount createdBy createdAt updatedAt'),
+        .select(
+          'name description status startDate deadline teamMemberCount createdBy createdAt updatedAt'
+        ),
     ]);
 
     return res.status(200).json({
@@ -806,7 +811,9 @@ const getAllProjects = async (req, res) => {
         .skip(skip)
         .limit(perPage)
         .populate('createdBy', 'name email role')
-        .select('name description status startDate deadline teamMemberCount createdBy createdAt updatedAt'),
+        .select(
+          'name description status startDate deadline teamMemberCount createdBy createdAt updatedAt'
+        ),
     ]);
 
     return res.status(200).json({
@@ -831,8 +838,7 @@ const getProjectById = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId)
-      .populate('createdBy', 'name email');
+    const project = await Project.findById(projectId).populate('createdBy', 'name email');
 
     if (!project) {
       return res.status(404).json({
@@ -860,8 +866,7 @@ const getProjectDetails = async (req, res) => {
     const { projectId } = req.params;
 
     // Get project details
-    const project = await Project.findById(projectId)
-      .populate('createdBy', '_id name email role');
+    const project = await Project.findById(projectId).populate('createdBy', '_id name email role');
 
     if (!project) {
       return res.status(404).json({
@@ -872,29 +877,29 @@ const getProjectDetails = async (req, res) => {
     }
 
     // Get all project assignments with user details and populate position
-    const assignments = await ProjectAssignment.find({ projectId: project._id })
-      .populate({
-        path: 'userId',
-        select: '_id name email role position',
-        populate: {
-          path: 'position',
-          select: '_id name'
-        }
-      });
+    const assignments = await ProjectAssignment.find({ projectId: project._id }).populate({
+      path: 'userId',
+      select: '_id name email role position',
+      populate: {
+        path: 'position',
+        select: '_id name',
+      },
+    });
 
     // Extract manager (project creator)
     const managerId = project.createdBy._id;
 
     // Extract all staff (all assigned users)
-    const allStaffIds = assignments.map(assignment => assignment.userId._id);
+    const allStaffIds = assignments.map((assignment) => assignment.userId._id);
 
     // Extract tech leads (excluding manager, only staff with isTechLead = true)
     const techLeadStaff = assignments
-      .filter(assignment =>
-        assignment.isTechLead === true &&
-        assignment.userId._id.toString() !== managerId.toString()
+      .filter(
+        (assignment) =>
+          assignment.isTechLead === true &&
+          assignment.userId._id.toString() !== managerId.toString()
       )
-      .map(assignment => assignment.userId._id);
+      .map((assignment) => assignment.userId._id);
 
     return res.status(200).json({
       success: true,
@@ -915,15 +920,17 @@ const getProjectDetails = async (req, res) => {
         techLeadStaffIds: techLeadStaff,
         // Additional detailed information
         managerDetails: project.createdBy,
-        staffDetails: assignments.map(assignment => ({
+        staffDetails: assignments.map((assignment) => ({
           _id: assignment.userId._id,
           name: assignment.userId.name,
           email: assignment.userId.email,
           role: assignment.userId.role,
-          position: assignment.userId.position ? {
-            _id: assignment.userId.position._id,
-            name: assignment.userId.position.name
-          } : null,
+          position: assignment.userId.position
+            ? {
+                _id: assignment.userId.position._id,
+                name: assignment.userId.position.name,
+              }
+            : null,
           isTechLead: assignment.isTechLead,
         })),
       },
@@ -940,7 +947,8 @@ const getProjectDetails = async (req, res) => {
 const updateProject = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { name, description, status, deadline, addStaffIds, removeStaffIds, replaceStaffIds } = req.body;
+    const { name, description, status, deadline, addStaffIds, removeStaffIds, replaceStaffIds } =
+      req.body;
 
     const project = await Project.findById(projectId);
 
@@ -977,7 +985,7 @@ const updateProject = async (req, res) => {
 
       // Remove all task assignments for this project
       const projectTasks = await Task.find({ projectId: project._id });
-      const taskIds = projectTasks.map(task => task._id);
+      const taskIds = projectTasks.map((task) => task._id);
       await TaskAssignment.deleteMany({ taskId: { $in: taskIds } });
 
       // Create new assignments for replacement staff
@@ -1008,11 +1016,11 @@ const updateProject = async (req, res) => {
         // Check for existing assignments
         const existingAssignments = await ProjectAssignment.find({
           projectId: project._id,
-          userId: { $in: addStaffIds }
+          userId: { $in: addStaffIds },
         });
 
-        const existingUserIds = existingAssignments.map(a => a.userId.toString());
-        const newStaff = staffToAdd.filter(s => !existingUserIds.includes(s._id.toString()));
+        const existingUserIds = existingAssignments.map((a) => a.userId.toString());
+        const newStaff = staffToAdd.filter((s) => !existingUserIds.includes(s._id.toString()));
 
         for (const staffMember of newStaff) {
           await ProjectAssignment.create({
@@ -1045,15 +1053,15 @@ const updateProject = async (req, res) => {
         // Remove project assignments
         const removeResult = await ProjectAssignment.deleteMany({
           projectId: project._id,
-          userId: { $in: removeStaffIds }
+          userId: { $in: removeStaffIds },
         });
 
         // Remove task assignments for removed users
         const projectTasks = await Task.find({ projectId: project._id });
-        const taskIds = projectTasks.map(task => task._id);
+        const taskIds = projectTasks.map((task) => task._id);
         await TaskAssignment.deleteMany({
           taskId: { $in: taskIds },
-          userId: { $in: removeStaffIds }
+          userId: { $in: removeStaffIds },
         });
 
         // Notify removed staff members
@@ -1079,18 +1087,20 @@ const updateProject = async (req, res) => {
       // Get all tasks for this project (only in_progress or done - exclude todo)
       const tasks = await Task.find({
         projectId: project._id,
-        status: { $in: ['in_progress', 'done'] }
+        status: { $in: ['in_progress', 'done'] },
       }).populate('requiredSkills');
 
       // Get all task assignments for these tasks
-      const taskIds = tasks.map(task => task._id);
-      const taskAssignments = await TaskAssignment.find({ taskId: { $in: taskIds } }).populate('userId');
+      const taskIds = tasks.map((task) => task._id);
+      const taskAssignments = await TaskAssignment.find({ taskId: { $in: taskIds } }).populate(
+        'userId'
+      );
 
       // Map of userId to set of skill IDs
       const userSkillsMap = new Map();
 
       for (const assignment of taskAssignments) {
-        const task = tasks.find(t => t._id.toString() === assignment.taskId.toString());
+        const task = tasks.find((t) => t._id.toString() === assignment.taskId.toString());
         if (task && task.requiredSkills && task.requiredSkills.length > 0) {
           const userId = assignment.userId._id.toString();
 
@@ -1098,12 +1108,12 @@ const updateProject = async (req, res) => {
             // Get user's existing skills
             const user = await User.findById(userId);
             const existingSkills = user.skills || [];
-            userSkillsMap.set(userId, new Set(existingSkills.map(s => s.toString())));
+            userSkillsMap.set(userId, new Set(existingSkills.map((s) => s.toString())));
           }
 
           // Add task's required skills to user's skill set (Set prevents duplicates)
           const userSkills = userSkillsMap.get(userId);
-          task.requiredSkills.forEach(skill => {
+          task.requiredSkills.forEach((skill) => {
             userSkills.add(skill._id.toString());
           });
         }
@@ -1118,10 +1128,15 @@ const updateProject = async (req, res) => {
       }
 
       project.status = 'completed';
-      messages.push(`Project completed. Transferred skills from ${tasks.length} task(s) to ${usersUpdated} user(s)`);
+      messages.push(
+        `Project completed. Transferred skills from ${tasks.length} task(s) to ${usersUpdated} user(s)`
+      );
 
       // Notify all team members about project completion
-      const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate('userId', 'name email');
+      const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate(
+        'userId',
+        'name email'
+      );
       for (const assignment of teamAssignments) {
         await sendNotification({
           user: assignment.userId,
@@ -1143,6 +1158,25 @@ const updateProject = async (req, res) => {
           relatedProject: project._id,
         });
       }
+
+      try {
+        await fetch(`${process.env.BASE_AI_URL}/project-embeddings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: project._id,
+          }),
+        });
+      } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Internal Server Error',
+          error: 'Failed to generate project embeddings',
+        });
+      }
     } else if (status !== undefined) {
       project.status = status;
     }
@@ -1150,8 +1184,10 @@ const updateProject = async (req, res) => {
     await project.save();
 
     // Get updated project with populated data
-    const updatedProject = await Project.findById(project._id)
-      .populate('createdBy', 'name email role');
+    const updatedProject = await Project.findById(project._id).populate(
+      'createdBy',
+      'name email role'
+    );
 
     return res.status(200).json({
       success: true,
@@ -1183,15 +1219,18 @@ const deleteProject = async (req, res) => {
     }
 
     // Get all team members before deletion to send notifications
-    const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate('userId', 'name email');
-    const teamMembers = teamAssignments.map(a => a.userId);
+    const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate(
+      'userId',
+      'name email'
+    );
+    const teamMembers = teamAssignments.map((a) => a.userId);
 
     // Get HR users
     const hrUsers = await User.find({ role: 'hr' });
 
     // Cascade delete: Find all tasks for this project
     const tasks = await Task.find({ projectId: project._id });
-    const taskIds = tasks.map(task => task._id);
+    const taskIds = tasks.map((task) => task._id);
 
     // Delete all task assignments for these tasks
     await TaskAssignment.deleteMany({ taskId: { $in: taskIds } });
@@ -1306,10 +1345,7 @@ const createProjectWithAssignments = async (req, res) => {
 
     for (const staffMember of staff) {
       // Check if this staff is a direct subordinate (managerId matches creator's ID)
-      if (
-        staffMember.managerId &&
-        staffMember.managerId._id.toString() === req.user.id
-      ) {
+      if (staffMember.managerId && staffMember.managerId._id.toString() === req.user.id) {
         ownStaff.push(staffMember);
       } else {
         needApprovalStaff.push(staffMember);
@@ -1395,19 +1431,21 @@ const createProjectWithAssignments = async (req, res) => {
     }
 
     // Populate project and assignments for response
-    const populatedProject = await Project.findById(project._id)
-      .populate('createdBy', 'name email role');
+    const populatedProject = await Project.findById(project._id).populate(
+      'createdBy',
+      'name email role'
+    );
 
     const populatedAssignments = await ProjectAssignment.find({
-      projectId: project._id
+      projectId: project._id,
     })
       .populate({
         path: 'userId',
         select: 'name email role position',
         populate: {
           path: 'position',
-          select: '_id name'
-        }
+          select: '_id name',
+        },
       })
       .populate('projectId', 'name description status');
 
@@ -1493,9 +1531,7 @@ const assignTechLead = async (req, res) => {
       }).populate('userId', 'role');
 
       const currentTechLeads = allAssignments.filter(
-        assignment =>
-          assignment.isTechLead === true &&
-          assignment.userId.role !== 'manager'
+        (assignment) => assignment.isTechLead === true && assignment.userId.role !== 'manager'
       );
 
       // Maximum 1 staff can be tech lead (manager is always tech lead, so max 2 total)
@@ -1503,7 +1539,8 @@ const assignTechLead = async (req, res) => {
         return res.status(400).json({
           success: false,
           error: 'Bad Request',
-          message: 'Maximum tech lead limit reached. A project can have maximum 2 tech leads (1 manager + 1 staff). Please remove existing staff tech lead first.',
+          message:
+            'Maximum tech lead limit reached. A project can have maximum 2 tech leads (1 manager + 1 staff). Please remove existing staff tech lead first.',
         });
       }
     }
@@ -1519,8 +1556,8 @@ const assignTechLead = async (req, res) => {
         select: 'name email role position',
         populate: {
           path: 'position',
-          select: '_id name'
-        }
+          select: '_id name',
+        },
       })
       .populate('projectId', 'name description status');
 
@@ -1552,7 +1589,7 @@ const getProjectStaff = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
-        message: 'Invalid project ID format'
+        message: 'Invalid project ID format',
       });
     }
 
@@ -1572,7 +1609,7 @@ const getProjectStaff = async (req, res) => {
       .sort({ 'userId.name': 1 });
 
     // Format response with just id and name
-    const staff = assignments.map(assignment => ({
+    const staff = assignments.map((assignment) => ({
       id: assignment.userId._id,
       name: assignment.userId.name,
       email: assignment.userId.email,
@@ -1610,12 +1647,12 @@ module.exports = {
   assignTechLead,
   getProjectStaff,
   // Task Management
-  getProjectTasks,    // DEV-79
-  updateTaskStatus,   // DEV-80
+  getProjectTasks, // DEV-79
+  updateTaskStatus, // DEV-80
   createTask,
   getTaskDetails,
   updateTaskDetails,
   deleteTask,
   assignUsersToTask,
-  removeUserFromTask
+  removeUserFromTask,
 };
