@@ -33,8 +33,8 @@ export default function Login() {
       );
 
       if (response.success) {
-        const { token, id, role } = response.data;
-        login(token, id, role);
+        const { token, role, id } = response.data;
+        login(token, role, id);
         navigate("/dashboard", { replace: true });
       }
     } catch (err) {
