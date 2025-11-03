@@ -198,13 +198,11 @@ const getEmployee = async (req, res) => {
     const response = userDto.mapUserToUserResponse(user);
     return res.json({ success: true, data: response });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: "Internal Server Error",
-        message: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
@@ -243,19 +241,63 @@ const updateEmployee = async (req, res) => {
         user[k] = req.body[k];
     });
 
+    // Handle skills update if skills array is provided
+    if (Array.isArray(req.body.skills)) {
+      // Find or create skills by name
+      const skillIds = await Promise.all(
+        req.body.skills.map(async (skillName) => {
+          let skill = await Skill.findOne({
+            name: { $regex: new RegExp(`^${skillName}$`, "i") },
+          });
+          if (!skill) {
+            // Create new skill if it doesn't exist
+            skill = await Skill.create({ name: skillName });
+          }
+          return skill._id;
+        })
+      );
+
+      // Update user's skills
+      user.skills = skillIds;
+    }
+
+    // Handle skills update if skills array is provided
+    if (Array.isArray(req.body.skills)) {
+      // Find or create skills by name
+      const skillIds = await Promise.all(
+        req.body.skills.map(async (skillName) => {
+          let skill = await Skill.findOne({
+            name: { $regex: new RegExp(`^${skillName}$`, "i") },
+          });
+          if (!skill) {
+            // Create new skill if it doesn't exist
+            skill = await Skill.create({ name: skillName });
+          }
+          return skill._id;
+        })
+      );
+
+      // Update user's skills
+      user.skills = skillIds;
+    }
+
     const updated = await user.save();
+
+    // Fetch complete user data with populated fields
+    const populatedUser = await User.findById(updated._id)
+      .populate("skills", "name")
+      .populate("position")
+      .populate("managerId", "name email phoneNumber position");
     return res.json({
       success: true,
-      data: userDto.mapUserToUserResponse(updated),
+      data: userDto.mapUserToUserResponse(populatedUser),
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: "Internal Server Error",
-        message: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
@@ -287,13 +329,11 @@ const deleteEmployee = async (req, res) => {
     await user.save();
     return res.json({ success: true, message: "Employee deactivated" });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: "Internal Server Error",
-        message: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
@@ -599,13 +639,11 @@ const importEmployees = async (req, res) => {
       results,
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: "Failed to parse file",
-        message: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to parse file",
+      message: err.message,
+    });
   }
 };
 
@@ -636,13 +674,11 @@ const getImportTemplate = async (req, res) => {
       .status(404)
       .json({ success: false, error: "Template file not found" });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: "Failed to get template",
-        message: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to get template",
+      message: err.message,
+    });
   }
 };
 
@@ -680,13 +716,11 @@ const parseCv = async (req, res) => {
         "Unsupported file type for CV parsing. Only PDF supported for now.",
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        error: "Failed to parse CV",
-        message: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to parse CV",
+      message: err.message,
+    });
     return res.status(500).json({
       success: false,
       error: "Failed to parse CV",

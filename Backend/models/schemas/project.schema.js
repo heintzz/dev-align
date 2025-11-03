@@ -25,6 +25,11 @@ const projectSchema = new Schema(
       type: Date,
       required: false,
     },
+    completedAt: {
+      type: Date,
+      required: false,
+      default: null,
+    },
     teamMemberCount: {
       type: Number,
       default: 1, // Default 1 to include manager
