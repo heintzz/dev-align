@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     LLM_MODEL_CV: str
     LLM_BASE_URL_CV: str
     EMBEDDING_MODEL: str
+    EMBEDDING_MODEL_BASE_URL: str
+    LLM_MODEL_ROSTER: str
     LLM_BASE_URL_ROSTER: str
     LLM_API_KEY: str
     

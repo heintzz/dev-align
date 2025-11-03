@@ -1,6 +1,7 @@
 import numpy as np
 import dspy 
 import string
+import time
 
 from src.models.roster import ProjectEmbeddingsResponse, RosterRecommendationsResponse
 
@@ -11,7 +12,6 @@ from src.agents.recommendation_agent.model import RecommendationModel
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
@@ -155,6 +155,16 @@ async def create_project_embeddings(request: EmbeddingProjectRequest):
 
 @router.post("/roster-recommendations", response_model=RosterRecommendationsResponse)
 def get_recommendations(request: SkillRequest):
+    logs = {
+        "workload_calculation_time": 0,
+        "skill_matching_time": 0,
+        "vector_retrieval_time": 0,
+        "project_similarity_time": 0,
+        "ai_reranking_time": 0,
+        "total_execution_time": 0
+    }
+    
+    total_start_time = time.time()
     database = get_database()
     user_collection = database.get_collection("users")
     
@@ -173,6 +183,7 @@ def get_recommendations(request: SkillRequest):
         position_name = position["name"] if position and position.get("name") else None
 
         # 1. matching skills, FURTHER IMPROVEMENT: maybe we can use AI to match some typo skills
+        start_time = time.time()
         skill_ids = user.get("skills", [])
         skills = list(database.get_collection("skills").find({"_id": {"$in": skill_ids}}, {"name": 1}))
         user_skills = [clean_skills_name(skill["name"]) for skill in skills]
@@ -180,8 +191,10 @@ def get_recommendations(request: SkillRequest):
         matched_count = len(set(required_skills) & set(user_skills))
         total = len(set(required_skills))
         matched_count_score = matched_count / total
+        logs["skill_matching_time"] += time.time() - start_time
 
         # 2. workload counter
+        start_time = time.time()
         project_pipeline = [
             {"$match": {"userId": user_id}},  # filter by user
             {
@@ -235,11 +248,13 @@ def get_recommendations(request: SkillRequest):
         project_assignments = list(database.get_collection("projectassignments").aggregate(project_pipeline))
         project_count = len(project_assignments)
         project_count_score = 1.0 if project_count == 0 else 1.0 / project_count
+        logs["workload_calculation_time"] += time.time() - start_time
 
         # 3. Embedding vector
+        start_time = time.time()
         embedder = dspy.Embedder(
             model=settings.EMBEDDING_MODEL, 
-            api_base=settings.LLM_BASE_URL_ROSTER,
+            api_base=settings.EMBEDDING_MODEL_BASE_URL,
             api_key=settings.LLM_API_KEY
         )
 
@@ -248,7 +263,9 @@ def get_recommendations(request: SkillRequest):
         # NOTE: projectembeddings stores task title, jadi nanti yang masuk database, deskripsinya itu joinan dari task title
         embeddings_collection = database.get_collection("projectembeddings")
         project_history_refs = list(embeddings_collection.find({"user_id": user_id}, {"project_id": 1, "embeddings": 1, "description": 1}))
+        logs["vector_retrieval_time"] += time.time() - start_time
 
+        start_time = time.time()
         # 4. Calculate cosine similarity for each project
         def cosine_similarity(vec_a, vec_b): 
             a = np.array(vec_a)
@@ -266,6 +283,7 @@ def get_recommendations(request: SkillRequest):
         # Ambil 3 similarity terbesar
         top_3 = sorted(similarities, reverse=True)[:3]
         top_3_avg = np.mean(top_3)
+        logs["project_similarity_time"] += time.time() - start_time
 
         # 5. Merge all the data
         result = {
@@ -287,8 +305,8 @@ def get_recommendations(request: SkillRequest):
         score["currentWorkload"] = round(score["currentWorkload"], 2)
         score["projectSimilarity"] = round(score["projectSimilarity"], 2)
         
-        print(score)
-        print("-" * 25)
+        # print(score)
+        # print("-" * 25)
 
     # group by position
     grouped = defaultdict(list)
@@ -306,11 +324,9 @@ def get_recommendations(request: SkillRequest):
         sorted_candidates = sorted(candidates, key=lambda x: x["matchingPercentage"], reverse=True)
         top_candidates[position] = sorted_candidates[:n*2]
 
-    print("top candidates")
-    print(top_candidates)
-
     # 6. let the AI rerank the recommendations
     # ga pake dspy juga aman aja 👌
+    start_time = time.time()
     configure_llm_roster()
     reranker = dspy.Predict(RecommendationModel)
 
@@ -343,9 +359,9 @@ def get_recommendations(request: SkillRequest):
             c["reason"] = reasoning
 
         top_candidates[position] = ordered
+    logs["ai_reranking_time"] = time.time() - start_time
     
-    print("-" * 25)
-    print("final top candidates")
-    print(top_candidates)
+    logs["total_execution_time"] = time.time() - total_start_time
+    print(logs)
 
     return {"success": True, "data": top_candidates}

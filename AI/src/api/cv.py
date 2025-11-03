@@ -9,7 +9,6 @@ from src.utils.util import extract_text_from_pdf
 
 from typing import Union
 from fastapi import APIRouter, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/cv")
 

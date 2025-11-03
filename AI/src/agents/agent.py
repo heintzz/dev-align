@@ -13,8 +13,8 @@ def configure_llm():
 
 def configure_llm_roster():
     lm = dspy.LM(
-        model=f"openai/{settings.LLM_MODEL_CV}",
-        api_base=settings.LLM_BASE_URL_CV,
+        model=f"openai/{settings.LLM_MODEL_ROSTER}",
+        api_base=settings.LLM_BASE_URL_ROSTER,
         api_key=settings.LLM_API_KEY,
     )
 
