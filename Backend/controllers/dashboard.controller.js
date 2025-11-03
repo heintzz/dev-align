@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { TaskAssignment, User } = require('../models');
+const { TaskAssignment, User, Project } = require('../models');
 
 // helper to compute date range
 function getDateRange(period) {
@@ -31,10 +31,50 @@ function getDateRange(period) {
   return null;
 }
 
-const topContributors = async (req, res) => {
+const getDashboardData = async (req, res) => {
   try {
     const period = (req.query.period || 'this_month'); // this_month | last_month | this_year | all
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
+
+    // 1. Get employee statistics
+    const totalEmployees = await User.countDocuments({});
+    const resignedEmployees = await User.countDocuments({ isActive: false });
+
+    // 2. Get project statistics
+    const projectStats = await Project.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const projectStatistics = {
+      completed: 0,
+      inProgress: 0,
+      onHold: 0,
+      rejected: 0
+    };
+
+    projectStats.forEach(stat => {
+      switch(stat._id.toLowerCase()) {
+        case 'completed':
+          projectStatistics.completed = stat.count;
+          break;
+        case 'in progress':
+          projectStatistics.inProgress = stat.count;
+          break;
+        case 'on hold':
+          projectStatistics.onHold = stat.count;
+          break;
+        case 'rejected':
+          projectStatistics.rejected = stat.count;
+          break;
+      }
+    });
+
+    // 3. Get top contributors (existing logic)
 
     const range = getDateRange(period);
 
@@ -129,14 +169,28 @@ const topContributors = async (req, res) => {
       doneCount: r.doneCount,
     }));
 
-    return res.json({ success: true, data: formatted });
+    return res.json({
+      success: true,
+      data: {
+        statistics: {
+          totalEmployees: {
+            count: totalEmployees
+          },
+          resignedEmployees: {
+            count: resignedEmployees
+          }
+        },
+        projectStatistics: projectStatistics,
+        topContributors: formatted
+      }
+    });
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('topContributors error', err);
+    console.error('getDashboardData error', err);
     return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
   }
 };
 
 module.exports = {
-  topContributors,
+  getDashboardData,
 };

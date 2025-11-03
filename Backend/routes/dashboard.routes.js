@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middlewares/token');
 const auth = require('../middlewares/authorization');
-const { topContributors } = require('../controllers/dashboard.controller');
+const { getDashboardData } = require('../controllers/dashboard.controller');
 
 /**
  * @swagger
- * /dashboard/top-contributors:
+ * /dashboard:
  *   get:
- *     summary: Get top contributors (users with most completed tasks)
+ *     summary: Get all dashboard data including statistics, project stats, and top contributors
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -18,17 +18,66 @@ const { topContributors } = require('../controllers/dashboard.controller');
  *         schema:
  *           type: string
  *           enum: [this_month, last_month, this_year, all]
- *         description: Period filter (default: this_month)
+ *         description: Period filter for top contributors (default: this_month)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Max number of contributors to return (default: 10)
+ *         description: Max number of top contributors to return (default: 10)
  *     responses:
  *       200:
- *         description: List of top contributors
+ *         description: Complete dashboard data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     statistics:
+ *                       type: object
+ *                       properties:
+ *                         totalEmployees:
+ *                           type: object
+ *                           properties:
+ *                             count:
+ *                               type: integer
+ *                         resignedEmployees:
+ *                           type: object
+ *                           properties:
+ *                             count:
+ *                               type: integer
+ *                     projectStatistics:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                         inProgress:
+ *                           type: integer
+ *                         onHold:
+ *                           type: integer
+ *                         rejected:
+ *                           type: integer
+ *                     topContributors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           userId:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           position:
+ *                             type: string
+ *                           doneCount:
+ *                             type: integer
  */
 // Allow any authenticated user to access this endpoint (no role restriction)
-router.get('/top-contributors', verifyToken, topContributors);
+router.get('/', verifyToken, getDashboardData);
 
 module.exports = router;

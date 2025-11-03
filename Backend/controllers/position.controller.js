@@ -1,5 +1,8 @@
 const { Position } = require('../models');
 
+// Helper to escape user input when building RegExp (prevent invalid regex from names with special chars)
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // Create single position
 const createPosition = async (req, res) => {
   const { name } = req.body;
@@ -15,7 +18,7 @@ const createPosition = async (req, res) => {
   try {
     // Check for duplicate (case-insensitive)
     const existingPosition = await Position.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
+      name: { $regex: new RegExp('^' + escapeRegExp(name.trim()) + '$', 'i') }
     });
 
     if (existingPosition) {
@@ -66,7 +69,7 @@ const createMultiplePositions = async (req, res) => {
 
       // Check for duplicate (case-insensitive)
       const existingPosition = await Position.findOne({
-        name: { $regex: new RegExp(`^${positionName.trim()}$`, 'i') }
+        name: { $regex: new RegExp('^' + escapeRegExp(positionName.trim()) + '$', 'i') }
       });
 
       if (existingPosition) {

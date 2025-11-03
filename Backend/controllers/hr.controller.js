@@ -7,6 +7,9 @@ const XLSX = require('xlsx');
 const pdfParse = require('pdf-parse');
 const path = require('path');
 
+// Helper to safely escape user input when building RegExp
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const skillMatching = (skills, existingSkills) => {
   const clean = (arr) =>
     arr.map((skill) =>
@@ -121,7 +124,7 @@ const listEmployees = async (req, res) => {
 
   const filter = {};
   if (search) {
-    const regex = new RegExp(search, 'i');
+    const regex = new RegExp(escapeRegExp(search), 'i');
     filter.$or = [{ name: regex }, { email: regex }];
   }
   if (role) filter.role = role;
@@ -233,7 +236,7 @@ const updateEmployee = async (req, res) => {
     if (Array.isArray(req.body.skills)) {
       // Find or create skills by name
       const skillIds = await Promise.all(req.body.skills.map(async (skillName) => {
-        let skill = await Skill.findOne({ name: { $regex: new RegExp(`^${skillName}$`, 'i') } });
+    let skill = await Skill.findOne({ name: new RegExp('^' + escapeRegExp(skillName) + '$', 'i') });
         if (!skill) {
           // Create new skill if it doesn't exist
           skill = await Skill.create({ name: skillName });
@@ -571,10 +574,14 @@ const getImportTemplate = async (req, res) => {
     const csvPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.csv');
     const fs = require('fs');
     if (format === 'xlsx' && fs.existsSync(xlsxPath)) {
-      return res.download(xlsxPath, 'employee-import-template.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.xlsx');
+      return res.sendFile(xlsxPath);
     }
     if (format === 'csv' && fs.existsSync(csvPath)) {
-      return res.download(csvPath, 'employee-import-template.csv');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.csv');
+      return res.sendFile(csvPath);
     }
     // fallback: error if file not found
     return res.status(404).json({ success: false, error: 'Template file not found' });
