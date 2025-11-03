@@ -45,7 +45,6 @@ const createEmployee = async (req, res) => {
   try {
     const { email } = req.body;
     const existingUser = await User.findOne({ email });
-
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -88,6 +87,7 @@ const createEmployee = async (req, res) => {
 
     const message = `Hello ${req.body.name}, Welcome onboard!!\nYour HR has created an account for you.\nEmail: ${email}\nPassword: ${password}\nPlease log in and change your password.`;
 
+    // Attempt to send welcome email (non-blocking failure handled)
     try {
       await sendEmail({
         to: email,
@@ -95,6 +95,8 @@ const createEmployee = async (req, res) => {
         text: message,
       });
     } catch (e) {
+      // Log and continue — don't fail creation if email sending fails
+      // eslint-disable-next-line no-console
       console.warn('Failed to send welcome email:', e.message || e);
     }
 
@@ -134,6 +136,7 @@ const listEmployees = async (req, res) => {
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
       .populate('position')
+      .populate('skills', 'name')
       .populate('managerId', 'name email phoneNumber position')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -165,6 +168,7 @@ const getEmployee = async (req, res) => {
     // populate manager info to include name & email for frontend
     const user = await User.findById(id)
       .populate('position')
+      .populate('skills', 'name')
       .populate('managerId', 'name email phoneNumber position')
       .lean();
 
@@ -225,8 +229,31 @@ const updateEmployee = async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(req.body, k)) user[k] = req.body[k];
     });
 
+  // Handle skills update if skills array is provided
+    if (Array.isArray(req.body.skills)) {
+      // Find or create skills by name
+      const skillIds = await Promise.all(req.body.skills.map(async (skillName) => {
+        let skill = await Skill.findOne({ name: { $regex: new RegExp(`^${skillName}$`, 'i') } });
+        if (!skill) {
+          // Create new skill if it doesn't exist
+          skill = await Skill.create({ name: skillName });
+        }
+        return skill._id;
+      }));
+
+      // Update user's skills
+      user.skills = skillIds;
+    }
+
     const updated = await user.save();
-    return res.json({ success: true, data: userDto.mapUserToUserResponse(updated) });
+
+
+    // Fetch complete user data with populated fields
+    const populatedUser = await User.findById(updated._id)
+      .populate('skills', 'name')
+      .populate('position')
+      .populate('managerId', 'name email phoneNumber position');
+    return res.json({ success: true, data: userDto.mapUserToUserResponse(populatedUser) });
   } catch (err) {
     return res
       .status(500)
@@ -282,13 +309,30 @@ const importEmployees = async (req, res) => {
     const fileEmails = [];
     const managerEmailsSet = new Set();
     const positionNamesSet = new Set();
+    const skillNamesSet = new Set();
     rows.forEach((row) => {
       const email = row.email || row.Email || null;
       const managerEmail = row.managerEmail || row.ManagerEmail || null;
       const positionVal = row.position || row.Position || null;
+      const skillsVal = row.skills || row.Skills || '';
+
       if (email) fileEmails.push(String(email).toLowerCase());
       if (managerEmail) managerEmailsSet.add(String(managerEmail).toLowerCase());
       if (positionVal && typeof positionVal === 'string') positionNamesSet.add(positionVal);
+
+      // Handle skills (comma-separated string or array)
+      if (skillsVal) {
+        const skillNames =
+          typeof skillsVal === 'string'
+            ? skillsVal
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : Array.isArray(skillsVal)
+            ? skillsVal
+            : [];
+        skillNames.forEach((name) => skillNamesSet.add(name));
+      }
     });
 
     // find existing users with those emails
@@ -303,11 +347,49 @@ const importEmployees = async (req, res) => {
       .lean();
     const managerMap = new Map(managers.map((m) => [String(m.email).toLowerCase(), m._id]));
 
-    // resolve positions by name
-    const positions = await Position.find({ name: { $in: Array.from(positionNamesSet) } })
+    // helper to escape user input for RegExp
+    const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\[\]\\]/g, '\\$&');
+
+    // resolve positions by name (case-insensitive)
+    const positions = await Position.find({
+      $or: Array.from(positionNamesSet).map((n) => ({
+        name: new RegExp('^' + escapeRegExp(n) + '$', 'i'),
+      })),
+    })
       .select('name _id')
       .lean();
-    const positionMap = new Map(positions.map((p) => [p.name, p._id]));
+    // map using lowercase key for case-insensitive lookup
+    const positionMap = new Map(positions.map((p) => [String(p.name).toLowerCase(), p._id]));
+
+    // resolve skills by name (case-insensitive)
+    const skills = await Skill.find({
+      $or: Array.from(skillNamesSet).map((n) => ({
+        name: new RegExp('^' + escapeRegExp(n) + '$', 'i'),
+      })),
+    })
+      .select('name _id')
+      .lean();
+    const skillMap = new Map(skills.map((s) => [String(s.name).toLowerCase(), s._id]));
+
+    // Auto-create missing positions and skills so import doesn't fail on unknown names
+    const missingPositionNames = Array.from(positionNamesSet).filter(
+      (n) => !positionMap.has(String(n).toLowerCase())
+    );
+    if (missingPositionNames.length > 0) {
+      // create positions (preserve provided casing)
+      const createdPositions = await Position.insertMany(
+        missingPositionNames.map((name) => ({ name }))
+      );
+      createdPositions.forEach((p) => positionMap.set(String(p.name).toLowerCase(), p._id));
+    }
+
+    const missingSkillNames = Array.from(skillNamesSet).filter(
+      (n) => !skillMap.has(String(n).toLowerCase())
+    );
+    if (missingSkillNames.length > 0) {
+      const createdSkills = await Skill.insertMany(missingSkillNames.map((name) => ({ name })));
+      createdSkills.forEach((s) => skillMap.set(String(s.name).toLowerCase(), s._id));
+    }
 
     // detect within-file duplicates
     const seenInFile = new Set();
@@ -327,6 +409,7 @@ const importEmployees = async (req, res) => {
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
       const managerEmail = managerEmailRaw ? String(managerEmailRaw).toLowerCase() : null;
       const role = row.role || row.Role || 'staff';
+      const skillsVal = row.skills || row.Skills || '';
 
       const rowResult = { row: rowIndex, errors: [], warnings: [], resolved: {} };
 
@@ -360,10 +443,11 @@ const importEmployees = async (req, res) => {
         if (mongoose.Types.ObjectId.isValid(positionVal)) {
           position = positionVal;
           rowResult.resolved.position = position;
-        } else if (positionMap.has(positionVal)) {
-          position = positionMap.get(positionVal);
+        } else if (positionMap.has(String(positionVal).toLowerCase())) {
+          position = positionMap.get(String(positionVal).toLowerCase());
           rowResult.resolved.position = position;
         } else {
+          // should not happen because we auto-create missing positions earlier, but keep warning as fallback
           rowResult.warnings.push('Position not found');
         }
       }
@@ -376,6 +460,39 @@ const importEmployees = async (req, res) => {
           rowResult.resolved.managerId = managerId;
         } else {
           rowResult.warnings.push('Manager email not found');
+        }
+      }
+
+      // resolve skills
+      let skills = [];
+      if (skillsVal) {
+        const skillNames =
+          typeof skillsVal === 'string'
+            ? skillsVal
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : Array.isArray(skillsVal)
+            ? skillsVal
+            : [];
+
+        skills = skillNames
+          .map((name) => {
+            if (mongoose.Types.ObjectId.isValid(name)) {
+              return name; // If it's already an ID, use it directly
+            }
+            const key = String(name).toLowerCase();
+            if (skillMap.has(key)) {
+              return skillMap.get(key);
+            }
+            // fallback: skill not found (should be rare because we auto-create earlier)
+            rowResult.warnings.push(`Skill not found: ${name}`);
+            return null;
+          })
+          .filter(Boolean);
+
+        if (skills.length > 0) {
+          rowResult.resolved.skills = skills;
         }
       }
 
@@ -410,6 +527,7 @@ const importEmployees = async (req, res) => {
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           position,
           managerId,
+          skills,
           role,
           password: hashedPassword,
         });

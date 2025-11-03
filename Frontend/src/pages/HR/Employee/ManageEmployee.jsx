@@ -18,6 +18,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,8 +53,11 @@ import {
   Plus,
   FilePenLine,
   Sheet,
+  Download,
 } from "lucide-react";
 import api from "@/api/axios";
+import UploadFile from "@/components/UploadFile";
+import AddEmployee from "./AddEmployee";
 
 export default function ManageEmployee() {
   const [pageIndex, setPageIndex] = useState(0);
@@ -55,6 +67,11 @@ export default function ManageEmployee() {
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
   const [employees, setEmployees] = useState([]);
+  const [openAddExcel, setOpenAddExcel] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   const navigate = useNavigate();
 
@@ -167,14 +184,67 @@ export default function ManageEmployee() {
     setEmployees(data.data);
   };
 
+  const getExcelTemplate = async () => {
+    const response = await api.get("/hr/employees/template", {
+      responseType: "blob",
+    });
+
+    console.log(response);
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    // Set the file name dynamically
+    const fileName = "employee-import-template.xlsx";
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    // Clean up
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const AddEmployeeByExcel = async () => {
+    if (!excelFile) {
+      alert("Please select a file first!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", excelFile);
+
+    try {
+      // setLoadingUpload(true);
+      const response = await api.post(
+        "/hr/employees/import?dryRun=false&sendEmails=false",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      console.log("Import result:", response);
+      alert(
+        `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`
+      );
+      setOpenAddExcel(false);
+    } catch (error) {
+      console.error("Failed to import employees:", error);
+      alert("Failed to import employees.");
+    } finally {
+      // setLoadingUpload(false);
+      getEmployees();
+    }
+  };
+
   const deativate = async (id) => {
     console.log(id);
     const { data } = await api.delete(`hr/employee/${id}`);
     console.log(data);
     getEmployees();
   };
-
-  // getEmployees();
 
   const filteredData = useMemo(() => {
     let filtered = employees;
@@ -240,8 +310,8 @@ export default function ManageEmployee() {
                     <FilePenLine /> Individual
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                  // onClick={() => alert(`Deleting ${row.original.name}`)}
-                  // className="cursor-pointer"
+                    onClick={() => setOpenAddExcel(true)}
+                    className="cursor-pointer"
                   >
                     <Sheet />
                     Multiple
@@ -387,6 +457,50 @@ export default function ManageEmployee() {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={openAddExcel}
+        onOpenChange={(isOpen) => {
+          setOpenAddExcel(isOpen);
+
+          if (!isOpen) {
+            setExcelFile(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              Add Multiple Employee
+            </DialogTitle>
+            <DialogDescription>
+              Add multiple employee by uploading excell
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <Button
+              onClick={getExcelTemplate}
+              className="w-full sm:w-auto bg-primer cursor-pointer text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:opacity-70"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Template
+            </Button>
+
+            <UploadFile
+              label="Upload document"
+              iconType="file"
+              accept=".xlsx"
+              onFileSelect={(file) => setExcelFile(file)}
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={AddEmployeeByExcel}>Add Employee</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

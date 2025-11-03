@@ -9,16 +9,17 @@ services:
       - ./Backend/.env
     volumes:
       - ./Backend:/app
-      - /app/node_modules
+      - /app/Backend/node_modules
+    depends_on:
+      - ai-backend
 
   ai-backend:
     build:
       context: ./AI
       dockerfile: Dockerfile
     env_file:
-      - ./Backend/.env
+      - ./AI/.env
     ports:
       - '8000:8000'
     volumes:
       - ./AI:/app
-      - /app/node_modules
