@@ -229,8 +229,31 @@ const updateEmployee = async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(req.body, k)) user[k] = req.body[k];
     });
 
+  // Handle skills update if skills array is provided
+    if (Array.isArray(req.body.skills)) {
+      // Find or create skills by name
+      const skillIds = await Promise.all(req.body.skills.map(async (skillName) => {
+        let skill = await Skill.findOne({ name: { $regex: new RegExp(`^${skillName}$`, 'i') } });
+        if (!skill) {
+          // Create new skill if it doesn't exist
+          skill = await Skill.create({ name: skillName });
+        }
+        return skill._id;
+      }));
+
+      // Update user's skills
+      user.skills = skillIds;
+    }
+
     const updated = await user.save();
-    return res.json({ success: true, data: userDto.mapUserToUserResponse(updated) });
+
+
+    // Fetch complete user data with populated fields
+    const populatedUser = await User.findById(updated._id)
+      .populate('skills', 'name')
+      .populate('position')
+      .populate('managerId', 'name email phoneNumber position');
+    return res.json({ success: true, data: userDto.mapUserToUserResponse(populatedUser) });
   } catch (err) {
     return res
       .status(500)
