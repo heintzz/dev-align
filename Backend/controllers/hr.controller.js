@@ -1,5 +1,5 @@
 const userDto = require("../dto/user.dto");
-const { User, Position, Skill } = require("../models");
+const { User, Position, Skill, ProjectAssignment } = require("../models");
 const { sendEmail } = require("../utils/email");
 const { hashPassword, generatePassword } = require("../utils/password");
 const mongoose = require("mongoose");
@@ -150,9 +150,26 @@ const listEmployees = async (req, res) => {
       .limit(limit)
       .exec();
 
+    // Count projects per user for users in this page
+    const userIds = users.map((u) => u._id);
+    const projectCountsMap = new Map();
+    if (userIds.length > 0) {
+      const counts = await ProjectAssignment.aggregate([
+        { $match: { userId: { $in: userIds } } },
+        { $group: { _id: '$userId', count: { $sum: 1 } } },
+      ]).exec();
+      counts.forEach((c) => projectCountsMap.set(String(c._id), c.count));
+    }
+
+    const mapped = users.map((u) => {
+      const out = userDto.mapUserToUserResponse(u);
+      out.projectCount = projectCountsMap.get(String(u._id)) || 0;
+      return out;
+    });
+
     return res.json({
       success: true,
-      data: users.map((u) => userDto.mapUserToUserResponse(u)),
+      data: mapped,
       meta: { total, page, limit },
     });
   } catch (err) {
@@ -199,6 +216,15 @@ const getEmployee = async (req, res) => {
 
     // map and return — DTO will include manager object when populated
     const response = userDto.mapUserToUserResponse(user);
+    // attach project count for this employee
+    try {
+      const projCount = await ProjectAssignment.countDocuments({ userId: user._id });
+      response.projectCount = projCount;
+    } catch (e) {
+      // non-fatal: if counting fails, default to 0
+      response.projectCount = 0;
+    }
+
     return res.json({ success: true, data: response });
   } catch (err) {
     return res.status(500).json({
