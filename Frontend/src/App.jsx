@@ -1,34 +1,30 @@
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Navigate,
-} from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
 // Components
-import CustomToaster from "@/components/CustomToaster";
+import CustomToaster from '@/components/CustomToaster';
 
 // Pages
-import Kanban from "@/pages/Kanban";
-import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "@/pages/auth/ResetPassword";
-import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
-import EmployeeDetail from "./pages/HR/Employee/EmployeeDetail";
-import AddEmployee from "./pages/HR/Employee/AddEmployee";
-import HRDashboard from "@/pages/HR/Dashboard";
-import PMDashboard from "./pages/PM/Dashboard";
-import StaffDashboard from "./pages/Staff/Dashboard";
-import CreateProject from "./pages/PM/CreateProject";
-import ListProjects from "./pages/PM/ListProject";
+import Login from '@/pages/auth/Login'; // pastikan path-nya sesuai
+import ResetPassword from '@/pages/auth/ResetPassword';
+import HRDashboard from '@/pages/HR/Dashboard';
+import ManageEmployee from '@/pages/HR/Employee/ManageEmployee';
+import Kanban from '@/pages/Kanban';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import AddEmployee from './pages/HR/Employee/AddEmployee';
+import EmployeeDetail from './pages/HR/Employee/EmployeeDetail';
+import CreateProject from './pages/PM/CreateProject';
+import PMDashboard from './pages/PM/Dashboard';
+import ListProjects from './pages/PM/ListProject';
+import StaffDashboard from './pages/Staff/Dashboard';
 
 // Layout
-import AppLayout from "@/components/layouts/AppLayout";
-import { useEffect, useState } from "react";
+import AppLayout from '@/components/layouts/AppLayout';
 
-import { useAuthStore } from "@/store/useAuthStore";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import GuestRoute from "@/components/GuestRoute";
+import GuestRoute from '@/components/GuestRoute';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuthStore } from '@/store/useAuthStore';
+import ManagerTeam from './pages/PM/ManagerTeam';
+import StaffTeam from './pages/Staff/StaffTeam';
 
 function App() {
   const { token, role } = useAuthStore();
@@ -69,9 +65,9 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  {role == "hr" ? (
+                  {role == 'hr' ? (
                     <HRDashboard />
-                  ) : role == "manager" ? (
+                  ) : role == 'manager' ? (
                     <PMDashboard />
                   ) : (
                     <StaffDashboard />
@@ -147,11 +143,30 @@ function App() {
             }
           />
 
-          {/* Redirect default ke /login */}
           <Route
-            path="*"
-            element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
+            path="/team"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <StaffTeam />
+                </AppLayout>
+              </ProtectedRoute>
+            }
           />
+
+          <Route
+            path="/team/management"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ManagerTeam />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Redirect default ke /login */}
+          <Route path="*" element={<Navigate to={token ? '/dashboard' : '/login'} replace />} />
         </Routes>
       </Router>
       <CustomToaster />
