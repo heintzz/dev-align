@@ -29,6 +29,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import GuestRoute from "@/components/GuestRoute";
+import Inbox from "@/pages/Inbox";
 
 function App() {
   const { token, role } = useAuthStore();
@@ -142,6 +143,17 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <ListProjects />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/team/reqapprove"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Inbox />
                 </AppLayout>
               </ProtectedRoute>
             }
