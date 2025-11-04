@@ -820,9 +820,11 @@ Creates a new project and automatically assigns staff members in a single API ca
 **⭐ Special Features**:
 - Creates project and assigns staff in one transaction
 - **Status is automatically set to 'active'** (cannot be changed during creation)
-- **Automatically sets `teamMemberCount` to staffIds.length + 1** (includes manager)
-- startDate is automatically set to current date
+- **🔥 IMPORTANT: The project creator (manager) is AUTOMATICALLY assigned to the ProjectAssignment collection as a tech lead**
+- **Automatically sets `teamMemberCount` to staffIds.length + 1** (includes manager/creator)
+- startDate is automatically set to current date if not provided
 - Manager roles are automatically assigned as tech leads
+- Direct subordinates are assigned immediately; staff from other managers require approval
 - Returns both project and assignment data
 
 **Request Body**:
@@ -942,10 +944,17 @@ Content-Type: application/json
         "__v": 0
       }
     ],
-    "message": "Project created successfully with 3 staff members assigned"
+    "borrowRequests": 0,
+    "message": "Project created successfully. 3 staff member(s) assigned immediately. 0 staff member(s) pending manager approval."
   }
 }
 ```
+
+**⚠️ Important Notes**:
+- The **first assignment** in the `assignments` array is ALWAYS the project creator (manager) with `isTechLead: true`
+- The creator is automatically added to the ProjectAssignment collection
+- `teamMemberCount` includes the creator + assigned staff
+- The creator does NOT need to be included in the `staffIds` array
 
 **Error** (400 Bad Request - Missing Name):
 ```json
