@@ -1,23 +1,40 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Bell, Search, User, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useNotifCountStore } from "@/store/useNotifCountStore";
+import { useNavigate } from "react-router-dom";
+import api from "@/api/axios";
 
 export default function AppNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { logout } = useAuthStore();
+  const { unreadCount, fetchUnreadCount } = useNotifCountStore();
+
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
   };
 
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
   return (
     <header className="flex justify-between sticky p-5 top-0 z-40 h-20 items-center gap-4 border-b bg-tersier shadow-sm">
       <SidebarTrigger className="text-gray-700 hover:text-sekunder cursor-pointer" />
       <div className="flex items-center gap-4">
-        <button className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer">
+        <button
+          onClick={() => navigate("/team/reqapprove")}
+          className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer"
+        >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500"></span>
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
 
         <div className="relative">
