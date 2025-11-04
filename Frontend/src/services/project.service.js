@@ -4,204 +4,156 @@ import axios from "axios";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const projectService = {
-  // TODO: API - Get all projects (for PM Dashboard)
+  //  Get all projects
   getAllProjects: async () => {
-    try {
-      const response = await api.get(`${API_URL}/project`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch projects" };
-    }
+    const response = await api.get(`${API_URL}/project`);
+    return response.data;
   },
 
-  // TODO: API - Get project by ID
+  //  Get project by ID
   getProjectById: async (projectId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/api/projects/${projectId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      return response.data;
+      const response = await axios.get(
+        `${API_URL}/project/${projectId}/details`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Ambil struktur sesuai API doc
+      const data = response.data.data;
+
+      // Satukan semua info dalam satu objek biar mudah dipakai
+      return {
+        ...data.project,
+        managerDetails: data.managerDetails,
+        staffDetails: data.staffDetails,
+        techLeadStaffIds: data.techLeadStaffIds,
+        allStaffIds: data.allStaffIds,
+      };
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch project" };
+      throw (
+        error.response?.data || { message: "Failed to fetch project details" }
+      );
     }
   },
 
-  // TODO: API - Create new project
+  //  Alias for easier import
+  getProjectDetails: async (projectId) => {
+    return await projectService.getProjectById(projectId);
+  },
+
+  //  Create new project
   createProject: async (projectData) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${API_URL}/api/projects`,
-        projectData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to create project" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.post(`${API_URL}/project`, projectData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
   },
 
-  // NEW: Create project with staff assignments (recommended endpoint)
+  //  Create project with staff assignments
   createProjectWithAssignments: async (projectData) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${API_URL}/project/with-assignments`, // Note: no /api prefix based on your routes
-        projectData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to create project" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.post(
+      `${API_URL}/project/with-assignments`,
+      projectData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
   },
 
-  // TODO: API - Update project
+  //  Update project
   updateProject: async (projectId, projectData) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.put(
-        `${API_URL}/api/projects/${projectId}`,
-        projectData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to update project" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.put(
+      `${API_URL}/project/${projectId}`,
+      projectData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
   },
 
-  // TODO: API - Update project status
+  //  Update project status
   updateProjectStatus: async (projectId, status) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.patch(
-        `${API_URL}/api/projects/${projectId}/status`,
-        { status },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw (
-        error.response?.data || { message: "Failed to update project status" }
-      );
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.patch(
+      `${API_URL}/project/${projectId}/status`,
+      { status },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
   },
 
-  // TODO: API - Delete project
+  //  Delete project
   deleteProject: async (projectId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.delete(
-        `${API_URL}/api/projects/${projectId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to delete project" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.delete(`${API_URL}/project/${projectId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
   },
 
-  // TODO: API - Get AI team recommendations
+  //  Get team recommendations
   getTeamRecommendations: async (projectData) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${API_URL}/api/projects/recommend-team`,
-        projectData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw (
-        error.response?.data || { message: "Failed to get recommendations" }
-      );
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.post(
+      `${API_URL}/project/recommend-team`,
+      projectData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
   },
 
-  // Update: Get all skills (fix endpoint)
+  //  Get all skills
   getAllSkills: async () => {
-    try {
-      const token = localStorage.getItem("token");
-      // Ubah dari /api/skills menjadi /api/skill
-      const response = await axios.get(`${API_URL}/skill`, {
-        // Asumsi route root /skill
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Sesuaikan cara mengambil data dari response.data
-      return response.data.data || response.data; // Coba ambil dari data: { skills: [...] } atau root data
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch skills" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/skill`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || response.data;
   },
 
-  // Update: Get all positions (fix endpoint)
+  //  Get all positions
   getAllPositions: async () => {
-    try {
-      const token = localStorage.getItem("token");
-      // Ubah dari /api/positions menjadi /api/position
-      const response = await axios.get(`${API_URL}/position`, {
-        // Asumsi route root /position
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Sesuaikan cara mengambil data
-      return response.data.data || response.data; // Coba ambil dari data: { positions: [...] } atau root data
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch positions" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/position`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || response.data;
   },
 
-  // TODO: API - Get all employees
+  //  Get all employees
   getAllEmployees: async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/hr/employees?limit=1000`, {
-        // Tambah limit agar semua data diambil
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Mengambil array karyawan yang ada di response.data.data
-      return response.data.data || response.data; // return array karyawan
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch employees" };
-    }
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/hr/employees?limit=1000`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || response.data;
   },
 };
 

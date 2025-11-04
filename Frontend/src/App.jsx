@@ -10,7 +10,7 @@ import CustomToaster from "@/components/CustomToaster";
 
 // Pages
 import Kanban from "@/pages/Kanban";
-import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
+import Login from "@/pages/auth/Login";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
@@ -24,7 +24,7 @@ import ListProjects from "./pages/PM/ListProject";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
-import { useEffect, useState } from "react";
+// import { useEffect, useState } from "react";
 
 import { useAuthStore } from "@/store/useAuthStore";
 import ProtectedRoute from "@/components/ProtectedRoute";
