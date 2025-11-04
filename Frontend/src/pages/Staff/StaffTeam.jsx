@@ -20,15 +20,41 @@ import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-tabl
 
 //icon
 import api from '@/api/axios';
-import { useAuthStore } from '@/store/useAuthStore';
 import { DropdownMenuLabel } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown } from 'lucide-react';
 
 export default function StaffTeam() {
-  const { userId } = useAuthStore();
-  const [employees, setEmployees] = useState([]);
-  const [manager, setManager] = useState([]);
   const [team, setTeam] = useState([]);
+  const [manager, setManager] = useState([]);
+
+  const managerColumns = [
+    {
+      accessorKey: 'name',
+      header: ({ column }) => (
+        <button
+          className="flex items-center font-semibold"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Name
+          <span className="ml-1 text-xs">
+            {column.getIsSorted() === 'asc' ? '▲' : column.getIsSorted() === 'desc' ? '▼' : ''}
+          </span>
+        </button>
+      ),
+    },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+    },
+    {
+      accessorKey: 'position.name',
+      header: 'Position',
+      cell: ({ row }) => {
+        const positionName = row.original.position?.name || '-';
+        return <span>{positionName}</span>;
+      },
+    },
+  ];
 
   const columns = [
     {
@@ -52,12 +78,17 @@ export default function StaffTeam() {
     {
       accessorKey: 'position.name',
       header: 'Position',
+      cell: ({ row }) => {
+        const positionName = row.original.position?.name || '-';
+        return <span>{positionName}</span>;
+      },
     },
     {
       accessorKey: 'skills',
       header: 'Skills',
       cell: ({ row }) => {
         const employeeSkills = row.getValue('skills');
+        if (employeeSkills.length == 0) return <span>-</span>;
         return (
           <>
             <DropdownMenu>
@@ -66,7 +97,7 @@ export default function StaffTeam() {
                   variant="outline"
                   className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700"
                 >
-                  <span>{employeeSkills[0]?.name}</span>
+                  <span>{employeeSkills[0]?.name || 'No skill'}</span>
                   {employeeSkills.length > 1 && (
                     <span className="text-xs text-gray-500">+{employeeSkills.length - 1}</span>
                   )}
@@ -78,7 +109,6 @@ export default function StaffTeam() {
                 <DropdownMenuLabel className="m-2 text-xs text-gray-500 uppercase">
                   Skills
                 </DropdownMenuLabel>
-
                 {employeeSkills.map((skill, index) => (
                   <DropdownMenuItem
                     key={index}
@@ -96,32 +126,19 @@ export default function StaffTeam() {
     },
   ];
 
-  const getEmployees = async () => {
-    const { data } = await api.get('/hr/employees');
-    setEmployees(data.data);
+  const getTeam = async () => {
+    const { data } = await api.get('/hr/colleagues');
+    setManager([data.data.directManager]);
+    setTeam(data.data.colleagues);
   };
 
   useEffect(() => {
-    getEmployees();
+    getTeam();
   }, []);
-
-  useEffect(() => {
-    if (employees.length > 0) {
-      const currentUser = employees.find((employee) => employee.user_id === parseInt(userId));
-      if (currentUser) {
-        const manager = employees.find((employee) => employee.position.name === 'Manager');
-        const team = employees.filter(
-          (employee) => employee.user_id !== parseInt(userId) && employee.position.name == 'Staff'
-        );
-        setManager(manager ? [manager] : []);
-        setTeam(team);
-      }
-    }
-  }, [employees, userId]);
 
   const managerTable = useReactTable({
     data: manager,
-    columns,
+    columns: managerColumns,
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -138,7 +155,7 @@ export default function StaffTeam() {
         <div className="space-y-4 mt-10">
           <h2 className="text-2xl font-semibold">Manager</h2>
           <div className="flex flex-col justify-between rounded-md border">
-            <Table>
+            <Table className="border rounded-md">
               <TableHeader>
                 {managerTable.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>

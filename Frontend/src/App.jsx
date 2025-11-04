@@ -26,6 +26,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import ManagerTeam from './pages/PM/ManagerTeam';
 import StaffTeam from './pages/Staff/StaffTeam';
 import Inbox from '@/pages/Inbox';
+import SpecificRoleRoute from './components/SpecificRoleRoute';
 
 function App() {
   const { token, role } = useAuthStore();
@@ -160,7 +161,9 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <StaffTeam />
+                  <SpecificRoleRoute requiredRole="staff">
+                    <StaffTeam />
+                  </SpecificRoleRoute>
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -171,7 +174,9 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <ManagerTeam />
+                  <SpecificRoleRoute requiredRole="manager">
+                    <ManagerTeam />
+                  </SpecificRoleRoute>
                 </AppLayout>
               </ProtectedRoute>
             }

@@ -54,20 +54,6 @@ import {
   FilePenLine,
   Sheet,
   Download,
-<<<<<<< HEAD
-} from 'lucide-react';
-import api from '@/api/axios';
-import UploadFile from '@/components/UploadFile';
-import AddEmployee from './AddEmployee';
-
-export default function ManageEmployee() {
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize] = useState(5);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sorting, setSorting] = useState([]);
-  const [rowSelection, setRowSelection] = useState({});
-=======
   CircleCheckBig,
 } from "lucide-react";
 import api from "@/api/axios";
@@ -83,7 +69,6 @@ export default function ManageEmployee() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
   const [employees, setEmployees] = useState([]);
   const [openAddExcel, setOpenAddExcel] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
@@ -96,36 +81,7 @@ export default function ManageEmployee() {
 
   const columns = [
     {
-<<<<<<< HEAD
-      accessorKey: 'id',
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          className="cursor-pointer"
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          className="cursor-pointer"
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: 'name',
-=======
       accessorKey: "name",
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
@@ -189,11 +145,6 @@ export default function ManageEmployee() {
   ];
 
   const getEmployees = async () => {
-<<<<<<< HEAD
-    const { data } = await api.get('/hr/employees');
-    console.log(data);
-    setEmployees(data.data);
-=======
     try {
       setLoading(true);
       const params = {
@@ -212,7 +163,6 @@ export default function ManageEmployee() {
       setLoading(false);
       console.log("finish");
     }
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
   };
 
   const getExcelTemplate = async () => {
@@ -257,10 +207,6 @@ export default function ManageEmployee() {
         }
       );
 
-<<<<<<< HEAD
-      console.log('Import result:', response);
-      alert(`Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`);
-=======
       console.log("Import result:", response);
       toast(
         `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`,
@@ -271,7 +217,6 @@ export default function ManageEmployee() {
           duration: 5000,
         }
       );
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
       setOpenAddExcel(false);
     } catch (error) {
       console.error('Failed to import employees:', error);
@@ -290,25 +235,6 @@ export default function ManageEmployee() {
     getEmployees();
   };
 
-<<<<<<< HEAD
-  const filteredData = useMemo(() => {
-    let filtered = employees;
-
-    if (globalFilter) {
-      filtered = filtered.filter((row) =>
-        row.name.toLowerCase().includes(globalFilter.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((row) => row.status === statusFilter);
-    }
-
-    return filtered;
-  }, [employees, globalFilter, statusFilter]);
-
-=======
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
   const table = useReactTable({
     data: employees,
     columns,
@@ -447,16 +373,10 @@ export default function ManageEmployee() {
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <TableHead key={header.id}>
-<<<<<<< HEAD
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-=======
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                       </TableHead>
                     ))}
                   </TableRow>
@@ -481,28 +401,14 @@ export default function ManageEmployee() {
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-<<<<<<< HEAD
-                          {flexRender(cell.column.columnDef.cell, cell.getContext()) ||
-                            cell.getValue()}
-=======
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
                           )}
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
-<<<<<<< HEAD
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                      No results.
-                    </TableCell>
-                  </TableRow>
-=======
->>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                 )}
               </TableBody>
             </Table>

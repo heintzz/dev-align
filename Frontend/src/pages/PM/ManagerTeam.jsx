@@ -80,12 +80,10 @@ export default function ManagerTeam() {
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 </Button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent align="start" className="w-48">
                 <DropdownMenuLabel className="m-2 text-xs text-gray-500 uppercase">
                   Skills
                 </DropdownMenuLabel>
-
                 {employeeSkills.map((skill, index) => (
                   <DropdownMenuItem
                     key={index}
@@ -105,9 +103,7 @@ export default function ManagerTeam() {
 
   const getEmployees = async () => {
     const { data } = await api.get('/hr/colleagues');
-    console.log(data);
-    // setEmployees(data.data);
-    setEmployees([]);
+    setEmployees(data.data.colleagues);
   };
 
   const table = useReactTable({
