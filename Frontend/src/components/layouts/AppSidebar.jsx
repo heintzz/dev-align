@@ -44,7 +44,6 @@ export default function AppSidebar() {
 
         if (!res.ok) throw new Error("Failed to fetch menu");
         const data = await res.json();
-        console.log("✅ API raw data:", data);
 
         setMenus(data?.data?.menuList || []);
       } catch (err) {
@@ -100,9 +99,6 @@ export default function AppSidebar() {
                 const hasChildren = item.children && item.children.length > 0;
                 const isOpen = openMenu === item._id;
                 const isActive = location.pathname.startsWith(item.path || "");
-                console.log(location);
-                console.log(item);
-                console.log(isActive);
 
                 // ✅ CASE 1: If sidebar is collapsed → use Popover
                 if (isCollapsed && hasChildren) {
