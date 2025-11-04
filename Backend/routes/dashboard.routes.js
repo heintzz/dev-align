@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const verifyToken = require('../middlewares/token');
-const auth = require('../middlewares/authorization');
-const { topContributors } = require('../controllers/dashboard.controller');
+const verifyToken = require("../middlewares/token");
+const auth = require("../middlewares/authorization");
+const { topContributors } = require("../controllers/dashboard.controller");
 
 /**
  * @swagger
@@ -18,17 +18,23 @@ const { topContributors } = require('../controllers/dashboard.controller');
  *         schema:
  *           type: string
  *           enum: [this_month, last_month, this_year, all]
- *         description: Period filter (default: this_month)
+ *         description: >
+ *           Period filter for the report.
+ *           Available values: `this_month`, `last_month`, `this_year`, or `all`.
+ *           Default is `this_month`.
+ *
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Max number of contributors to return (default: 10)
+ *         description: >
+ *           Maximum number of contributors to return.
+ *           Default is `10`.
+ *
  *     responses:
  *       200:
- *         description: List of top contributors
+ *         description: List of top contributors.
  */
-// Allow any authenticated user to access this endpoint (no role restriction)
-router.get('/top-contributors', verifyToken, topContributors);
+router.get("/top-contributors", verifyToken, topContributors);
 
 module.exports = router;

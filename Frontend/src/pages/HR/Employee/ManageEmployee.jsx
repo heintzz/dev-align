@@ -54,10 +54,12 @@ import {
   FilePenLine,
   Sheet,
   Download,
+  CircleCheckBig,
 } from "lucide-react";
 import api from "@/api/axios";
 import UploadFile from "@/components/UploadFile";
 import AddEmployee from "./AddEmployee";
+import { toast } from "@/lib/toast";
 
 export default function ManageEmployee() {
   const [total, setTotal] = useState(0);
@@ -78,31 +80,6 @@ export default function ManageEmployee() {
   const navigate = useNavigate();
 
   const columns = [
-    {
-      accessorKey: "id",
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          className="cursor-pointer"
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          className="cursor-pointer"
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -166,7 +143,7 @@ export default function ManageEmployee() {
               onClick={() => navigate(`detail/${row.original.id}`)}
               className="cursor-pointer"
             >
-              Edit
+              Details
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => deativate(row.original.id)}
@@ -187,7 +164,7 @@ export default function ManageEmployee() {
         page: pageIndex + 1, // backend is 1-based
         limit: pageSize,
         search: globalFilter || undefined,
-        active: statusFilter === "all" ? undefined : statusFilter === "active",
+        active: statusFilter === "all" ? undefined : statusFilter,
       };
 
       const { data } = await api.get("/hr/employees", { params });
@@ -233,7 +210,8 @@ export default function ManageEmployee() {
     formData.append("file", excelFile);
 
     try {
-      // setLoadingUpload(true);
+      setLoadingState(true);
+      setLoadingState("Adding Employee...");
       const response = await api.post(
         "/hr/employees/import?dryRun=false&sendEmails=false",
         formData,
@@ -243,16 +221,23 @@ export default function ManageEmployee() {
       );
 
       console.log("Import result:", response);
-      alert(
-        `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`
+      toast(
+        `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`,
+        {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "top-center",
+          duration: 5000,
+        }
       );
       setOpenAddExcel(false);
     } catch (error) {
       console.error("Failed to import employees:", error);
       alert("Failed to import employees.");
     } finally {
-      // setLoadingUpload(false);
       getEmployees();
+      setLoadingState(true);
+      setLoadingText("");
     }
   };
 
@@ -262,22 +247,6 @@ export default function ManageEmployee() {
     console.log(data);
     getEmployees();
   };
-
-  const filteredData = useMemo(() => {
-    let filtered = employees;
-
-    if (globalFilter) {
-      filtered = filtered.filter((row) =>
-        row.name.toLowerCase().includes(globalFilter.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((row) => row.status === statusFilter);
-    }
-
-    return filtered;
-  }, [employees, globalFilter, statusFilter]);
 
   const table = useReactTable({
     data: employees,
@@ -393,15 +362,21 @@ export default function ManageEmployee() {
                 setStatusFilter(val);
                 setPageIndex(0);
               }}
+              // className="cursor-pointer"
             >
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[150px] cursor-pointer">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="all" className="cursor-pointer">
+                  All
+                </SelectItem>
+                <SelectItem value="true" className="cursor-pointer">
+                  Active
+                </SelectItem>
+                <SelectItem value="false" className="cursor-pointer">
+                  Resigned
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -465,6 +440,7 @@ export default function ManageEmployee() {
                   size="sm"
                   onClick={() => setPageIndex((p) => Math.max(p - 1, 0))}
                   disabled={pageIndex === 0}
+                  className="cursor-pointer"
                 >
                   Previous
                 </Button>
@@ -477,6 +453,7 @@ export default function ManageEmployee() {
                     )
                   }
                   disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
+                  className="cursor-pointer"
                 >
                   Next
                 </Button>
@@ -523,9 +500,16 @@ export default function ManageEmployee() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" className="cursor-pointer">
+                Cancel
+              </Button>
             </DialogClose>
-            <Button onClick={AddEmployeeByExcel}>Add Employee</Button>
+            <Button
+              onClick={AddEmployeeByExcel}
+              className="bg-primer cursor-pointer"
+            >
+              Add Employee
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
