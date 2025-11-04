@@ -10,6 +10,7 @@ const {
 	importEmployees,
 	parseCv,
 	getImportTemplate,
+	getColleagues,
 } = require('../controllers/hr.controller');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -219,5 +220,89 @@ router.post('/parse-cv', verifyToken, auth('hr'), upload.single('file'), parseCv
  *         description: File download
  */
 router.get('/employees/template', verifyToken, auth('hr'), getImportTemplate);
+
+/**
+ * @swagger
+ * /hr/colleagues:
+ *   get:
+ *     summary: Get list of colleagues - teammates with same manager (includes direct manager) for staff/HR, or direct subordinates for managers
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of colleagues
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userRole:
+ *                       type: string
+ *                       enum: [staff, manager, hr]
+ *                       example: staff
+ *                     colleagues:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           role:
+ *                             type: string
+ *                           position:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                           skills:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                 name:
+ *                                   type: string
+ *                     directManager:
+ *                       type: object
+ *                       description: Only included for staff/HR roles
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *                         position:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                     totalColleagues:
+ *                       type: integer
+ *                       example: 5
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/colleagues', verifyToken, getColleagues);
 
 module.exports = router;

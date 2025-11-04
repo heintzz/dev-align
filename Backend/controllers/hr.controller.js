@@ -725,6 +725,109 @@ const parseCv = async (req, res) => {
   }
 };
 
+const getColleagues = async (req, res) => {
+  try {
+    const currentUserId = req.user.id || req.user._id;
+    const currentUser = await User.findById(currentUserId).select('role managerId').lean();
+
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        error: "Not Found",
+        message: "Current user not found"
+      });
+    }
+
+    let colleagues = [];
+    let directManager = null;
+
+    if (currentUser.role === 'manager') {
+      // If user is manager, get all direct subordinates (members with managerId = currentUser._id)
+      colleagues = await User.find({
+        managerId: currentUserId,
+        active: true,
+        _id: { $ne: currentUserId }  // Exclude self
+      })
+        .populate("position", "name")
+        .populate("skills", "name")
+        .select("_id name email role position skills")
+        .sort({ name: 1 })
+        .lean();
+
+    } else {
+      // If user is staff or HR, get teammates (colleagues with same manager) and include direct manager
+      if (currentUser.managerId) {
+        // Get direct manager details
+        directManager = await User.findById(currentUser.managerId)
+          .populate("position", "name")
+          .select("_id name email role position")
+          .lean();
+
+        // Get all teammates with the same manager (excluding self)
+        const teammates = await User.find({
+          managerId: currentUser.managerId,
+          active: true,
+          _id: { $ne: currentUserId }  // Exclude self
+        })
+          .populate("position", "name")
+          .populate("skills", "name")
+          .select("_id name email role position skills")
+          .sort({ name: 1 })
+          .lean();
+
+        colleagues = teammates;
+      }
+    }
+
+    // Format response
+    const formattedColleagues = colleagues.map(colleague => ({
+      id: colleague._id,
+      name: colleague.name,
+      email: colleague.email,
+      role: colleague.role,
+      position: colleague.position ? {
+        id: colleague.position._id,
+        name: colleague.position.name
+      } : null,
+      skills: colleague.skills ? colleague.skills.map(skill => ({
+        id: skill._id,
+        name: skill.name
+      })) : []
+    }));
+
+    const response = {
+      success: true,
+      data: {
+        userRole: currentUser.role,
+        colleagues: formattedColleagues,
+        totalColleagues: formattedColleagues.length
+      }
+    };
+
+    // Include manager info if it exists
+    if (directManager) {
+      response.data.directManager = {
+        id: directManager._id,
+        name: directManager.name,
+        email: directManager.email,
+        role: directManager.role,
+        position: directManager.position ? {
+          id: directManager.position._id,
+          name: directManager.position.name
+        } : null
+      };
+    }
+
+    return res.json(response);
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message
+    });
+  }
+};
+
 module.exports = {
   createEmployee,
   listEmployees,
@@ -734,4 +837,5 @@ module.exports = {
   importEmployees,
   parseCv,
   getImportTemplate,
+  getColleagues,
 };

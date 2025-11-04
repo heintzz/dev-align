@@ -11,6 +11,8 @@ This document provides comprehensive documentation for the Notification System a
 
 ## Table of Contents
 - [Authentication](#authentication)
+- [Colleague Endpoints](#colleague-endpoints)
+  - [Get Colleagues List](#get-colleagues-list)
 - [Notification System](#notification-system)
   - [Get Notifications](#1-get-notifications)
   - [Get Unread Count](#2-get-unread-count)
@@ -41,6 +43,131 @@ All endpoints require a Bearer token in the Authorization header.
 ```
 Authorization: Bearer <your_jwt_token>
 ```
+
+---
+
+## Colleague Endpoints
+
+Base path: `/hr`
+
+### Get Colleagues List
+
+Retrieves a list of colleagues based on the authenticated user's role and organizational hierarchy.
+
+**Endpoint**: `GET /hr/colleagues`
+
+**Access**: All authenticated users
+
+**Role-Based Behavior**:
+- **Manager**: Returns all direct subordinates (employees where `managerId` equals the manager's ID)
+- **Staff/HR**: Returns teammates with the same manager (colleagues with the same `managerId`), plus their direct manager information
+
+**Request Example**:
+```http
+GET /hr/colleagues
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response for Staff/HR** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "userRole": "staff",
+    "colleagues": [
+      {
+        "id": "69016bcc7157f337f7e2e4eb",
+        "name": "John Developer",
+        "email": "john@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439012",
+          "name": "Senior Developer"
+        },
+        "skills": [
+          {
+            "id": "507f1f77bcf86cd799439015",
+            "name": "JavaScript"
+          },
+          {
+            "id": "507f1f77bcf86cd799439016",
+            "name": "React"
+          }
+        ]
+      }
+    ],
+    "directManager": {
+      "id": "69016bcc7157f337f7e2e4ea",
+      "name": "Tony Yoditanto",
+      "email": "tonyoditanto@gmail.com",
+      "role": "manager",
+      "position": {
+        "id": "507f1f77bcf86cd799439011",
+        "name": "Engineering Manager"
+      }
+    },
+    "totalColleagues": 1
+  }
+}
+```
+
+**Response for Manager** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "userRole": "manager",
+    "colleagues": [
+      {
+        "id": "69016bcc7157f337f7e2e4eb",
+        "name": "John Developer",
+        "email": "john@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439012",
+          "name": "Senior Developer"
+        },
+        "skills": [
+          {
+            "id": "507f1f77bcf86cd799439015",
+            "name": "JavaScript"
+          }
+        ]
+      },
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439013",
+          "name": "UI/UX Designer"
+        },
+        "skills": []
+      }
+    ],
+    "totalColleagues": 2
+  }
+}
+```
+
+**Response Explanation**:
+- `userRole`: The role of the current authenticated user
+- `colleagues`: Array of colleague objects with basic information, position, and skills
+- `directManager`: Only included for staff/HR roles - information about their direct supervisor
+- `totalColleagues`: Count of colleagues returned
+
+**Special Features**:
+- **Excludes Self**: The current user is not included in the colleagues list
+- **Active Only**: Only returns active employees (`active: true`)
+- **Sorted by Name**: Colleagues are sorted alphabetically by name
+- **Populated Data**: Includes position and skills information for easy display
+
+**Use Cases**:
+- Display team members in a project creation form
+- Show organizational hierarchy
+- List available colleagues for collaboration or task assignment
+- Display manager information for approval workflows
 
 ---
 
