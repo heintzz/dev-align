@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import api from "@/api/axios";
 
@@ -35,6 +35,9 @@ import {
   FieldSet,
   FieldSeparator,
 } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
+
+import { SkillSelector } from "@/components/SkillSelector";
 
 // 🧭 icons
 import {
@@ -46,7 +49,9 @@ import {
   User,
   Edit,
   Save,
+  MoveLeft,
 } from "lucide-react";
+import Loading from "@/components/Loading";
 
 export default function EmployeeDetail() {
   const { id } = useParams();
@@ -66,15 +71,15 @@ export default function EmployeeDetail() {
 
   const [positions, setPositions] = useState([]);
   const [managers, setManagers] = useState([]);
-  const [listSkills, setListSkills] = useState([]);
   const [skills, setSkills] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
 
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+
   // UI Controls
   const [isEditing, setIsEditing] = useState(false);
-  const [openSkillPopover, setOpenSkillPopover] = useState(false);
   const [openCalendar, setOpenCalendar] = useState(false);
-  const [searchSkill, setSearchSkill] = useState("");
 
   // 🧭 Fetch employee detail
   const getEmployee = async () => {
@@ -93,7 +98,8 @@ export default function EmployeeDetail() {
       managerId: emp.managerId || "",
       role: emp.role || "",
     });
-    setSkills(emp.skills.map((name) => ({ name })));
+    console.log(emp.skills);
+    setSkills(emp.skills);
     if (emp.dateOfBirth) setSelectedDate(new Date(emp.dateOfBirth));
   };
 
@@ -110,17 +116,11 @@ export default function EmployeeDetail() {
     setManagers(data.data || []);
   };
 
-  const getSkills = async () => {
-    const { data } = await api.get("/skill");
-    setListSkills(data.data.skills || []);
-  };
-
   // 🚀 On mount
   useEffect(() => {
     getEmployee();
     getPositions();
     getManagers();
-    getSkills();
   }, []);
 
   // 🧠 Handlers
@@ -130,12 +130,27 @@ export default function EmployeeDetail() {
     getEmployee(); // reset form to original data
   };
   const handleSave = async () => {
+    if (employeeForm.role == "manager") {
+      employeeForm.managerId = null;
+    }
+    setLoadingState(true);
+    setLoadingText("Editing Employee...");
     try {
-      await api.put(`/hr/employee/${id}`, employeeForm);
+      console.log(employeeForm);
+      const skillName = skills.map((skill) => skill.name);
+      console.log(skillName);
+      const updatedEmployee = {
+        ...employeeForm,
+        skills: skillName,
+      };
+      await api.put(`/hr/employee/${id}`, updatedEmployee);
       setIsEditing(false);
       await getEmployee();
     } catch (error) {
       console.error("Error updating employee:", error);
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -157,42 +172,26 @@ export default function EmployeeDetail() {
     setOpenCalendar(false);
   };
 
-  const handleAddSkill = (skill) => {
-    const isSelected = skills.some((s) => s.name === skill.name);
-    const updatedSkills = isSelected
-      ? skills.filter((s) => s.name !== skill.name)
-      : [...skills, { name: skill.name }];
-    setSkills(updatedSkills);
-    setOpenSkillPopover(false);
-    setSearchSkill("");
-  };
-
-  const handleRemoveSkill = (skill) => {
-    setSkills((prev) => prev.filter((s) => s.name !== skill.name));
-  };
-
-  const handleCustomAddSkill = async () => {
-    try {
-      const { data } = await api.post("/skill", { name: searchSkill });
-      await getSkills();
-
-      setSkills((prev) => {
-        if (!prev.some((s) => s.name === searchSkill)) {
-          return [...prev, { name: searchSkill }];
-        }
-        return prev;
-      });
-
-      setSearchSkill("");
-      setOpenSkillPopover(false);
-    } catch (error) {
-      console.error("Error adding new skill:", error);
-    }
-  };
-
   // 🖼 UI
   return (
     <div className="p-6">
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
+      <Link
+        to="/employees"
+        className={cn(
+          "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary pb-5",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
+        )}
+      >
+        <MoveLeft
+          className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
+          aria-hidden="true"
+        />
+        <span className="whitespace-nowrap group-hover:underline">
+          Back to Employee
+        </span>
+      </Link>
       <Card className="w-full">
         <CardContent>
           <FieldGroup>
@@ -335,119 +334,39 @@ export default function EmployeeDetail() {
                       </Select>
                     </Field>
                   </div>
-
-                  <Field>
-                    <FieldLabel>Manager</FieldLabel>
-                    <Select
-                      value={employeeForm.managerId}
-                      onValueChange={(value) =>
-                        handleSelectChange("managerId", value)
-                      }
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select manager" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {managers.map((manager) => (
-                          <SelectItem key={manager.id} value={manager.id}>
-                            {manager.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
+                  {employeeForm.role !== "manager" && (
+                    <Field>
+                      <FieldLabel>Manager</FieldLabel>
+                      <Select
+                        value={employeeForm.managerId}
+                        onValueChange={(value) =>
+                          handleSelectChange("managerId", value)
+                        }
+                        disabled={!isEditing}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select manager" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {managers.map((manager) => (
+                            <SelectItem key={manager.id} value={manager.id}>
+                              {manager.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
                   {/* Skills Section */}
                   <Field>
                     <FieldLabel>Skills</FieldLabel>
-                    <Popover
-                      open={openSkillPopover}
-                      onOpenChange={setOpenSkillPopover}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className="w-full justify-between"
-                          disabled={!isEditing}
-                        >
-                          Add skill
-                          <PlusCircle className="ml-2 h-4 w-4 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0">
-                        <Command>
-                          <CommandInput
-                            placeholder="Search skill..."
-                            value={searchSkill}
-                            onValueChange={setSearchSkill}
-                          />
-                          <CommandEmpty>
-                            <div className="p-2 text-sm text-muted-foreground">
-                              No skill found.
-                            </div>
-                            {searchSkill && (
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start text-left text-sm"
-                                onClick={handleCustomAddSkill}
-                              >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add “{searchSkill}”
-                              </Button>
-                            )}
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {listSkills.map((skill) => {
-                              const isSelected = skills.some(
-                                (s) => s.name === skill.name
-                              );
-                              return (
-                                <CommandItem
-                                  key={skill.name}
-                                  onSelect={() => handleAddSkill(skill)}
-                                  className={`flex justify-between ${
-                                    isSelected ? "bg-primer/10 text-primer" : ""
-                                  }`}
-                                >
-                                  <span>{skill.name}</span>
-                                  {isSelected && (
-                                    <Check className="h-4 w-4 text-primer" />
-                                  )}
-                                </CommandItem>
-                              );
-                            })}
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-
-                    {skills.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 mt-2 max-h-20 overflow-y-auto">
-                        {skills.map((skill) => (
-                          <Badge
-                            key={skill.name}
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                          >
-                            {skill.name}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSkill(skill)}
-                              className="enabled:hover:text-destructive focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                              disabled={!isEditing}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        No skills added yet.
-                      </p>
-                    )}
+                    <SkillSelector
+                      selectedSkills={skills}
+                      onChange={setSkills}
+                      isEditing={isEditing}
+                      className="max-h-12"
+                      allowCustomAdd
+                    />
                   </Field>
                 </div>
               </div>

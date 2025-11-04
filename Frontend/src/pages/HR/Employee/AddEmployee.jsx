@@ -57,6 +57,7 @@ import {
   Calendar as CalendarIcon,
   ChevronDown,
   Check,
+  MoveLeft,
 } from "lucide-react";
 import UploadFile from "@/components/UploadFile";
 import api from "@/api/axios";
@@ -64,13 +65,15 @@ import api from "@/api/axios";
 import { format } from "date-fns";
 import { email } from "zod";
 import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
+
+import { cn } from "@/lib/utils";
+import { SkillSelector } from "@/components/SkillSelector";
+import Loading from "@/components/Loading";
 
 export default function AddEmployee() {
   const [skills, setSkills] = useState([]);
-  const [open, setOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [listSkills, setListSkills] = useState([]);
   const [positions, setPositions] = useState([]);
   const [managers, setManagers] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -87,6 +90,11 @@ export default function AddEmployee() {
     role: "",
   });
 
+  const navigate = useNavigate();
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+
   const extractCV = async () => {
     if (!cvFile) {
       alert("Please upload a CV file first.");
@@ -98,6 +106,8 @@ export default function AddEmployee() {
     formData.append("file", cvFile);
 
     try {
+      setLoadingState(true);
+      setLoadingText("Extract CV");
       const { data } = await axios.post(
         "http://localhost:8000/cv/extract-data", // 🔥 change to your backend URL
         formData,
@@ -128,10 +138,10 @@ export default function AddEmployee() {
         error.response?.data || error.message
       );
       alert(error.response?.data?.detail || "Failed to extract CV");
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
-    // finally {
-    //   setLoading(false);
-    // }
   };
 
   // --- Generic input handler ---
@@ -161,12 +171,6 @@ export default function AddEmployee() {
     setCalendarOpen(false);
   };
 
-  const getSkills = async () => {
-    const { data } = await api.get("/skill");
-    console.log(data);
-    setListSkills(data.data.skills);
-  };
-
   const getPosition = async () => {
     const { data } = await api.get("/position");
     console.log(data);
@@ -183,52 +187,11 @@ export default function AddEmployee() {
     setManagers(data.data || []);
   };
 
-  const handleAddSkill = (skill) => {
-    console.log(skill);
-
-    const isSelected = skills.some((s) => s.name === skill.name);
-
-    if (!isSelected) {
-      setSkills((prev) => [...prev, { name: skill.name }]);
-    } else {
-      setSkills((prev) => prev.filter((s) => s.name !== skill.name));
-    }
-
-    setSearch("");
-    setOpen(false);
-  };
-
-  const handleRemoveSkill = (skill) => {
-    console.log(skill);
-    setSkills((prev) => prev.filter((s) => s.name !== skill.name));
-  };
-
-  const handleCustomAdd = async () => {
-    try {
-      console.log("Searching for skill:", search);
-
-      const { data } = await api.post("/skill", { name: search });
-      console.log("API response:", data);
-
-      await getSkills();
-
-      setSkills((prevSkills) => {
-        const exists = prevSkills.some((s) => s.name === search);
-        if (!exists) {
-          return [...prevSkills, { name: search }];
-        }
-        return prevSkills;
-      });
-
-      setSearch("");
-      setOpen(false);
-    } catch (error) {
-      console.error("Error adding skill:", error);
-    }
-  };
-
   const createEmployee = async (e) => {
     e.preventDefault();
+    if (employeeForm.role == "manager") {
+      employeeForm.managerId = null;
+    }
 
     const formData = {
       ...employeeForm,
@@ -238,15 +201,21 @@ export default function AddEmployee() {
     console.log("Form Data:", formData);
 
     try {
+      setLoadingState(true);
+      setLoadingText("Add Employee...");
       const { data } = await api.post("/hr/employee", formData);
       console.log("Response:", data);
+      setLoadingState(false);
+      setLoadingText("");
+      navigate("/employees");
     } catch (error) {
       console.error("Error creating employee:", error);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   useEffect(() => {
-    getSkills();
     getPosition();
     getManagers();
   }, []);
@@ -254,6 +223,22 @@ export default function AddEmployee() {
   return (
     <>
       <div className=" p-6">
+        <Loading status={loadingState} fullscreen text={loadingText} />
+        <Link
+          to="/employees"
+          className={cn(
+            "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary pb-5",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
+          )}
+        >
+          <MoveLeft
+            className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
+            aria-hidden="true"
+          />
+          <span className="whitespace-nowrap group-hover:underline">
+            Back to Employee
+          </span>
+        </Link>
         <h1 className="text-3xl font-extrabold tracking-tight text-balance mb-10">
           Add New Employee
         </h1>
@@ -292,89 +277,12 @@ export default function AddEmployee() {
               </CardHeader>
 
               <CardContent className="space-y-3">
-                <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={open}
-                      className="w-full justify-between cursor-pointer"
-                    >
-                      Add skill
-                      <PlusCircle className="ml-2 h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-
-                  <PopoverContent className="w-80 p-0">
-                    <Command>
-                      <CommandInput
-                        placeholder="Search skill..."
-                        value={search}
-                        onValueChange={setSearch}
-                      />
-                      <CommandEmpty>
-                        <div className="p-2 text-sm text-muted-foreground">
-                          No skill found.
-                        </div>
-                        {search && (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-left text-sm"
-                            onClick={handleCustomAdd}
-                          >
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add “{search}”
-                          </Button>
-                        )}
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {listSkills.map((skill) => {
-                          const isSelected = skills.some(
-                            (s) => s.name === skill.name
-                          );
-                          return (
-                            <CommandItem
-                              key={skill.name}
-                              onSelect={() => handleAddSkill(skill)}
-                              className={`
-          flex items-center justify-between cursor-pointer transition-colors
-          ${isSelected ? "bg-primer/10 text-primer" : "hover:bg-gray-100"}`}
-                            >
-                              <span>{skill.name}</span>
-                              {isSelected && (
-                                <Check className="h-4 w-4 text-primer" />
-                              )}
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                {skills.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
-                    {skills.map((skill) => (
-                      <Badge
-                        key={skill.name}
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
-                        {skill.name}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSkill(skill)}
-                          className="hover:text-destructive focus:outline-none"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No skills added yet.
-                  </p>
-                )}
+                <SkillSelector
+                  selectedSkills={skills}
+                  onChange={setSkills}
+                  isEditing={true}
+                  allowCustomAdd
+                />
               </CardContent>
             </Card>
           </div>
@@ -528,32 +436,34 @@ export default function AddEmployee() {
                             </Select>
                           </Field>
                         </div>
-                        <Field>
-                          <FieldLabel htmlFor="checkout-7j9-manager-43j">
-                            Manager
-                          </FieldLabel>
-                          <Select
-                            value={employeeForm.managerId}
-                            onValueChange={(value) =>
-                              handleSelectChange("managerId", value)
-                            }
-                          >
-                            <SelectTrigger className="cursor-pointer">
-                              <SelectValue placeholder="Select a manager" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {managers.map((manager) => (
-                                <SelectItem
-                                  key={manager.id}
-                                  value={manager.id}
-                                  className="cursor-pointer"
-                                >
-                                  {manager.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </Field>
+                        {employeeForm.role !== "manager" && (
+                          <Field>
+                            <FieldLabel htmlFor="checkout-7j9-manager-43j">
+                              Manager
+                            </FieldLabel>
+                            <Select
+                              value={employeeForm.managerId}
+                              onValueChange={(value) =>
+                                handleSelectChange("managerId", value)
+                              }
+                            >
+                              <SelectTrigger className="cursor-pointer">
+                                <SelectValue placeholder="Select a manager" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {managers.map((manager) => (
+                                  <SelectItem
+                                    key={manager.id}
+                                    value={manager.id}
+                                    className="cursor-pointer"
+                                  >
+                                    {manager.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                        )}
                       </FieldGroup>
                     </FieldSet>
                     <FieldSeparator />

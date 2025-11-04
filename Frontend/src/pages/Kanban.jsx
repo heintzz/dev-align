@@ -16,10 +16,6 @@ import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
 import { CirclePlus, CircleCheckBig } from "lucide-react";
 
-import { useSkillStore } from "@/store/useSkillStore";
-import { useAssigneeStore } from "@/store/useAssigneeStore";
-import { set } from "date-fns";
-
 export default function Kanban() {
   const [socket, setSocket] = useState(null);
   const [columns, setColumns] = useState([]);
@@ -28,8 +24,6 @@ export default function Kanban() {
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const { projectId } = useParams();
-
-  const { listSkills, fetchSkills } = useSkillStore();
 
   const token = localStorage.getItem("token");
 
@@ -107,7 +101,6 @@ export default function Kanban() {
 
   useEffect(() => {
     getTasks();
-    fetchSkills();
     getColumns();
   }, [projectId]);
 
@@ -351,7 +344,6 @@ export default function Kanban() {
                   droppableId={key}
                   column={column}
                   listColumns={listColumns}
-                  listSkills={listSkills}
                   className="shrink-0"
                 />
               </>

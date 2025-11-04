@@ -66,13 +66,13 @@ import {
 } from "@/components/ui/select";
 import api from "@/api/axios";
 import { useAssigneeStore } from "@/store/useAssigneeStore";
+import { SkillSelector } from "../SkillSelector";
 
 const Column = ({
   projectId,
   droppableId,
   column,
   listColumns,
-  listSkills,
   className = "",
 }) => {
   const defaultTask = {
@@ -111,18 +111,6 @@ const Column = ({
       ...prev,
       [name]: value,
     }));
-  };
-
-  const handleAddSkill = (skill) => {
-    const isSelected = skills.some((s) => s._id === skill._id);
-    const updatedSkills = isSelected
-      ? skills.filter((s) => s._id !== skill._id)
-      : [...skills, { _id: skill._id, name: skill.name }];
-    setSkills(updatedSkills);
-  };
-
-  const handleRemoveSkill = (skill) => {
-    setSkills((prev) => prev.filter((s) => s.name !== skill.name));
   };
 
   const handleDateChange = (date) => {
@@ -388,69 +376,12 @@ const Column = ({
                 </div>
                 <div className="grid gap-3">
                   <Label htmlFor="name-1">Skills</Label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between cursor-pointer"
-                      >
-                        Add skill
-                        <PlusCircle className="ml-2 h-4 w-4 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent
-                      className="w-[90vw] max-w-sm max-h-[50vh] overflow-y-auto"
-                      align="start"
-                    >
-                      <DropdownMenuLabel>Available Skills</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-
-                      {listSkills.map((skill) => {
-                        const isSelected = skills.some(
-                          (s) => s.name === skill.name
-                        );
-                        return (
-                          <DropdownMenuItem
-                            key={skill.name}
-                            onClick={() => handleAddSkill(skill)}
-                            className={`flex justify-between items-center ${
-                              isSelected ? "bg-primary/10 text-primary" : ""
-                            }`}
-                          >
-                            <span>{skill.name}</span>
-                            {isSelected && (
-                              <Check className="h-4 w-4 text-primary" />
-                            )}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 max-h-14 overflow-y-auto">
-                      {skills.map((skill) => (
-                        <Badge
-                          key={skill.name}
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                        >
-                          {skill.name}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSkill(skill)}
-                            className="hover:text-destructive focus:outline-none cursor-pointer"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No skills added yet.
-                    </p>
-                  )}
+                  <SkillSelector
+                    selectedSkills={skills}
+                    onChange={setSkills}
+                    isEditing={true}
+                    className="max-h-12"
+                  />
                 </div>
               </div>
               <DialogFooter>
