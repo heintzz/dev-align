@@ -809,9 +809,11 @@ Creates a project with automatic staff assignment and approval workflow.
 **Access**: Manager only
 
 **⭐ New Approval Workflow**:
+- **🔥 Creator Auto-Assignment**: The project creator (manager) is AUTOMATICALLY assigned to ProjectAssignment as tech lead
 - **Direct Subordinates**: Staff with `managerId` matching creator's ID are assigned immediately
 - **Non-Direct Staff**: Borrow requests are created, requiring approval from their manager
 - **Notifications**: Sent to all affected parties (staff, managers, HR)
+- **Team Count**: Includes creator + assigned staff (creator is NOT counted in staffIds)
 
 **Request Body**:
 
@@ -866,6 +868,26 @@ Content-Type: application/json
     },
     "assignments": [
       {
+        "_id": "6901b5e8f7ed0f35753d38a8",
+        "projectId": {
+          "_id": "6901b5caf7ed0f35753d38a4",
+          "name": "E-Commerce Platform",
+          "description": "Build a full-featured e-commerce platform with React and Node.js",
+          "status": "active"
+        },
+        "userId": {
+          "_id": "69016bcc7157f337f7e2e4ea",
+          "name": "John Doe",
+          "email": "john.doe@example.com",
+          "role": "manager",
+          "position": {
+            "_id": "507f1f77bcf86cd799439011",
+            "name": "Engineering Manager"
+          }
+        },
+        "isTechLead": true
+      },
+      {
         "_id": "6901b5e8f7ed0f35753d38a9",
         "projectId": {
           "_id": "6901b5caf7ed0f35753d38a4",
@@ -891,6 +913,12 @@ Content-Type: application/json
   }
 }
 ```
+
+**⚠️ Important Response Notes**:
+- The **FIRST assignment** in the array is always the project creator (manager) with `isTechLead: true`
+- The creator is automatically inserted into ProjectAssignment collection
+- Creator does NOT need to be in the `staffIds` array
+- `teamMemberCount` includes creator + assigned staff
 
 **Notifications Sent**:
 1. **Own Staff**: "New Project Assignment" - immediate notification
