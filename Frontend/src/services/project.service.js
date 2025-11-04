@@ -88,11 +88,11 @@ const projectService = {
     return response.data;
   },
 
-  //  Update project status
+  //  Update project status (use existing PUT /project/:projectId endpoint)
   updateProjectStatus: async (projectId, status) => {
     const token = localStorage.getItem("token");
-    const response = await axios.patch(
-      `${API_URL}/project/${projectId}/status`,
+    const response = await axios.put(
+      `${API_URL}/project/${projectId}`,
       { status },
       {
         headers: {

@@ -139,9 +139,33 @@ export default function ListProjects() {
     setSelectedProjectId(null);
   };
 
-  const handleProjectUpdated = () => {
+  const handleProjectUpdated = async (updatedProject) => {
     // Refresh projects list when project is updated/deleted
-    fetchProjects();
+    // If caller passes updated project payload, update locally to avoid full refetch
+    if (updatedProject && updatedProject._id) {
+      const updatedId = updatedProject._id.toString();
+      const transformedProjects = projects.map((project) => {
+        if (project._id.toString() === updatedId) {
+          const newProject = {
+            ...project,
+            ...updatedProject,
+          };
+          return {
+            ...newProject,
+            displayStatus: getDisplayStatus(
+              newProject.status,
+              newProject.deadline
+            ),
+          };
+        }
+        return project;
+      });
+
+      setProjects(transformedProjects);
+      setFilteredProjects(transformedProjects);
+    } else {
+      await fetchProjects();
+    }
   };
 
   // Navigate to project kanban board

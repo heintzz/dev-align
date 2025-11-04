@@ -111,10 +111,17 @@ export default function ProjectDetailsDialog({
   const handleComplete = async () => {
     if (!confirm("Mark this project as completed?")) return;
     try {
-      await projectService.updateProjectStatus(projectId, "completed");
+      const res = await projectService.updateProjectStatus(
+        projectId,
+        "completed"
+      );
+      // res: { success: true, data: updatedProject, message }
+      const updatedProject = res?.data || null;
       alert("Project marked as completed!");
+      // Refresh local dialog details
       await fetchProjectDetails();
-      if (onProjectUpdated) onProjectUpdated();
+      // Notify parent with optional updated project payload so parent can update UI without full refetch
+      if (onProjectUpdated) onProjectUpdated(updatedProject);
     } catch (error) {
       console.error("Error completing project:", error);
       alert(error.message || "Failed to complete project");
