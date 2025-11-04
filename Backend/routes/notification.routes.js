@@ -22,7 +22,7 @@ const router = express.Router();
  * /notification:
  *   get:
  *     summary: Get user's notifications
- *     description: Retrieves all notifications for the authenticated user with pagination
+ *     description: Retrieves all notifications for the authenticated user with pagination. For 'project_approval' type notifications, includes detailed requester and approver information (id, name, email, role, position).
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -50,7 +50,101 @@ const router = express.Router();
  *         description: Filter by read status
  *     responses:
  *       200:
- *         description: List of notifications
+ *         description: List of notifications with populated requester/approver details for project_approval type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     perPage:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     unreadCount:
+ *                       type: integer
+ *                     notifications:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           userId:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           message:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                             enum: [announcement, project_approval]
+ *                           isRead:
+ *                             type: boolean
+ *                           relatedProject:
+ *                             type: object
+ *                           relatedBorrowRequest:
+ *                             type: object
+ *                             description: For project_approval type, includes requestedBy and approvedBy with full user details
+ *                             properties:
+ *                               _id:
+ *                                 type: string
+ *                               projectId:
+ *                                 type: string
+ *                               staffId:
+ *                                 type: string
+ *                               requestedBy:
+ *                                 type: object
+ *                                 properties:
+ *                                   _id:
+ *                                     type: string
+ *                                   name:
+ *                                     type: string
+ *                                   email:
+ *                                     type: string
+ *                                   role:
+ *                                     type: string
+ *                                   position:
+ *                                     type: object
+ *                                     properties:
+ *                                       _id:
+ *                                         type: string
+ *                                       name:
+ *                                         type: string
+ *                               approvedBy:
+ *                                 type: object
+ *                                 properties:
+ *                                   _id:
+ *                                     type: string
+ *                                   name:
+ *                                     type: string
+ *                                   email:
+ *                                     type: string
+ *                                   role:
+ *                                     type: string
+ *                                   position:
+ *                                     type: object
+ *                                     properties:
+ *                                       _id:
+ *                                         type: string
+ *                                       name:
+ *                                         type: string
+ *                               isApproved:
+ *                                 type: boolean
+ *                                 nullable: true
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
  *       500:
  *         description: Internal server error
  */
@@ -95,7 +189,7 @@ router.put('/mark-all-read', verifyToken, markAllAsRead);
  * /notification/{notificationId}:
  *   get:
  *     summary: Get notification by ID
- *     description: Get a single notification by its ID
+ *     description: Get a single notification by its ID. For 'project_approval' type notifications, includes detailed requester and approver information (id, name, email, role, position).
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -108,7 +202,97 @@ router.put('/mark-all-read', verifyToken, markAllAsRead);
  *         description: Notification ID
  *     responses:
  *       200:
- *         description: Notification details
+ *         description: Notification details with populated requester/approver for project_approval type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     title:
+ *                       type: string
+ *                     message:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                       enum: [announcement, project_approval]
+ *                     isRead:
+ *                       type: boolean
+ *                     relatedProject:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         description:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                     relatedBorrowRequest:
+ *                       type: object
+ *                       description: For project_approval type, includes requestedBy and approvedBy with full user details
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         projectId:
+ *                           type: string
+ *                         staffId:
+ *                           type: string
+ *                         requestedBy:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                             email:
+ *                               type: string
+ *                             role:
+ *                               type: string
+ *                             position:
+ *                               type: object
+ *                               properties:
+ *                                 _id:
+ *                                   type: string
+ *                                 name:
+ *                                   type: string
+ *                         approvedBy:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                             email:
+ *                               type: string
+ *                             role:
+ *                               type: string
+ *                             position:
+ *                               type: object
+ *                               properties:
+ *                                 _id:
+ *                                   type: string
+ *                                 name:
+ *                                   type: string
+ *                         isApproved:
+ *                           type: boolean
+ *                           nullable: true
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
  *       404:
  *         description: Notification not found
  *       403:
