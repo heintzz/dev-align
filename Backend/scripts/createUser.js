@@ -12,10 +12,10 @@ async function createUser() {
 
     // Data user yang mau dibuat
     const userData = {
-      name: "Rahadi Fauzan",
-      email: "ozanzenniuz@gmail.com",
-      password: "password123",
-      role: "hr",
+      name: "Irsyad",
+      email: "ibadurrahmanirsyad8@gmail.com",
+      password: "pm123",
+      role: "manager",
     };
 
     // Cek apakah email sudah ada

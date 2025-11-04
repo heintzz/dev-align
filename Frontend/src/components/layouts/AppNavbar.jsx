@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotifCountStore } from "@/store/useNotifCountStore";
 import { useNavigate } from "react-router-dom";
-import api from "@/api/axios";
 
 export default function AppNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { logout } = useAuthStore();
+  const { logout, name, role } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotifCountStore();
 
   const navigate = useNavigate();
@@ -46,8 +45,8 @@ export default function AppNavbar() {
               <User className="h-4 w-4 text-teal-600" />
             </div>
             <div className="text-left hidden md:block">
-              <p className="text-sm font-medium text-gray-700">John Doe</p>
-              <p className="text-xs text-gray-500">john@example.com</p>
+              <p className="text-sm font-medium text-gray-700">{name}</p>
+              <p className="text-xs text-gray-500">{role}</p>
             </div>
             <ChevronDown className="h-4 w-4 text-gray-500" />
           </button>
