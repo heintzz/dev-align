@@ -2,13 +2,13 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middlewares/token");
 const auth = require("../middlewares/authorization");
-const { topContributors } = require("../controllers/dashboard.controller");
+const { getDashboardData } = require("../controllers/dashboard.controller");
 
 /**
  * @swagger
- * /dashboard/top-contributors:
+ * /dashboard:
  *   get:
- *     summary: Get top contributors (users with most completed tasks)
+ *     summary: Get all dashboard data including statistics, project stats, and top contributors
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -33,8 +33,58 @@ const { topContributors } = require("../controllers/dashboard.controller");
  *
  *     responses:
  *       200:
- *         description: List of top contributors.
+ *         description: Complete dashboard data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     statistics:
+ *                       type: object
+ *                       properties:
+ *                         totalEmployees:
+ *                           type: object
+ *                           properties:
+ *                             count:
+ *                               type: integer
+ *                         resignedEmployees:
+ *                           type: object
+ *                           properties:
+ *                             count:
+ *                               type: integer
+ *                     projectStatistics:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                         inProgress:
+ *                           type: integer
+ *                         onHold:
+ *                           type: integer
+ *                         rejected:
+ *                           type: integer
+ *                     topContributors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           userId:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           position:
+ *                             type: string
+ *                           doneCount:
+ *                             type: integer
  */
-router.get("/top-contributors", verifyToken, topContributors);
+// Allow any authenticated user to access this endpoint (no role restriction)
+router.get("/", verifyToken, getDashboardData);
 
 module.exports = router;
