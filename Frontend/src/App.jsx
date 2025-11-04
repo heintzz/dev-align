@@ -25,6 +25,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuthStore } from '@/store/useAuthStore';
 import ManagerTeam from './pages/PM/ManagerTeam';
 import StaffTeam from './pages/Staff/StaffTeam';
+import Inbox from '@/pages/Inbox';
 
 function App() {
   const { token, role } = useAuthStore();
@@ -138,6 +139,17 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <ListProjects />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/team/reqapprove"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Inbox />
                 </AppLayout>
               </ProtectedRoute>
             }

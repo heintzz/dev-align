@@ -18,6 +18,7 @@ const taskRoutes = require("./routes/task.routes");
 
 const notificationRoutes = require("./routes/notification.routes");
 const borrowRequestRoutes = require("./routes/borrow-request.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
 const swaggerUi = require("swagger-ui-express");
 
 dotenv.config();
@@ -64,6 +65,7 @@ app.use("/project", projectRoutes);
 app.use("/project-assignment", projectAssignmentRoutes);
 app.use("/notification", notificationRoutes);
 app.use("/borrow-request", borrowRequestRoutes);
+app.use("/dashboard", dashboardRoutes);
 app.use("/task", taskRoutes);
 
 // Change app.listen to server.listen

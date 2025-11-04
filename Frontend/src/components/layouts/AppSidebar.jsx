@@ -197,8 +197,13 @@ export default function AppSidebar() {
                           return (
                             <Link
                               key={child._id}
+<<<<<<< HEAD
                               to={child.path || '#'}
                               className={`flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg px-3 py-1  ${
+=======
+                              to={child.path || "#"}
+                              className={`flex items-center gap-2 text-sm text-gray-700 rounded-lg px-3 py-1  ${
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                                 isChildActive
                                   ? 'bg-primer text-white'
                                   : 'text-gray-700 hover:bg-gray-100'

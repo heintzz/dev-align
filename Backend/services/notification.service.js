@@ -17,14 +17,12 @@ function getTransporter() {
   if (!transporter) {
     // Configure email transporter
     // In production, use environment variables for email credentials
-    transporter = nodemailer.createTransporter({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: process.env.EMAIL_PORT || 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER || 'your-email@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your-app-password',
-      },
+    transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
     });
   }
 

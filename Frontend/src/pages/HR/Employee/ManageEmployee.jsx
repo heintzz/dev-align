@@ -54,6 +54,7 @@ import {
   FilePenLine,
   Sheet,
   Download,
+<<<<<<< HEAD
 } from 'lucide-react';
 import api from '@/api/axios';
 import UploadFile from '@/components/UploadFile';
@@ -66,10 +67,28 @@ export default function ManageEmployee() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
+=======
+  CircleCheckBig,
+} from "lucide-react";
+import api from "@/api/axios";
+import UploadFile from "@/components/UploadFile";
+import AddEmployee from "./AddEmployee";
+import { toast } from "@/lib/toast";
+
+export default function ManageEmployee() {
+  const [total, setTotal] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0); // 0-based
+  const [pageSize, setPageSize] = useState(10);
+  const [sorting, setSorting] = useState([]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
   const [employees, setEmployees] = useState([]);
   const [openAddExcel, setOpenAddExcel] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
 
+  const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState('');
 
@@ -77,6 +96,7 @@ export default function ManageEmployee() {
 
   const columns = [
     {
+<<<<<<< HEAD
       accessorKey: 'id',
       id: 'select',
       header: ({ table }) => (
@@ -103,6 +123,9 @@ export default function ManageEmployee() {
     },
     {
       accessorKey: 'name',
+=======
+      accessorKey: "name",
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
@@ -154,7 +177,7 @@ export default function ManageEmployee() {
               onClick={() => navigate(`detail/${row.original.id}`)}
               className="cursor-pointer"
             >
-              Edit
+              Details
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => deativate(row.original.id)} className="cursor-pointer">
               Deactivate
@@ -166,9 +189,30 @@ export default function ManageEmployee() {
   ];
 
   const getEmployees = async () => {
+<<<<<<< HEAD
     const { data } = await api.get('/hr/employees');
     console.log(data);
     setEmployees(data.data);
+=======
+    try {
+      setLoading(true);
+      const params = {
+        page: pageIndex + 1, // backend is 1-based
+        limit: pageSize,
+        search: globalFilter || undefined,
+        active: statusFilter === "all" ? undefined : statusFilter,
+      };
+
+      const { data } = await api.get("/hr/employees", { params });
+      setEmployees(data.data);
+      setTotal(data.meta.total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      console.log("finish");
+    }
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
   };
 
   const getExcelTemplate = async () => {
@@ -203,7 +247,8 @@ export default function ManageEmployee() {
     formData.append('file', excelFile);
 
     try {
-      // setLoadingUpload(true);
+      setLoadingState(true);
+      setLoadingState("Adding Employee...");
       const response = await api.post(
         '/hr/employees/import?dryRun=false&sendEmails=false',
         formData,
@@ -212,15 +257,29 @@ export default function ManageEmployee() {
         }
       );
 
+<<<<<<< HEAD
       console.log('Import result:', response);
       alert(`Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`);
+=======
+      console.log("Import result:", response);
+      toast(
+        `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`,
+        {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "top-center",
+          duration: 5000,
+        }
+      );
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
       setOpenAddExcel(false);
     } catch (error) {
       console.error('Failed to import employees:', error);
       alert('Failed to import employees.');
     } finally {
-      // setLoadingUpload(false);
       getEmployees();
+      setLoadingState(true);
+      setLoadingText("");
     }
   };
 
@@ -231,6 +290,7 @@ export default function ManageEmployee() {
     getEmployees();
   };
 
+<<<<<<< HEAD
   const filteredData = useMemo(() => {
     let filtered = employees;
 
@@ -247,26 +307,32 @@ export default function ManageEmployee() {
     return filtered;
   }, [employees, globalFilter, statusFilter]);
 
+=======
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
   const table = useReactTable({
-    data: filteredData,
+    data: employees,
     columns,
-    state: { sorting, pagination: { pageIndex, pageSize }, rowSelection },
-    onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualPagination: true, // ✅ important
+    manualSorting: true, // optional if backend handles sorting
+    manualFiltering: true,
+    pageCount: Math.ceil(total / pageSize),
+    state: {
+      pagination: { pageIndex, pageSize },
+      sorting,
+    },
     onPaginationChange: (updater) => {
       const newState = typeof updater === 'function' ? updater({ pageIndex, pageSize }) : updater;
       setPageIndex(newState.pageIndex);
+      setPageSize(newState.pageSize);
     },
-    pageCount: Math.ceil(filteredData.length / pageSize),
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   useEffect(() => {
     getEmployees();
-  }, []);
+  }, [pageIndex, pageSize, globalFilter, statusFilter]);
 
   return (
     <>
@@ -354,15 +420,21 @@ export default function ManageEmployee() {
                 setStatusFilter(val);
                 setPageIndex(0);
               }}
+              // className="cursor-pointer"
             >
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[150px] cursor-pointer">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="all" className="cursor-pointer">
+                  All
+                </SelectItem>
+                <SelectItem value="true" className="cursor-pointer">
+                  Active
+                </SelectItem>
+                <SelectItem value="false" className="cursor-pointer">
+                  Resigned
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -375,9 +447,16 @@ export default function ManageEmployee() {
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <TableHead key={header.id}>
+<<<<<<< HEAD
                         {header.isPlaceholder
                           ? null
                           : flexRender(header.column.columnDef.header, header.getContext())}
+=======
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                       </TableHead>
                     ))}
                   </TableRow>
@@ -385,48 +464,78 @@ export default function ManageEmployee() {
               </TableHeader>
 
               <TableBody>
-                {table.getRowModel().rows.length ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : employees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center">
+                      No data
+                    </TableCell>
+                  </TableRow>
+                ) : (
                   table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
+<<<<<<< HEAD
                           {flexRender(cell.column.columnDef.cell, cell.getContext()) ||
                             cell.getValue()}
+=======
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
+<<<<<<< HEAD
                 ) : (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="h-24 text-center">
                       No results.
                     </TableCell>
                   </TableRow>
+=======
+>>>>>>> 0258783541bf05ed804380aa3b07a6feba2571f8
                 )}
               </TableBody>
             </Table>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-end space-x-2 py-2 mr-5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <span className="text-sm">
-                Page {pageIndex + 1} of {table.getPageCount() || 1}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between p-5">
+              <div className="text-sm text-muted-foreground">
+                Page {pageIndex + 1} of {Math.ceil(total / pageSize)}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageIndex((p) => Math.max(p - 1, 0))}
+                  disabled={pageIndex === 0}
+                  className="cursor-pointer"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPageIndex((p) =>
+                      p + 1 < Math.ceil(total / pageSize) ? p + 1 : p
+                    )
+                  }
+                  disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
+                  className="cursor-pointer"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -467,9 +576,16 @@ export default function ManageEmployee() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" className="cursor-pointer">
+                Cancel
+              </Button>
             </DialogClose>
-            <Button onClick={AddEmployeeByExcel}>Add Employee</Button>
+            <Button
+              onClick={AddEmployeeByExcel}
+              className="bg-primer cursor-pointer"
+            >
+              Add Employee
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

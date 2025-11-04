@@ -13,7 +13,7 @@ export default function AppNavbar() {
 
   return (
     <header className="flex justify-between sticky p-5 top-0 z-40 h-20 items-center gap-4 border-b bg-tersier shadow-sm">
-      <SidebarTrigger className="text-gray-700 hover:text-sekunder" />
+      <SidebarTrigger className="text-gray-700 hover:text-sekunder cursor-pointer" />
       <div className="flex items-center gap-4">
         <button className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer">
           <Bell className="h-5 w-5" />

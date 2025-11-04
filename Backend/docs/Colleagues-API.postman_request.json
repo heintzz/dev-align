@@ -1,0 +1,127 @@
+{
+  "name": "Get Colleagues List",
+  "request": {
+    "method": "GET",
+    "header": [
+      {
+        "key": "Authorization",
+        "value": "Bearer {{token}}",
+        "type": "text"
+      }
+    ],
+    "url": {
+      "raw": "{{baseUrl}}/hr/colleagues",
+      "host": ["{{baseUrl}}"],
+      "path": ["hr", "colleagues"]
+    },
+    "description": "Get list of colleagues based on user role:\n- **Manager**: Returns all direct subordinates\n- **Staff/HR**: Returns teammates with same manager + direct manager info\n\nFeatures:\n- Excludes current user\n- Only active employees\n- Sorted by name\n- Includes position and skills data"
+  },
+  "response": [
+    {
+      "name": "Staff Response - Success",
+      "originalRequest": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/hr/colleagues",
+          "host": ["{{baseUrl}}"],
+          "path": ["hr", "colleagues"]
+        }
+      },
+      "status": "OK",
+      "code": 200,
+      "_postman_previewlanguage": "json",
+      "header": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": "{\n  \"success\": true,\n  \"data\": {\n    \"userRole\": \"staff\",\n    \"colleagues\": [\n      {\n        \"id\": \"69016bcc7157f337f7e2e4eb\",\n        \"name\": \"John Developer\",\n        \"email\": \"john@example.com\",\n        \"role\": \"staff\",\n        \"position\": {\n          \"id\": \"507f1f77bcf86cd799439012\",\n          \"name\": \"Senior Developer\"\n        },\n        \"skills\": [\n          {\n            \"id\": \"507f1f77bcf86cd799439015\",\n            \"name\": \"JavaScript\"\n          },\n          {\n            \"id\": \"507f1f77bcf86cd799439016\",\n            \"name\": \"React\"\n          }\n        ]\n      },\n      {\n        \"id\": \"69016bcc7157f337f7e2e4ec\",\n        \"name\": \"Jane Designer\",\n        \"email\": \"jane@example.com\",\n        \"role\": \"staff\",\n        \"position\": {\n          \"id\": \"507f1f77bcf86cd799439013\",\n          \"name\": \"UI/UX Designer\"\n        },\n        \"skills\": [\n          {\n            \"id\": \"507f1f77bcf86cd799439017\",\n            \"name\": \"Figma\"\n          }\n        ]\n      }\n    ],\n    \"directManager\": {\n      \"id\": \"69016bcc7157f337f7e2e4ea\",\n      \"name\": \"Tony Yoditanto\",\n      \"email\": \"tonyoditanto@gmail.com\",\n      \"role\": \"manager\",\n      \"position\": {\n        \"id\": \"507f1f77bcf86cd799439011\",\n        \"name\": \"Engineering Manager\"\n      }\n    },\n    \"totalColleagues\": 2\n  }\n}"
+    },
+    {
+      "name": "Manager Response - Success",
+      "originalRequest": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/hr/colleagues",
+          "host": ["{{baseUrl}}"],
+          "path": ["hr", "colleagues"]
+        }
+      },
+      "status": "OK",
+      "code": 200,
+      "_postman_previewlanguage": "json",
+      "header": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": "{\n  \"success\": true,\n  \"data\": {\n    \"userRole\": \"manager\",\n    \"colleagues\": [\n      {\n        \"id\": \"69016bcc7157f337f7e2e4eb\",\n        \"name\": \"John Developer\",\n        \"email\": \"john@example.com\",\n        \"role\": \"staff\",\n        \"position\": {\n          \"id\": \"507f1f77bcf86cd799439012\",\n          \"name\": \"Senior Developer\"\n        },\n        \"skills\": [\n          {\n            \"id\": \"507f1f77bcf86cd799439015\",\n            \"name\": \"JavaScript\"\n          }\n        ]\n      },\n      {\n        \"id\": \"69016bcc7157f337f7e2e4ec\",\n        \"name\": \"Jane Designer\",\n        \"email\": \"jane@example.com\",\n        \"role\": \"staff\",\n        \"position\": {\n          \"id\": \"507f1f77bcf86cd799439013\",\n          \"name\": \"UI/UX Designer\"\n        },\n        \"skills\": []\n      },\n      {\n        \"id\": \"69016bcc7157f337f7e2e4ed\",\n        \"name\": \"Bob Tester\",\n        \"email\": \"bob@example.com\",\n        \"role\": \"staff\",\n        \"position\": {\n          \"id\": \"507f1f77bcf86cd799439014\",\n          \"name\": \"QA Engineer\"\n        },\n        \"skills\": []\n      }\n    ],\n    \"totalColleagues\": 3\n  }\n}"
+    },
+    {
+      "name": "Error - User Not Found",
+      "originalRequest": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/hr/colleagues",
+          "host": ["{{baseUrl}}"],
+          "path": ["hr", "colleagues"]
+        }
+      },
+      "status": "Not Found",
+      "code": 404,
+      "_postman_previewlanguage": "json",
+      "header": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": "{\n  \"success\": false,\n  \"error\": \"Not Found\",\n  \"message\": \"Current user not found\"\n}"
+    },
+    {
+      "name": "Error - Unauthorized",
+      "originalRequest": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/hr/colleagues",
+          "host": ["{{baseUrl}}"],
+          "path": ["hr", "colleagues"]
+        }
+      },
+      "status": "Unauthorized",
+      "code": 401,
+      "_postman_previewlanguage": "json",
+      "header": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Access Denied: No Token Provided\"\n}"
+    }
+  ]
+}
