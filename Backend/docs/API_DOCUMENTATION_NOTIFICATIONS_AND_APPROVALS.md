@@ -234,7 +234,34 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
           "name": "E-Commerce Platform",
           "description": "Build a full-featured e-commerce platform"
         },
-        "relatedBorrowRequest": "67820a1b2f3d4e5f6a7b8c9f",
+        "relatedBorrowRequest": {
+          "_id": "67820a1b2f3d4e5f6a7b8c9f",
+          "projectId": "6901b5caf7ed0f35753d38a4",
+          "staffId": "69016bcc7157f337f7e2e4ec",
+          "requestedBy": {
+            "_id": "69016bcc7157f337f7e2e4ea",
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "role": "manager",
+            "position": {
+              "_id": "507f1f77bcf86cd799439011",
+              "name": "Engineering Manager"
+            }
+          },
+          "approvedBy": {
+            "_id": "69016bcc7157f337f7e2e4eb",
+            "name": "Mike Manager",
+            "email": "mike.manager@example.com",
+            "role": "manager",
+            "position": {
+              "_id": "507f1f77bcf86cd799439012",
+              "name": "Senior Manager"
+            }
+          },
+          "isApproved": null,
+          "createdAt": "2025-10-31T10:35:00.000Z",
+          "updatedAt": "2025-10-31T10:35:00.000Z"
+        },
         "createdAt": "2025-10-31T10:35:00.000Z",
         "updatedAt": "2025-10-31T10:35:00.000Z"
       }
@@ -242,6 +269,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   }
 }
 ```
+
+**Important Notes**:
+- For **`project_approval`** type notifications, the `relatedBorrowRequest` field now includes:
+  - `requestedBy`: Full details of the manager requesting the staff assignment (id, name, email, role, position)
+  - `approvedBy`: Full details of the manager who needs to approve (id, name, email, role, position)
+- For **`announcement`** type notifications, `relatedBorrowRequest` will be `null`
 
 ---
 
@@ -291,7 +324,7 @@ GET /notification/67820a1b2f3d4e5f6a7b8c9d
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**Response** (200 OK):
+**Response for Announcement Type** (200 OK):
 ```json
 {
   "success": true,
@@ -308,11 +341,69 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
       "description": "Develop a cross-platform mobile application",
       "status": "active"
     },
+    "relatedBorrowRequest": null,
     "createdAt": "2025-10-31T10:30:00.000Z",
     "updatedAt": "2025-10-31T10:30:00.000Z"
   }
 }
 ```
+
+**Response for Project Approval Type** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "67820a1b2f3d4e5f6a7b8c9e",
+    "userId": "69016bcc7157f337f7e2e4ea",
+    "title": "Staff Assignment Approval Required",
+    "message": "John Doe wants to assign your team member Jane Smith to the project \"E-Commerce Platform\". Please review and respond to this request.",
+    "type": "project_approval",
+    "isRead": false,
+    "relatedProject": {
+      "_id": "6901b5caf7ed0f35753d38a4",
+      "name": "E-Commerce Platform",
+      "description": "Build a full-featured e-commerce platform",
+      "status": "active"
+    },
+    "relatedBorrowRequest": {
+      "_id": "67820a1b2f3d4e5f6a7b8c9f",
+      "projectId": "6901b5caf7ed0f35753d38a4",
+      "staffId": "69016bcc7157f337f7e2e4ec",
+      "requestedBy": {
+        "_id": "69016bcc7157f337f7e2e4ea",
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "role": "manager",
+        "position": {
+          "_id": "507f1f77bcf86cd799439011",
+          "name": "Engineering Manager"
+        }
+      },
+      "approvedBy": {
+        "_id": "69016bcc7157f337f7e2e4eb",
+        "name": "Mike Manager",
+        "email": "mike.manager@example.com",
+        "role": "manager",
+        "position": {
+          "_id": "507f1f77bcf86cd799439012",
+          "name": "Senior Manager"
+        }
+      },
+      "isApproved": null,
+      "createdAt": "2025-10-31T10:35:00.000Z",
+      "updatedAt": "2025-10-31T10:35:00.000Z"
+    },
+    "createdAt": "2025-10-31T10:35:00.000Z",
+    "updatedAt": "2025-10-31T10:35:00.000Z"
+  }
+}
+```
+
+**Important Notes**:
+- For **`project_approval`** type notifications, the `relatedBorrowRequest` field includes:
+  - `requestedBy`: Full details of the manager requesting the staff assignment (id, name, email, role, position)
+  - `approvedBy`: Full details of the manager who needs to approve (id, name, email, role, position)
+- For **`announcement`** type notifications, `relatedBorrowRequest` will be `null`
 
 **Error** (403 Forbidden):
 ```json

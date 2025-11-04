@@ -28,7 +28,21 @@ const getNotifications = async (req, res) => {
         .skip(skip)
         .limit(perPage)
         .populate('relatedProject', 'name description')
-        .populate('relatedBorrowRequest'),
+        .populate({
+          path: 'relatedBorrowRequest',
+          populate: [
+            {
+              path: 'requestedBy',
+              select: 'name email role position',
+              populate: { path: 'position', select: 'name' }
+            },
+            {
+              path: 'approvedBy',
+              select: 'name email role position',
+              populate: { path: 'position', select: 'name' }
+            }
+          ]
+        }),
     ]);
 
     // Count unread notifications
@@ -65,7 +79,21 @@ const getNotificationById = async (req, res) => {
 
     const notification = await Notification.findById(notificationId)
       .populate('relatedProject', 'name description status')
-      .populate('relatedBorrowRequest');
+      .populate({
+        path: 'relatedBorrowRequest',
+        populate: [
+          {
+            path: 'requestedBy',
+            select: 'name email role position',
+            populate: { path: 'position', select: 'name' }
+          },
+          {
+            path: 'approvedBy',
+            select: 'name email role position',
+            populate: { path: 'position', select: 'name' }
+          }
+        ]
+      });
 
     if (!notification) {
       return res.status(404).json({
