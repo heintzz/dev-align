@@ -7,7 +7,7 @@ export const useAssigneeStore = create((set, get) => ({
   error: null,
 
   fetchAssigneeProject: async (projectId) => {
-    if (get().loading || get().listAssigneeProject.length > 0) return;
+    // if (get().loading || get().listAssigneeProject.length > 0) return;
 
     set({ loading: true, error: null });
     try {
