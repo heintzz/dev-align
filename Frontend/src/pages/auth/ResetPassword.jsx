@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import logoKiri from "../../assets/img/loginkiri.png";
+import logoKiri from "../../assets/img/logokiribaru.png";
 import logoKecil from "../../assets/img/loginkanan.png";
 import authService from "../../services/auth.service";
 
@@ -9,7 +9,7 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const userId = searchParams.get("id");
-  
+
   const [formData, setFormData] = useState({
     newPassword: "",
     confirmPassword: "",
@@ -66,15 +66,15 @@ export default function ResetPassword() {
         formData.newPassword,
         formData.confirmPassword
       );
-      
+
       setIsSubmitted(true);
 
       setTimeout(() => {
         navigate("/login");
       }, 2000);
     } catch (err) {
-      setError(err.message || 'Failed to reset password. Please try again.');
-      console.error('Reset password error:', err);
+      setError(err.message || "Failed to reset password. Please try again.");
+      console.error("Reset password error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -82,16 +82,23 @@ export default function ResetPassword() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left Side - Logo Section */}
-      <div
-        className="flex-1 overflow-hidden"
-        style={{ backgroundColor: "#2C3F48" }}
-      >
+      {/* Left Side - Illustration + Text */}
+      <div className="flex-1 overflow-hidden bg-[#2C3F48] flex flex-col items-center justify-center px-8 relative">
         <img
           src={logoKiri}
-          alt="DevAlign Logo"
-          className="w-full h-screen object-cover"
+          alt="DevAlign Illustration"
+          className="w-[700px] h-[700px] object-contain opacity-90 mb-3"
         />
+
+        <div className="text-center -mt-4">
+          <h3 className="text-white text-2xl font-semibold leading-tight mb-2">
+            Empower Your Team with AI-Powered HRIS
+          </h3>
+          <p className="text-white/85 text-base max-w-md mx-auto">
+            Smart workforce analytics and intelligent project allocation,
+            aligning every employee with the right opportunity for impact.
+          </p>
+        </div>
       </div>
 
       {/* Right Side - Reset Password Form */}
@@ -190,12 +197,16 @@ export default function ResetPassword() {
               className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2C3F48" }}
             >
-              {isLoading ? 'Resetting...' : isSubmitted ? 'Password Reset!' : 'Reset Password'}
+              {isLoading
+                ? "Resetting..."
+                : isSubmitted
+                ? "Password Reset!"
+                : "Reset Password"}
             </button>
 
             <div className="text-center">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 className="text-sm hover:underline cursor-pointer bg-transparent border-0"
                 style={{ color: "#2C3F48" }}
               >

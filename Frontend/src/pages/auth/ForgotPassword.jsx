@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import logoKiri from "../../assets/img/loginkiri.png";
+import logoKiri from "../../assets/img/logokiribaru.png";
 import logoKecil from "../../assets/img/loginkanan.png";
 import authService from "../../services/auth.service";
 
@@ -19,8 +19,8 @@ export default function ForgotPassword() {
       await authService.forgotPassword(email);
       setIsSubmitted(true);
     } catch (err) {
-      setError(err.message || 'Failed to send reset link. Please try again.');
-      console.error('Forgot password error:', err);
+      setError(err.message || "Failed to send reset link. Please try again.");
+      console.error("Forgot password error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -28,13 +28,23 @@ export default function ForgotPassword() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left Side - Logo Section */}
-      <div className="flex-1 overflow-hidden" style={{ backgroundColor: '#2C3F48' }}>
-        <img 
-          src={logoKiri} 
-          alt="DevAlign Logo" 
-          className="w-full h-screen object-cover"
+      {/* Left Side - Illustration + Text */}
+      <div className="flex-1 overflow-hidden bg-[#2C3F48] flex flex-col items-center justify-center px-8 relative">
+        <img
+          src={logoKiri}
+          alt="DevAlign Illustration"
+          className="w-[700px] h-[700px] object-contain opacity-90 mb-3"
         />
+
+        <div className="text-center -mt-4">
+          <h3 className="text-white text-2xl font-semibold leading-tight mb-2">
+            Empower Your Team with AI-Powered HRIS
+          </h3>
+          <p className="text-white/85 text-base max-w-md mx-auto">
+            Smart workforce analytics and intelligent project allocation,
+            aligning every employee with the right opportunity for impact.
+          </p>
+        </div>
       </div>
 
       {/* Right Side - Forgot Password Form */}
@@ -43,20 +53,28 @@ export default function ForgotPassword() {
           {/* Logo and Title */}
           <div className="mb-12 text-center">
             <div className="flex items-center justify-center gap-3 mb-8">
-              <img 
-                src={logoKecil} 
-                alt="DevAlign" 
+              <img
+                src={logoKecil}
+                alt="DevAlign"
                 className="w-10 h-10 object-contain"
               />
-              <h1 className="text-2xl font-bold" style={{ color: '#2C3F48' }}>DevAlign</h1>
+              <h1 className="text-2xl font-bold" style={{ color: "#2C3F48" }}>
+                DevAlign
+              </h1>
             </div>
             <p className="text-slate-600 text-sm">Welcome to DevAlign</p>
           </div>
 
           {/* Forgot Password Title */}
-          <h2 className="text-3xl font-semibold mb-3" style={{ color: '#2C3F48' }}>Forgot Password</h2>
+          <h2
+            className="text-3xl font-semibold mb-3"
+            style={{ color: "#2C3F48" }}
+          >
+            Forgot Password
+          </h2>
           <p className="text-slate-600 text-sm mb-8">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we'll send you a link to reset your
+            password.
           </p>
 
           {/* Success Message */}
@@ -66,7 +84,8 @@ export default function ForgotPassword() {
                 Reset link has been sent!
               </p>
               <p className="text-green-700 text-sm">
-                Please check your email inbox and follow the link to reset your password.
+                Please check your email inbox and follow the link to reset your
+                password.
               </p>
             </div>
           ) : null}
@@ -98,16 +117,16 @@ export default function ForgotPassword() {
                 onClick={handleSubmit}
                 disabled={isLoading || !email}
                 className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#2C3F48' }}
+                style={{ backgroundColor: "#2C3F48" }}
               >
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
+                {isLoading ? "Sending..." : "Send Reset Link"}
               </button>
 
               <div className="text-center">
-                <Link 
-                  to="/login" 
+                <Link
+                  to="/login"
                   className="text-sm hover:underline"
-                  style={{ color: '#2C3F48' }}
+                  style={{ color: "#2C3F48" }}
                 >
                   Back to Login
                 </Link>
@@ -118,10 +137,10 @@ export default function ForgotPassword() {
           {/* Show back to login if submitted */}
           {isSubmitted && (
             <div className="text-center mt-6">
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="text-sm hover:underline"
-                style={{ color: '#2C3F48' }}
+                style={{ color: "#2C3F48" }}
               >
                 Back to Login
               </Link>

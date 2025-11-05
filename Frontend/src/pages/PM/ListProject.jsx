@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import projectService from "../../services/project.service";
 import ProjectDetailsDialog from "./ProjectDetails";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function ListProjects() {
   const navigate = useNavigate();
@@ -178,18 +179,23 @@ export default function ListProjects() {
     navigate("/create-project");
   };
 
+  const { role } = useAuthStore();
+  const isHR = role === "hr";
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
-          <button
-            onClick={handleCreateProject}
-            className="px-6 py-2.5 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium"
-          >
-            Create New Project
-          </button>
+          {!isHR && (
+            <button
+              onClick={handleCreateProject}
+              className="px-6 py-2.5 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium"
+            >
+              Create New Project
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -324,12 +330,14 @@ export default function ListProjects() {
                   >
                     Details
                   </button>
-                  <button
-                    onClick={() => handleViewKanban(project._id)}
-                    className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] text-sm font-medium cursor-pointer"
-                  >
-                    Kanban
-                  </button>
+                  {!isHR && (
+                    <button
+                      onClick={() => handleViewKanban(project._id)}
+                      className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] text-sm font-medium cursor-pointer"
+                    >
+                      Kanban
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
