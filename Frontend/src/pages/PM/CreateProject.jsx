@@ -254,6 +254,7 @@ export default function CreateProject() {
   const handleCheckboxClick = (e, employeeId) => {
     e.stopPropagation();
     handleToggleEmployee(employeeId);
+    console.log(employeeId);
   };
 
   const handleToggleEmployee = (employeeId) => {
