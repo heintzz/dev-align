@@ -43,6 +43,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
 //icon
@@ -78,9 +89,10 @@ export default function ManageEmployee() {
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState('');
 
-  const navigate = useNavigate();
+  const [openConfirmation, setOpenConfirmation] = useState(false);
+  const [userToUpdate, setUserToUpdate] = useState();
 
-  console.log(employees);
+  const navigate = useNavigate();
 
   const columns = [
     {
@@ -142,7 +154,13 @@ export default function ManageEmployee() {
                 Details
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => changeEmployeeStatus(row.original.id, !isActive)}
+                onClick={() => {
+                  setOpenConfirmation(true);
+                  setUserToUpdate({
+                    active: isActive,
+                    id: row.original.id,
+                  });
+                }}
                 className="cursor-pointer"
               >
                 {isActive ? 'Deactivate' : 'Activate'}
@@ -273,6 +291,30 @@ export default function ManageEmployee() {
   return (
     <>
       <div>
+        {openConfirmation && (
+          <AlertDialog open={openConfirmation} onOpenChange={setOpenConfirmation}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {userToUpdate.active ? 'Deactivate Employee' : 'Activate Employee'}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {userToUpdate.active
+                    ? 'Are you sure you want to deactivate this employee?'
+                    : 'Are you sure you want to activate this employee?'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => changeEmployeeStatus(userToUpdate.id, !userToUpdate.active)}
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         <div>
           <div className="flex justify-between">
             <h1 className="scroll-m-20  text-3xl font-extrabold tracking-tight text-balance">
