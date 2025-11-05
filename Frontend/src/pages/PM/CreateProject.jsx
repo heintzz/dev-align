@@ -1,9 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { SkillSelector } from "@/components/SkillSelector";
 import projectService from "../../services/project.service";
+import { cn } from "@/lib/utils";
+
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import Loading from "@/components/Loading";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CircleCheckBig } from "lucide-react";
 
 export default function CreateProject() {
   const navigate = useNavigate();
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -15,8 +34,6 @@ export default function CreateProject() {
 
   // Skills state
   const [skills, setSkills] = useState([]);
-  const [selectedSkills, setSelectedSkills] = useState([]);
-  const [skillInput, setSkillInput] = useState("");
 
   // Positions state
   const [positions, setPositions] = useState([]);
@@ -30,58 +47,19 @@ export default function CreateProject() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch skills from database
-  useEffect(() => {
-    fetchSkills();
-  }, []);
-
   // Fetch positions from database
   useEffect(() => {
     fetchPositions();
   }, []);
-
-  // API - Fetch all skills from database
-  const fetchSkills = async () => {
-    try {
-      const response = await projectService.getAllSkills();
-      // Sesuaikan dengan struktur response dari controller: response.skills
-      setSkills(response.skills || []); // Mengambil array skills dari objek response
-    } catch (error) {
-      console.error("Error fetching skills:", error);
-      // Fallback to mock data if error
-      setSkills([
-        { _id: "1", name: "React.js" },
-        { _id: "2", name: "Node.js" },
-        { _id: "3", name: "Python" },
-        { _id: "4", name: "TypeScript" },
-        { _id: "5", name: "UI/UX" },
-        { _id: "6", name: "MongoDB" },
-        { _id: "7", name: "GraphQL" },
-        { _id: "8", name: "Jest" },
-        { _id: "9", name: "Cypress" },
-        { _id: "10", name: "CI/CD" },
-      ]);
-    }
-  };
 
   // API - Fetch all positions from database
   const fetchPositions = async () => {
     try {
       const response = await projectService.getAllPositions();
       // Sesuaikan dengan struktur response dari controller: response.positions
-      setPositions(response.positions || []); // Mengambil array positions dari objek response
+      setPositions(response.positions || []);
     } catch (error) {
       console.error("Error fetching positions:", error);
-      // Fallback to mock data if error
-      setPositions([
-        { _id: "1", name: "Frontend Developer" },
-        { _id: "2", name: "Backend Developer" },
-        { _id: "3", name: "Fullstack Developer" },
-        { _id: "4", name: "UI/UX Designer" },
-        { _id: "5", name: "QA Engineer" },
-        { _id: "6", name: "DevOps Engineer" },
-        { _id: "7", name: "Project Manager" },
-      ]);
     }
   };
 
@@ -91,20 +69,6 @@ export default function CreateProject() {
       ...prev,
       [name]: value,
     }));
-  };
-
-  const handleAddSkill = () => {
-    if (skillInput && !selectedSkills.find((s) => s._id === skillInput)) {
-      const skill = skills.find((s) => s._id === skillInput);
-      if (skill) {
-        setSelectedSkills([...selectedSkills, skill]);
-        setSkillInput("");
-      }
-    }
-  };
-
-  const handleRemoveSkill = (skillId) => {
-    setSelectedSkills(selectedSkills.filter((s) => s._id !== skillId));
   };
 
   const handleAddPosition = () => {
@@ -126,6 +90,8 @@ export default function CreateProject() {
   };
 
   const handleGenerateRecommendations = async () => {
+    setLoadingState(true);
+    setLoadingText("Getting The Best Staff...");
     setIsGenerating(true);
     setEmployees([]); // Clear previous results
 
@@ -150,7 +116,7 @@ export default function CreateProject() {
           name: p.name,
           numOfRequest: p.quantity,
         })),
-        skills: selectedSkills.map((s) => s.name),
+        skills: skills.map((s) => s.name),
       };
 
       console.log("Request data:", requestData);
@@ -232,15 +198,20 @@ export default function CreateProject() {
         );
       } else if (error.request) {
         console.error("No response received:", error.request);
-        alert(
-          "No response received from AI service. Please check if the service is running."
-        );
+        toast("The best fit employee has been retrieved", {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "top-center",
+          duration: 5000,
+        });
       } else {
         console.error("Error:", error.message);
         alert(error.message || "Failed to generate recommendations");
       }
     } finally {
       setIsGenerating(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -299,6 +270,8 @@ export default function CreateProject() {
     }
 
     setIsSubmitting(true);
+    setLoadingState(true);
+    setLoadingText("Creating Project...");
 
     try {
       // Ensure all selected employees are resolved to real user IDs
@@ -338,8 +311,14 @@ export default function CreateProject() {
       );
 
       if (response.success) {
-        alert(
-          `Project "${response.data.project.name}" created successfully with ${selectedEmployees.length} staff members assigned!`
+        toast(
+          `Project "${response.data.project.name}" created successfully with ${selectedEmployees.length} staff members assigned!`,
+          {
+            icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+            type: "success",
+            position: "top-center",
+            duration: 5000,
+          }
         );
         navigate("/projects"); // Navigate to projects list
       }
@@ -348,6 +327,8 @@ export default function CreateProject() {
       alert(error.message || "Failed to create project. Please try again.");
     } finally {
       setIsSubmitting(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -374,6 +355,8 @@ export default function CreateProject() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-800">
@@ -387,11 +370,11 @@ export default function CreateProject() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start lg:h-full">
           {/* Left Form */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6 flex flex-col h-full">
             {/* Project Details */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 flex-1">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Project Details
               </h3>
@@ -455,7 +438,7 @@ export default function CreateProject() {
             </div>
 
             {/* Required Skills & Team Size */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 flex-1">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Required Skills & Team Size
               </h3>
@@ -466,107 +449,86 @@ export default function CreateProject() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Skill
                   </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={skillInput}
-                      onChange={(e) => setSkillInput(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">e.g. Python, UI/UX Design</option>
-                      {skills.map((skill) => (
-                        <option key={skill._id} value={skill._id}>
-                          {skill.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={handleAddSkill}
-                      className="px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
-                    >
-                      Add Skill
-                    </button>
-                  </div>
+                  <SkillSelector
+                    selectedSkills={skills}
+                    onChange={setSkills}
+                    isEditing={true}
+                    className="max-h-12"
+                    allowCustomAdd
+                  />
                 </div>
 
-                {/* Selected Skills */}
-                {selectedSkills.length > 0 && (
-                  <div className="space-y-2">
-                    {selectedSkills.map((skill) => (
-                      <div
-                        key={skill._id}
-                        className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
-                      >
-                        <span className="text-sm font-medium text-gray-900">
-                          {skill.name}
-                        </span>
-                        <button
-                          onClick={() => handleRemoveSkill(skill._id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {/* Position */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Position & Quantity
                   </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={positionInput}
-                      onChange={(e) => setPositionInput(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select Position</option>
-                      {positions.map((position) => (
-                        <option key={position._id} value={position._id}>
-                          {position.name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="1"
-                      value={quantityInput}
-                      onChange={(e) =>
-                        setQuantityInput(parseInt(e.target.value))
-                      }
-                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={handleAddPosition}
-                      className="px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
-                    >
-                      Add
-                    </button>
+
+                  {/* Scrollable container */}
+                  <div className="max-h-56 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                    <div className="grid grid-cols-1 sm:grid-cols-7 gap-3 items-center">
+                      {/* Position Select */}
+                      <Select
+                        value={positionInput}
+                        onValueChange={setPositionInput}
+                      >
+                        <SelectTrigger className="w-full sm:col-span-3">
+                          <SelectValue placeholder="Select Position" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {positions.map((position) => (
+                            <SelectItem key={position._id} value={position._id}>
+                              {position.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Quantity Input */}
+                      <Input
+                        type="number"
+                        min="1"
+                        value={quantityInput}
+                        onChange={(e) =>
+                          setQuantityInput(parseInt(e.target.value) || 1)
+                        }
+                        className="w-full sm:col-span-2"
+                      />
+
+                      {/* Add Button */}
+                      <Button
+                        onClick={handleAddPosition}
+                        className="w-full sm:col-span-2 bg-[#2C3F48] hover:bg-[#1F2E35]"
+                      >
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Selected Positions */}
-                {teamPositions.length > 0 && (
-                  <div className="space-y-2">
-                    {teamPositions.map((position, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
-                      >
-                        <span className="text-sm font-medium text-gray-900">
-                          {position.name} × {position.quantity}
-                        </span>
-                        <button
-                          onClick={() => handleRemovePosition(index)}
-                          className="text-red-500 hover:text-red-700"
+                <div className=" max-h-16 overflow-auto">
+                  {teamPositions.length > 0 && (
+                    <div className="space-y-2">
+                      {teamPositions.map((position, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
                         >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                          <span className="text-sm font-medium text-gray-900">
+                            {position.name} × {position.quantity}
+                          </span>
+                          <button
+                            onClick={() => handleRemovePosition(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
@@ -582,154 +544,164 @@ export default function CreateProject() {
           </div>
 
           {/* Right - AI Recommendations */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-6">
+          <div className="lg:col-span-2 flex flex-col max-h-full">
+            <Card className="bg-white shadow-sm border rounded-xl flex flex-col flex-grow h-full">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
                   AI Team Recommendations
                 </h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAutoAssignBestTeam}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] text-sm font-medium"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                    </svg>
-                    Auto-Assign Best Team
-                  </button>
-                  <button
+
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium"
                   >
                     {isSubmitting ? "Creating Project..." : "Create Project"}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </CardHeader>
 
-              {employees.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <p>
-                    Click "Generate Team Recommendations" to see suggestions
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {employees.map((employee) => (
-                    <div
-                      key={employee._id}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                        selectedEmployees.includes(employee._id)
-                          ? "border-blue-500 bg-blue-50"
-                          : getMatchingColor(employee.matchingPercentage)
-                      }`}
-                      onClick={() => handleToggleEmployee(employee._id)} // <-- Biarkan handler ini tetap ada untuk klik di area kartu
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={selectedEmployees.includes(employee._id)}
-                            // Gunakan fungsi baru untuk menangani klik pada checkbox
-                            onChange={(e) =>
-                              handleCheckboxClick(e, employee._id)
-                            } // <--- PERUBAHAN DI SINI
-                            className="absolute top-0 left-0 w-5 h-5"
-                          />
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold ml-6">
-                            {employee.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </div>
-                        </div>
+              <CardContent className="p-4 sm:p-6 flex-1 overflow-y-auto">
+                {employees.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center py-12 text-gray-500">
+                    <p>
+                      Click “Generate Team Recommendations” to see suggestions
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {employees.map((employee) => {
+                      const isSelected = selectedEmployees.includes(
+                        employee._id
+                      );
 
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h4 className="font-semibold text-gray-900">
-                                {employee.name}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {employee.position.name}
-                              </p>
+                      return (
+                        <div
+                          key={employee._id}
+                          onClick={() => handleToggleEmployee(employee._id)}
+                          className={cn(
+                            "cursor-pointer rounded-xl border transition-all p-4 bg-white shadow-sm hover:shadow-md hover:scale-[1.01] duration-200",
+                            isSelected
+                              ? "border-blue-500 bg-blue-50"
+                              : getMatchingColor(employee.matchingPercentage)
+                          )}
+                        >
+                          {/* Top Section */}
+                          <div className="flex items-start gap-3">
+                            {/* Avatar + Checkbox */}
+                            <div className="relative shrink-0">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) =>
+                                  handleCheckboxClick(
+                                    { target: { checked } },
+                                    employee._id
+                                  )
+                                }
+                                className="absolute -top-1 -left-1"
+                              />
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
+                                {employee.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <span className="text-2xl font-bold text-gray-700">
-                                {employee.matchingPercentage}%
-                              </span>
-                              {employee.aiRank && (
-                                <div className="text-sm text-green-600 font-medium">
-                                  Rank #{employee.aiRank}
+
+                            {/* Employee Info */}
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900 leading-tight text-base">
+                                    {employee.name}
+                                  </h4>
+                                  <p className="text-xs sm:text-sm text-gray-600">
+                                    {employee.position?.name}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-lg sm:text-2xl font-bold text-gray-700 leading-none">
+                                    {employee.matchingPercentage}%
+                                  </span>
+                                  {employee.aiRank && (
+                                    <div className="text-xs text-green-600 font-medium mt-0.5">
+                                      Rank #{employee.aiRank}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Matching Skills */}
+                              {employee.skills?.length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-xs text-gray-600 mb-1">
+                                    Skills
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {employee.skills.map((skill, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                                      >
+                                        {skill.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Workload Bar */}
+                              <div className="mb-2">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-gray-600">
+                                    Current Workload ({employee.currentWorkload}
+                                    %)
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className={cn(
+                                      "h-2 rounded-full transition-all",
+                                      getWorkloadColor(employee.currentWorkload)
+                                    )}
+                                    style={{
+                                      width: `${employee.currentWorkload}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Availability */}
+                              <p
+                                className={cn(
+                                  "text-xs font-medium mt-1",
+                                  getAvailabilityColor(employee.availability)
+                                )}
+                              >
+                                ● {employee.availability}
+                              </p>
+
+                              {/* AI Reason */}
+                              {employee.aiReason && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <p className="text-xs font-medium text-gray-500 mb-1">
+                                    AI Reasoning
+                                  </p>
+                                  <p className="text-sm text-gray-700 leading-snug max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
+                                    {employee.aiReason}
+                                  </p>
                                 </div>
                               )}
                             </div>
                           </div>
-
-                          <div className="mb-2">
-                            <p className="text-xs text-gray-600 mb-1">
-                              Matching Skills
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {employee.skills.map((skill, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded"
-                                >
-                                  {skill.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="mb-2">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="text-gray-600">
-                                Current Workload ({employee.currentWorkload}%)
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${getWorkloadColor(
-                                  employee.currentWorkload
-                                )}`}
-                                style={{
-                                  width: `${employee.currentWorkload}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
-
-                          <p
-                            className={`text-xs font-medium ${getAvailabilityColor(
-                              employee.availability
-                            )}`}
-                          >
-                            ● {employee.availability}
-                          </p>
-
-                          {employee.aiReason && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-xs font-medium text-gray-500 mb-1">
-                                AI Reasoning
-                              </p>
-                              <p className="text-sm text-gray-700">
-                                {employee.aiReason}
-                              </p>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

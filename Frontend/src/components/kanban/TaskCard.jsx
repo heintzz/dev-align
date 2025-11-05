@@ -374,6 +374,7 @@ const TaskCard = ({ task, projectId }) => {
                     onChange={setSkills}
                     isEditing={isEditing}
                     className="max-h-12"
+                    allowCustomAdd
                   />
                 </div>
 
