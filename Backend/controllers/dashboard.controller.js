@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { TaskAssignment, User, Project } = require('../models');
+const { TaskAssignment, User, Project, ProjectAssignment } = require('../models');
 
 // helper to compute date range
 function getDateRange(period) {
@@ -193,4 +193,98 @@ const getDashboardData = async (req, res) => {
 
 module.exports = {
   getDashboardData,
+};
+
+const getManagerDashboard = async (req, res) => {
+  try {
+  const requester = req.user || {};
+  // token payload may carry `id` or `_id` depending on where it was generated
+  const requesterId = requester._id || requester.id;
+  if (!requesterId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  if (requester.role !== 'manager') return res.status(403).json({ success: false, error: 'Forbidden' });
+
+  const managerId = new mongoose.Types.ObjectId(String(requesterId));
+
+    // find team members (direct reports)
+  const teamMembers = await User.find({ managerId: managerId }).select('_id name email position').lean();
+  const teamIds = teamMembers.map((m) => new mongoose.Types.ObjectId(String(m._id)));
+
+    // if no team members, return empty dashboard
+    if (teamIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          statistics: {
+            totalProjects: 0,
+            projectsComplete: 0,
+            projectsOnGoing: 0,
+          },
+          team: [],
+        },
+      });
+    }
+
+    // aggregate distinct projects assigned to team and count by project.status
+    const projectStatusAgg = await ProjectAssignment.aggregate([
+      { $match: { userId: { $in: teamIds } } },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'projectId',
+          foreignField: '_id',
+          as: 'project',
+        },
+      },
+      { $unwind: '$project' },
+      // group by project to dedupe assignments
+      { $group: { _id: '$project._id', status: { $first: '$project.status' } } },
+      // now group by status
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]).exec();
+
+    let totalProjects = 0;
+    let projectsComplete = 0;
+    let projectsOnGoing = 0;
+    projectStatusAgg.forEach((g) => {
+      totalProjects += g.count;
+      if (String(g._id).toLowerCase() === 'completed') projectsComplete += g.count;
+      else projectsOnGoing += g.count;
+    });
+
+    // per-team-member project counts
+    const perUserCounts = await ProjectAssignment.aggregate([
+      { $match: { userId: { $in: teamIds } } },
+      { $group: { _id: '$userId', count: { $sum: 1 } } },
+    ]).exec();
+    const countsMap = new Map(perUserCounts.map((c) => [String(c._id), c.count]));
+
+    const team = teamMembers.map((m) => ({
+      id: m._id,
+      name: m.name,
+      email: m.email,
+      position: m.position || null,
+      projectCount: countsMap.get(String(m._id)) || 0,
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        statistics: {
+          totalProjects,
+          projectsComplete,
+          projectsOnGoing,
+        },
+        team,
+      },
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('getManagerDashboard error', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+  }
+};
+
+module.exports = {
+  getDashboardData,
+  getManagerDashboard,
 };

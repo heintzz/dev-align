@@ -19,6 +19,7 @@ const createColumn = async (req, res) => {
     });
   }
 
+  console.log(projectId, req.user.id);
   try {
     const projectAssignment = await ProjectAssignment.findOne({
       projectId: projectId,
