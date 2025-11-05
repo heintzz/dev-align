@@ -88,7 +88,7 @@ router.get("/", verifyToken, getSkills);
  *       400:
  *         description: Bad request
  */
-router.post("/", verifyToken, auth("hr"), createSkill);
+router.post("/", verifyToken, createSkill);
 
 /**
  * @swagger
