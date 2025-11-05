@@ -108,6 +108,41 @@ MONGO_URI=mongodb+srv://dev-align-database:HgspLtpdcHOIm5Pv@capstone-cluster.t8p
 
 ---
 
+### Issue 4: Missing Module 'swagger-jsdoc'
+
+**Error:**
+```
+Error: Cannot find module 'swagger-jsdoc'
+```
+
+**Cause:** Swagger packages were in `devDependencies` but are needed at runtime
+
+**Fix:**
+This has been fixed in the repository. The packages have been moved to `dependencies`.
+
+If you still see this error:
+```bash
+cd /var/www/backend/DevAlign
+
+# Pull latest changes (includes the fix)
+git pull origin dev
+
+# Rebuild containers
+docker compose down
+docker compose up -d --build
+
+# Or manually install if needed
+cd Backend
+npm install
+```
+
+**Note:** The fix moved these packages from `devDependencies` to `dependencies`:
+- `swagger-jsdoc`
+- `swagger-ui-express`
+- `nodemon`
+
+---
+
 ## Complete Fix for Your Current Issue
 
 Based on your screenshot, here's the exact sequence of commands:
