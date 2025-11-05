@@ -10,6 +10,51 @@ const path = require("path");
 // Helper to safely escape user input when building RegExp
 const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Parse various date representations coming from XLSX: number (Excel serial), Date object, or string
+const parseExcelDate = (val) => {
+  if (!val && val !== 0) return null;
+  // already a Date
+  if (val instanceof Date) return val;
+
+  // Excel stores dates as numbers (serial). Try parse via XLSX.SSF if available
+  if (typeof val === "number") {
+    try {
+      const d = XLSX.SSF.parse_date_code(val);
+      if (!d) return null;
+      // parse_date_code returns { y, m, d, H, M, S }
+      return new Date(d.y, d.m - 1, d.d, d.H || 0, d.M || 0, d.S || 0);
+    } catch (e) {
+      // fallback to converting from epoch offset
+      const utc = Math.round((val - 25569) * 86400 * 1000);
+      return new Date(utc);
+    }
+  }
+
+  if (typeof val === "string") {
+    const s = val.trim();
+    // ISO-like yyyy-mm-dd
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) return new Date(s);
+    // try yyyy/mm/dd or yyyy.mm.dd
+    if (/^\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}$/.test(s)) return new Date(s.replace(/[/.]/g, "-"));
+    // try dd/mm/yyyy or dd-mm-yyyy (common Excel locales)
+    const parts = s.split(/[\/\.\-]/).map(p => p.trim());
+    if (parts.length === 3) {
+      // if first part is year -> year-first
+      if (parts[0].length === 4) {
+        return new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
+      }
+      // assume dd-mm-yyyy
+      return new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+    }
+
+    // final fallback
+    const parsed = new Date(s);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
 const skillMatching = (skills, existingSkills) => {
   const clean = (arr) =>
     arr.map((skill) =>
@@ -480,7 +525,8 @@ const importEmployees = async (req, res) => {
       const email = emailRaw ? String(emailRaw).toLowerCase() : null;
       const phoneNumber = row.phoneNumber || row.Phone || row.phone || null;
       const placeOfBirth = row.placeOfBirth || row.PlaceOfBirth || null;
-      const dateOfBirth = row.dateOfBirth || row.DateOfBirth || null;
+  const rawDateOfBirth = row.dateOfBirth || row.DateOfBirth || null;
+  const parsedDateOfBirth = parseExcelDate(rawDateOfBirth);
       const positionVal = row.position || row.Position || null; // can be id or name
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
       const managerEmail = managerEmailRaw
@@ -580,10 +626,13 @@ const importEmployees = async (req, res) => {
       }
 
       // date parsing check
-      if (dateOfBirth) {
-        const dt = new Date(dateOfBirth);
-        if (Number.isNaN(dt.getTime()))
+      if (rawDateOfBirth) {
+        if (!parsedDateOfBirth) {
           rowResult.warnings.push("Invalid dateOfBirth format");
+        } else {
+          // store resolved parsed date for later creation
+          rowResult.resolved.dateOfBirth = parsedDateOfBirth;
+        }
       }
 
       const isRowOk = rowResult.errors.length === 0;
@@ -608,7 +657,7 @@ const importEmployees = async (req, res) => {
           email,
           phoneNumber,
           placeOfBirth,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          dateOfBirth: parsedDateOfBirth ? parsedDateOfBirth : null,
           position,
           managerId,
           skills,
