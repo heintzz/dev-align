@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Mail, MailOpen } from "lucide-react";
+import { useNotifCountStore } from "@/store/useNotifCountStore";
 
 export default function Inbox() {
   const [loadingState, setLoadingState] = useState(false);
@@ -24,6 +25,9 @@ export default function Inbox() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [selected, setSelected] = useState(null);
+
+  const { fetchUnreadCount } = useNotifCountStore();
+
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [perPage, setPerPage] = useState(10);
@@ -63,11 +67,27 @@ export default function Inbox() {
     }
   };
 
+  const markRead = async (id) => {
+    try {
+      const { data } = await api.put(`/notification/${id}/mark-read`);
+      console.log(data);
+    } catch (error) {
+      console.error("Error fetching detail:", err);
+    } finally {
+      await getMessage();
+      await fetchUnreadCount();
+    }
+  };
+
   const fetchDetail = async (id) => {
     setLoadingDetail(true);
     try {
       const { data } = await api.get(`/notification/${id}`);
+      console.log(data.data);
       if (data.success) {
+        if (!data.data.isRead) {
+          await markRead(id);
+        }
         setSelected(data.data);
       }
     } catch (err) {
@@ -77,11 +97,34 @@ export default function Inbox() {
     }
   };
 
+  const approvedRequest = async (id, isApproved = true) => {
+    const formData = { isApproved };
+    setLoadingState(true);
+    setLoadingText("Sending Response...");
+    try {
+      const { data } = await api.put(`/borrow-request/${id}/respond`, formData);
+      console.log(data);
+      setSelected((prev) => ({
+        ...prev,
+        relatedBorrowRequest: {
+          ...prev.relatedBorrowRequest,
+          isApproved: data.data.isApproved,
+        },
+      }));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
+    }
+  };
+
   useEffect(() => {
     getMessage();
   }, [page, perPage, filter.status, filter.type]);
 
-  const totalPages = Math.ceil(total / perPage);
+  console.log("total: " + total + " " + 0 / perPage);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
     <div className="p-4 sm:p-6 h-[calc(100vh-4rem)] flex flex-col">
@@ -155,7 +198,13 @@ export default function Inbox() {
                       )}
                       <p className="font-medium line-clamp-1">{notif.title}</p>
                     </div>
-                    <Badge variant={notif.isRead ? "outline" : "default"}>
+                    <Badge
+                      className={`${
+                        notif.type == "project_approval"
+                          ? "bg-sky-600"
+                          : "bg-yellow-600"
+                      }`}
+                    >
                       {notif.type}
                     </Badge>
                   </div>
@@ -208,7 +257,13 @@ export default function Inbox() {
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-xl font-semibold">{selected.title}</h2>
-                <Badge variant={selected.isRead ? "outline" : "default"}>
+                <Badge
+                  className={`${
+                    selected.type == "project_approval"
+                      ? "bg-sky-600"
+                      : "bg-yellow-600"
+                  }`}
+                >
                   {selected.type}
                 </Badge>
               </div>
@@ -223,47 +278,80 @@ export default function Inbox() {
               </p>
 
               {selected.relatedProject && (
-                <Card className="mb-4">
-                  <CardHeader>
+                <Card className="mb-2 space-y-2">
+                  <CardContent>
                     <CardTitle className="text-lg">
                       Project: {selected.relatedProject.name}
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent>
                     <p className="text-sm text-muted-foreground">
                       {selected.relatedProject.description}
                     </p>
-                    <Badge className="mt-2">
+                    <Badge
+                      className={`mt-2 ${
+                        selected.relatedProject.status == "active"
+                          ? "bg-teal-500"
+                          : "bg-red-500"
+                      }`}
+                    >
                       {selected.relatedProject.status}
                     </Badge>
                   </CardContent>
                 </Card>
               )}
-
               {selected.relatedBorrowRequest && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Borrow Request</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm space-y-1">
-                    <p>
-                      <span className="font-medium">Requested By:</span>{" "}
-                      {selected.relatedBorrowRequest.requestedBy}
-                    </p>
-                    <p>
-                      <span className="font-medium">Approved By:</span>{" "}
-                      {selected.relatedBorrowRequest.approvedBy}
-                    </p>
-                    <p>
-                      <span className="font-medium">Approval Status:</span>{" "}
-                      {selected.relatedBorrowRequest.isApproved === null
-                        ? "Pending"
-                        : selected.relatedBorrowRequest.isApproved
-                        ? "Approved"
-                        : "Rejected"}
-                    </p>
-                  </CardContent>
-                </Card>
+                <>
+                  <Card>
+                    <CardContent className="text-sm space-y-1">
+                      <CardTitle className="text-lg">Borrow Request</CardTitle>
+                      <p>
+                        <span className="font-medium">Requested By:</span>{" "}
+                        {selected.relatedBorrowRequest.requestedBy.name}
+                      </p>
+                      <p>
+                        <span className="font-medium">Approved By:</span>{" "}
+                        {selected.relatedBorrowRequest.isApproved === true
+                          ? selected.relatedBorrowRequest.approvedBy.name
+                          : "---"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Approval Status:</span>{" "}
+                        {selected.relatedBorrowRequest.isApproved === null
+                          ? "Pending"
+                          : selected.relatedBorrowRequest.isApproved
+                          ? "Approved"
+                          : "Rejected"}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex justify-end space-x-2 mt-5">
+                    <Button
+                      onClick={() =>
+                        approvedRequest(
+                          selected.relatedBorrowRequest._id,
+                          false
+                        )
+                      }
+                      className="bg-rose-600 hover:bg-rose-700 flex items-center justify-center gap-2 cursor-pointer"
+                      disabled={
+                        selected.relatedBorrowRequest.isApproved !== null
+                      }
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        approvedRequest(selected.relatedBorrowRequest._id)
+                      }
+                      className="bg-primer flex items-center justify-center gap-2 cursor-pointer"
+                      disabled={
+                        selected.relatedBorrowRequest.isApproved !== null
+                      }
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           )}

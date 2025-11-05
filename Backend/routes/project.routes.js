@@ -402,7 +402,10 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  * /project/with-assignments:
  *   post:
  *     summary: Create a new project with staff assignments (Manager only)
- *     description: Creates a project (auto-set to 'active') and automatically assigns staff members in a single operation. Manager is automatically assigned as tech lead. Team member count includes manager + staff.
+ *     description: |
+ *       Creates a project (auto-set to 'active') and automatically assigns staff members in a single operation.
+ *       **IMPORTANT**: The project creator (manager) is automatically assigned to the project as a tech lead in the ProjectAssignment collection.
+ *       Team member count includes manager (creator) + assigned staff. Direct subordinates are assigned immediately, while staff from other managers require approval.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []

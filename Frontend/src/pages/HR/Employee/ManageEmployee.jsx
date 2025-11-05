@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+/* eslint-disable no-unused-vars */
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 // shadcn/ui components
 import {

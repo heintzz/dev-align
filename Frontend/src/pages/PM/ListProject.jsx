@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import projectService from "../../services/project.service";
+import ProjectDetailsDialog from "./ProjectDetails";
 
 export default function ListProjects() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export default function ListProjects() {
     teamSize: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Fetch projects from API on component mount
   useEffect(() => {
@@ -127,7 +130,42 @@ export default function ListProjects() {
 
   // Navigate to project details
   const handleViewDetails = (projectId) => {
-    navigate(`/projects/${projectId}/details`);
+    setSelectedProjectId(projectId);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedProjectId(null);
+  };
+
+  const handleProjectUpdated = async (updatedProject) => {
+    // Refresh projects list when project is updated/deleted
+    // If caller passes updated project payload, update locally to avoid full refetch
+    if (updatedProject && updatedProject._id) {
+      const updatedId = updatedProject._id.toString();
+      const transformedProjects = projects.map((project) => {
+        if (project._id.toString() === updatedId) {
+          const newProject = {
+            ...project,
+            ...updatedProject,
+          };
+          return {
+            ...newProject,
+            displayStatus: getDisplayStatus(
+              newProject.status,
+              newProject.deadline
+            ),
+          };
+        }
+        return project;
+      });
+
+      setProjects(transformedProjects);
+      setFilteredProjects(transformedProjects);
+    } else {
+      await fetchProjects();
+    }
   };
 
   // Navigate to project kanban board
@@ -298,6 +336,12 @@ export default function ListProjects() {
           </div>
         )}
       </div>
+      <ProjectDetailsDialog
+        projectId={selectedProjectId}
+        isOpen={isDialogOpen}
+        onClose={handleCloseDialog}
+        onProjectUpdated={handleProjectUpdated}
+      />
     </div>
   );
 }
