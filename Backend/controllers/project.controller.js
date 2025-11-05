@@ -1133,50 +1133,31 @@ const updateProject = async (req, res) => {
       );
 
       // Notify all team members about project completion
-      const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate(
-        'userId',
-        'name email'
-      );
-      for (const assignment of teamAssignments) {
-        await sendNotification({
-          user: assignment.userId,
-          title: 'Project Completed',
-          message: `The project "${project.name}" has been marked as completed. Your task skills have been transferred to your profile.`,
-          type: 'announcement',
-          relatedProject: project._id,
-        });
-      }
+      // const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate(
+      //   'userId',
+      //   'name email'
+      // );
+      // for (const assignment of teamAssignments) {
+      //   await sendNotification({
+      //     user: assignment.userId,
+      //     title: 'Project Completed',
+      //     message: `The project "${project.name}" has been marked as completed. Your task skills have been transferred to your profile.`,
+      //     type: 'announcement',
+      //     relatedProject: project._id,
+      //   });
+      // }
 
       // Notify HR about project completion
-      const hrUsers = await User.find({ role: 'hr' });
-      for (const hrUser of hrUsers) {
-        await sendNotification({
-          user: hrUser,
-          title: 'Project Completed',
-          message: `The project "${project.name}" has been completed. Skills from ${tasks.length} task(s) have been transferred to ${usersUpdated} team member(s).`,
-          type: 'announcement',
-          relatedProject: project._id,
-        });
-      }
-
-      try {
-        await fetch(`${process.env.BASE_AI_URL}/project-embeddings`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            project_id: project._id,
-          }),
-        });
-      } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({
-          success: false,
-          error: 'Internal Server Error',
-          error: 'Failed to generate project embeddings',
-        });
-      }
+      // const hrUsers = await User.find({ role: 'hr' });
+      // for (const hrUser of hrUsers) {
+      //   await sendNotification({
+      //     user: hrUser,
+      //     title: 'Project Completed',
+      //     message: `The project "${project.name}" has been completed. Skills from ${tasks.length} task(s) have been transferred to ${usersUpdated} team member(s).`,
+      //     type: 'announcement',
+      //     relatedProject: project._id,
+      //   });
+      // }
     } else if (status !== undefined) {
       project.status = status;
     }
@@ -1188,6 +1169,25 @@ const updateProject = async (req, res) => {
       'createdBy',
       'name email role'
     );
+
+    if (project.status == 'completed') {
+ 
+      try {
+        const response = await fetch(`${process.env.BASE_AI_URL}/project-embeddings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: project._id,
+          }),
+        });
+        const result = await response.json();
+        console.log(result);
+      } catch (error) {
+        console.error('⚠️ Failed to generate project embeddings:', error);
+      }
+    }
 
     return res.status(200).json({
       success: true,
