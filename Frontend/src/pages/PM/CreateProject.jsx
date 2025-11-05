@@ -85,68 +85,6 @@ export default function CreateProject() {
     }
   };
 
-  // API - Fetch all employees (will be replaced with AI recommendations)
-  const fetchAllEmployees = async () => {
-    try {
-      // response sekarang adalah langsung array karyawan
-      const employeesList = await projectService.getAllEmployees();
-
-      // Transform employees to match UI format
-      const transformedEmployees = employeesList.map((emp) => ({
-        _id: emp.id,
-        name: emp.name,
-        position: emp.position || { name: "Not Assigned" },
-        skills: emp.skills || [],
-        // TODO: Calculate workload from active projects
-        currentWorkload: 0,
-        availability: "Available",
-        matchingPercentage: 100,
-      }));
-
-      setEmployees(transformedEmployees);
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-      // Fallback to mock data if error
-      setEmployees([
-        {
-          _id: "1",
-          name: "Olivia Rhye",
-          position: { name: "Senior Frontend Developer" },
-          skills: [
-            { name: "React.js" },
-            { name: "JavaScript" },
-            { name: "UI/UX" },
-          ],
-          currentWorkload: 40,
-          availability: "Available",
-          matchingPercentage: 85,
-        },
-        {
-          _id: "2",
-          name: "Phoenix Baker",
-          position: { name: "Backend Developer" },
-          skills: [
-            { name: "Node.js" },
-            { name: "MongoDB" },
-            { name: "GraphQL" },
-          ],
-          currentWorkload: 80,
-          availability: "Partially Available",
-          matchingPercentage: 100,
-        },
-        {
-          _id: "3",
-          name: "Lana Steiner",
-          position: { name: "QA Engineer" },
-          skills: [{ name: "Cypress" }, { name: "Jest" }, { name: "CI/CD" }],
-          currentWorkload: 95,
-          availability: "Unavailable",
-          matchingPercentage: 80,
-        },
-      ]);
-    }
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -189,15 +127,118 @@ export default function CreateProject() {
 
   const handleGenerateRecommendations = async () => {
     setIsGenerating(true);
+    setEmployees([]); // Clear previous results
 
-    // TODO: API - Call AI recommendation endpoint (not ready yet)
     try {
-      // For now, just fetch all employees
-      // Later replace with: await projectService.getTeamRecommendations({...})
-      await fetchAllEmployees();
+      // Validate required fields
+      if (!formData.projectDescription.trim()) {
+        throw new Error(
+          "Project description is required for AI recommendations"
+        );
+      }
+
+      if (teamPositions.length === 0) {
+        throw new Error("At least one position must be specified");
+      }
+
+      console.log("Starting team recommendation generation...");
+
+      // Format request data for AI endpoint
+      const requestData = {
+        description: formData.projectDescription,
+        positions: teamPositions.map((p) => ({
+          name: p.name,
+          numOfRequest: p.quantity,
+        })),
+        skills: selectedSkills.map((s) => s.name),
+      };
+
+      console.log("Request data:", requestData);
+
+      console.log("Calling AI recommendation endpoint...");
+      const response = await projectService.getTeamRecommendations(requestData);
+
+      console.log("AI Response:", response);
+
+      if (!response || !response.data) {
+        throw new Error("Invalid response from AI service");
+      }
+
+      // Transform AI recommendations (grouped by position) into flat array
+      // and try to resolve each candidate to a real user ID from backend employees
+      console.log("Fetching employee list for matching...");
+      let backendEmployees = [];
+      try {
+        backendEmployees = await projectService.getAllEmployees();
+        console.log("Backend employees:", backendEmployees);
+      } catch (err) {
+        console.warn("Could not fetch full employee list:", err);
+      }
+
+      const backendMap = new Map();
+      backendEmployees.forEach((emp) => {
+        const key = `${(emp.name || "").toLowerCase()}|${(
+          (emp.position && emp.position.name) ||
+          ""
+        ).toLowerCase()}`;
+        backendMap.set(key, emp._id || emp.id || emp.id);
+      });
+
+      const transformedEmployees = [];
+      Object.entries(response.data).forEach(([positionName, candidates]) => {
+        candidates.forEach((candidate) => {
+          const normalizedKey = `${(candidate.name || "").toLowerCase()}|${(
+            positionName || ""
+          ).toLowerCase()}`;
+
+          const resolvedId = backendMap.get(normalizedKey) || null;
+
+          transformedEmployees.push({
+            _id: resolvedId || candidate._id || `temp_${Math.random()}`, // prefer real ID
+            name: candidate.name,
+            position: { name: positionName },
+            skills: (candidate.skills || []).map((skill) => ({ name: skill })),
+            currentWorkload: Math.round(
+              (1 - (candidate.currentWorkload || 0)) * 100
+            ),
+            availability:
+              (candidate.currentWorkload || 0) > 0.7
+                ? "Available"
+                : (candidate.currentWorkload || 0) > 0.3
+                ? "Partially Available"
+                : "Unavailable",
+            matchingPercentage: Math.round(
+              (candidate.matchingPercentage || 0) * 100
+            ),
+            aiRank: candidate.rank,
+            aiReason: candidate.reason,
+            isResolved: !!resolvedId,
+          });
+        });
+      });
+
+      setEmployees(transformedEmployees);
     } catch (error) {
       console.error("Error generating recommendations:", error);
-      alert(error.message || "Failed to generate recommendations");
+      if (error.response) {
+        console.error("Error response:", error.response);
+        console.error("Error data:", error.response.data);
+        alert(
+          `Error: ${
+            error.response.data?.message ||
+            error.message ||
+            "Failed to generate recommendations"
+          }`
+        );
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+        alert(
+          "No response received from AI service. Please check if the service is running."
+        );
+      } else {
+        console.error("Error:", error.message);
+        alert(error.message || "Failed to generate recommendations");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -219,13 +260,25 @@ export default function CreateProject() {
   };
 
   const handleAutoAssignBestTeam = () => {
-    // TODO: API - Auto assign best team based on AI (not ready yet)
-    // For now, select top 3 available employees
-    const availableEmployees = employees
-      .filter((e) => e.availability === "Available")
-      .slice(0, 3)
-      .map((e) => e._id);
-    setSelectedEmployees(availableEmployees);
+    // Group employees by position
+    const employeesByPosition = employees.reduce((acc, emp) => {
+      const pos = emp.position.name;
+      if (!acc[pos]) acc[pos] = [];
+      acc[pos].push(emp);
+      return acc;
+    }, {});
+
+    // For each position, select the top N employees based on rank
+    const newSelectedEmployees = teamPositions.flatMap((pos) => {
+      const positionEmployees = employeesByPosition[pos.name] || [];
+      // Sort by AI rank (lower is better) and take required quantity
+      return positionEmployees
+        .sort((a, b) => (a.aiRank || Infinity) - (b.aiRank || Infinity))
+        .slice(0, pos.quantity)
+        .map((e) => e._id);
+    });
+
+    setSelectedEmployees(newSelectedEmployees);
   };
 
   const handleSubmit = async () => {
@@ -248,6 +301,19 @@ export default function CreateProject() {
     setIsSubmitting(true);
 
     try {
+      // Ensure all selected employees are resolved to real user IDs
+      const unresolved = selectedEmployees.filter((id) => {
+        const emp = employees.find((e) => e._id === id);
+        return !emp || emp.isResolved === false;
+      });
+
+      if (unresolved.length > 0) {
+        alert(
+          "Some selected employees are not matched to real users. Please select resolved users or Auto-Assign the team."
+        );
+        setIsSubmitting(false);
+        return;
+      }
       // Prepare project data according to backend API
       const projectData = {
         name: formData.projectName,
@@ -593,9 +659,16 @@ export default function CreateProject() {
                                 {employee.position.name}
                               </p>
                             </div>
-                            <span className="text-2xl font-bold text-gray-700">
-                              {employee.matchingPercentage}%
-                            </span>
+                            <div className="text-right">
+                              <span className="text-2xl font-bold text-gray-700">
+                                {employee.matchingPercentage}%
+                              </span>
+                              {employee.aiRank && (
+                                <div className="text-sm text-green-600 font-medium">
+                                  Rank #{employee.aiRank}
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           <div className="mb-2">
@@ -639,6 +712,17 @@ export default function CreateProject() {
                           >
                             ● {employee.availability}
                           </p>
+
+                          {employee.aiReason && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs font-medium text-gray-500 mb-1">
+                                AI Reasoning
+                              </p>
+                              <p className="text-sm text-gray-700">
+                                {employee.aiReason}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

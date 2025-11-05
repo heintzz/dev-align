@@ -1,5 +1,4 @@
 import api from "@/api/axios";
-import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -13,25 +12,8 @@ const projectService = {
   //  Get project by ID
   getProjectById: async (projectId) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `${API_URL}/project/${projectId}/details`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      // Ambil struktur sesuai API doc
-      const data = response.data.data;
-
-      // Satukan semua info dalam satu objek biar mudah dipakai
-      return {
-        ...data.project,
-        managerDetails: data.managerDetails,
-        staffDetails: data.staffDetails,
-        techLeadStaffIds: data.techLeadStaffIds,
-        allStaffIds: data.allStaffIds,
-      };
+      const response = await api.get(`${API_URL}/project/${projectId}/details`);
+      return response.data;
     } catch (error) {
       throw (
         error.response?.data || { message: "Failed to fetch project details" }
@@ -46,113 +28,83 @@ const projectService = {
 
   //  Create new project
   createProject: async (projectData) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.post(`${API_URL}/project`, projectData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await api.post(`${API_URL}/project`, projectData);
     return response.data;
   },
 
   //  Create project with staff assignments
   createProjectWithAssignments: async (projectData) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.post(
+    const response = await api.post(
       `${API_URL}/project/with-assignments`,
-      projectData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
+      projectData
     );
     return response.data;
   },
 
   //  Update project
   updateProject: async (projectId, projectData) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.put(
+    const response = await api.put(
       `${API_URL}/project/${projectId}`,
-      projectData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
+      projectData
     );
     return response.data;
   },
 
   //  Update project status (use existing PUT /project/:projectId endpoint)
   updateProjectStatus: async (projectId, status) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.put(
-      `${API_URL}/project/${projectId}`,
-      { status },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await api.put(`${API_URL}/project/${projectId}`, {
+      status,
+    });
     return response.data;
   },
 
   //  Delete project
   deleteProject: async (projectId) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.delete(`${API_URL}/project/${projectId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.delete(`${API_URL}/project/${projectId}`);
     return response.data;
   },
 
-  //  Get team recommendations
+  //  Get team recommendations from AI service
   getTeamRecommendations: async (projectData) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.post(
-      `${API_URL}/project/recommend-team`,
-      projectData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+    const AI_URL = import.meta.env.VITE_AI_URL || "http://localhost:8000";
+    try {
+      const response = await api.post(
+        `${AI_URL}/roster-recommendations`,
+        projectData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("AI Service Error:", error);
+      if (error.response?.status === 404) {
+        throw new Error(
+          "AI service is not available. Please ensure the AI service is running on port 8000."
+        );
       }
-    );
-    return response.data;
+      throw error;
+    }
   },
 
   //  Get all skills
   getAllSkills: async () => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(`${API_URL}/skill`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.get(`${API_URL}/skill`);
     return response.data.data || response.data;
   },
 
   //  Get all positions
   getAllPositions: async () => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(`${API_URL}/position`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.get(`${API_URL}/position`);
     return response.data.data || response.data;
   },
 
   //  Get all employees
   getAllEmployees: async () => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(`${API_URL}/hr/employees?limit=1000`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.get(`${API_URL}/hr/employees?limit=1000`);
+    return response.data.data || response.data;
+  },
+
+  // Get all tasks for a project
+  getProjectTasks: async (projectId) => {
+    const response = await api.get(`${API_URL}/project/${projectId}/tasks`);
     return response.data.data || response.data;
   },
 };
