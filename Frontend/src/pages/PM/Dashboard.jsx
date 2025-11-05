@@ -5,7 +5,6 @@ export default function PMDashboard() {
   const stats = [
     { title: "Total Projects", value: 20, change: "+10.0%", subtitle: "Projects" },
     { title: "Projects Complete", value: 10, subtitle: "Projects" },
-    { title: "Projects On Going", value: 10, subtitle: "Projects" },
   ];
 
   // Data untuk team status
@@ -42,7 +41,7 @@ export default function PMDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">

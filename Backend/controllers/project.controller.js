@@ -1251,24 +1251,12 @@ const updateProject = async (req, res) => {
             project_id: project._id,
           }),
         });
+        const result = await response.json();
+        console.log(result);
       } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({
-          success: false,
-          error: "Internal Server Error",
-          error: "Failed to generate project embeddings",
-        });
+        console.error("⚠️ Failed to generate project embeddings:", error);
       }
-    } else if (status !== undefined) {
-      project.status = status;
     }
-
-    await project.save();
-
-    // Get updated project with populated data
-    const updatedProject = await Project.findById(project._id)
-      .populate("createdBy", "name email role")
-      .populate("skills", "_id name");
 
     return res.status(200).json({
       success: true,

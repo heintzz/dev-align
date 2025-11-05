@@ -36,11 +36,12 @@ router = APIRouter()
 
 @router.post("/project-embeddings", response_model=ProjectEmbeddingsResponse)
 async def create_project_embeddings(request: EmbeddingProjectRequest):
+    print(request.project_id)
     database = get_database()
 
     embedder = dspy.Embedder(
       model=settings.EMBEDDING_MODEL, 
-      api_base=settings.LLM_BASE_URL_ROSTER,
+      api_base=settings.EMBEDDING_MODEL_BASE_URL,
       api_key=settings.LLM_API_KEY
     )
 

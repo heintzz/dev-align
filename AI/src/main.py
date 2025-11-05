@@ -4,7 +4,6 @@ from src.models.main import RootResponse, HealthCheckResponse
 from fastapi import FastAPI, APIRouter
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 import uvicorn
 

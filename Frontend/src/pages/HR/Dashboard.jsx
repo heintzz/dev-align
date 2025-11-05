@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import api from "@/api/axios";
 import {
   BarChart,
   Bar,
@@ -10,146 +9,70 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { getDashboardStats, getEmployeesList } from "../../services/dashboard.service";
 
 export default function HRDashboard() {
-  const [timeFilter, setTimeFilter] = useState("this_month");
-  const [stats, setStats] = useState([]);
-  const [projectData, setProjectData] = useState([]);
-  const [topContributors, setTopContributors] = useState([]);
+  const [timeFilter, setTimeFilter] = useState("This Month");
+  const [dashboardData, setDashboardData] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [dashResponse, empResponse] = await Promise.all([
+          getDashboardStats(),
+          getEmployeesList({ page: 1, limit: 10 })
+        ]);
+        
+        console.log('Dashboard data:', dashResponse.data);
+        setDashboardData(dashResponse.data);
+        setEmployees(empResponse.data.map(emp => ({
+          name: emp.name,
+          position: emp.position?.name || emp.position || '-',
+          manager: emp.manager?.name || '-',
+          projects: emp.projectCount || 0,
+          status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
+        })));
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setLoading(false);
+      }
+    };
+
     fetchDashboardData();
-  }, [timeFilter]);
+  }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
+  // Data untuk statistik cards
+  const stats = dashboardData ? [
+    {
+      title: "Total Employees",
+      value: dashboardData.statistics.totalEmployees.count,
+      trend: "up",
+      subtitle: "Employee",
+    },
+    {
+      title: "Resigned Employees",
+      value: dashboardData.statistics.resignedEmployees.count,
+      trend: "down",
+      subtitle: "Employee",
+    },
+  ] : [];
 
-      // Fetch dashboard data with period filter
-      const res = await api.get(`/dashboard?period=${timeFilter}&limit=5`);
-      const data = res.data.data;
+  // Data untuk chart project statistic
+  const projectData = dashboardData ? [
+    { status: "Completed", count: dashboardData.projectStatistics.completed || 0, color: "#3b82f6" },
+    { status: "In Progress", count: dashboardData.projectStatistics.in_progress || dashboardData.projectStatistics.inProgress || 5, color: "#10b981" },
+  ] : [];
 
-      // Set employee statistics
-      setStats([
-        {
-          title: "Total Employees",
-          value: data.statistics.totalEmployees.count,
-          change: "+10.0%",
-          trend: "up",
-          subtitle: "Employee",
-        },
-        {
-          title: "Resigned Employees",
-          value: data.statistics.resignedEmployees.count,
-          change: "-7.0%",
-          trend: "down",
-          subtitle: "Employee",
-        },
-      ]);
-
-      // Set project statistics
-      setProjectData([
-        {
-          status: "Completed",
-          count: data.projectStatistics.completed,
-          color: "#10b981",
-        },
-        {
-          status: "In Progress",
-          count: data.projectStatistics.inProgress,
-          color: "#3b82f6",
-        },
-        {
-          status: "On Hold",
-          count: data.projectStatistics.onHold,
-          color: "#f59e0b",
-        },
-        {
-          status: "Rejected",
-          count: data.projectStatistics.rejected,
-          color: "#ef4444",
-        },
-      ]);
-
-      // Set top contributors
-      setTopContributors(
-        data.topContributors.map((user) => ({
-          name: user.name || "Unknown",
-          position: user.position || "N/A",
-          projects: user.doneCount,
-          avatar: user.name
-            ? user.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-            : "?",
-        }))
-      );
-
-      // Fetch employee status (workload)
-      await fetchEmployeeStatus();
-    } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // TODO: Fetch employee status with workload
-  const fetchEmployeeStatus = async () => {
-    try {
-      // Get employees
-      const employeesRes = await api.get("/hr/employees?limit=1000");
-      const employeesList = employeesRes.data?.data || employeesRes.data || [];
-
-      // Get all project assignments (controller returns `data.data.project`)
-      const assignmentsRes = await api.get("/project-assignment", {
-        params: { perPage: 1000 },
-      });
-
-      // Controller returns data.data.project which can be an array of projects
-      // each project has `assignedEmployees: [{_id, name, ...}]`
-      const projectsPayload =
-        assignmentsRes.data?.data?.project ||
-        assignmentsRes.data?.project ||
-        [];
-
-      const projectsArray = Array.isArray(projectsPayload)
-        ? projectsPayload
-        : [projectsPayload];
-
-      // Count active assignments per user (skip completed projects)
-      const countMap = {};
-      projectsArray.forEach((proj) => {
-        if (!proj) return;
-        const projStatus = proj.status;
-        if (projStatus === "completed") return; // skip completed projects
-        const assigned = proj.assignedEmployees || [];
-        assigned.forEach((user) => {
-          const uid = user?._id || user?.id || user;
-          if (!uid) return;
-          countMap[uid.toString()] = (countMap[uid.toString()] || 0) + 1;
-        });
-      });
-
-      const employeesWithWorkload = employeesList.map((emp) => ({
-        _id: emp._id,
-        name: emp.name,
-        position:
-          (emp.position && (emp.position.name || emp.position)) ||
-          "Not Assigned",
-        manager: emp.managerId?.name || "No Manager",
-        projects: countMap[emp._id?.toString()] || 0,
-      }));
-
-      setEmployees(employeesWithWorkload);
-    } catch (err) {
-      console.error("Error fetching employee status:", err);
-    }
-  };
+  // Data untuk top contributors
+  const topContributors = dashboardData ? dashboardData.topContributors.map(tc => ({
+    name: tc.name,
+    position: tc.position || '-',
+    projects: tc.doneCount,
+    avatar: tc.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+  })) : [];
 
   const getProjectColor = (projects) => {
     if (projects === 0) return "bg-green-100 text-green-800";
@@ -166,7 +89,7 @@ export default function HRDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">

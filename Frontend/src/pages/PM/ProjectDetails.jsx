@@ -6,7 +6,44 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import projectService from "../../services/project.service";
+import { Button } from "@/components/ui/button";
+import { CircleCheckBig, Trash } from "lucide-react";
+import { toast } from "@/lib/toast";
+
+// ─── Utility Helpers ──────────────────────────────────────────────
+const getStatusColor = (status) => {
+  switch (status) {
+    case "completed":
+      return "bg-green-100 text-green-700";
+    case "active":
+      return "bg-blue-100 text-blue-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+};
+
+const getStatusText = (status) =>
+  status === "completed" ? "Completed" : "In Progress";
+
+const formatDate = (dateString) =>
+  dateString
+    ? new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Not set";
 
 export default function ProjectDetailsDialog({
   projectId,
@@ -20,6 +57,7 @@ export default function ProjectDetailsDialog({
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -33,407 +71,421 @@ export default function ProjectDetailsDialog({
   const [allEmployees, setAllEmployees] = useState([]);
   const [addEmployeeId, setAddEmployeeId] = useState("");
 
-  const refreshProjectDetails = useCallback(async () => {
-    if (!projectId) return;
-
-    setIsLoading(true);
-    try {
-      const response = await projectService.getProjectById(projectId);
-      const projectData = response.data;
-      if (!projectData) {
-        throw new Error("Failed to fetch project details");
-      }
-
-      setProject(projectData.project);
-      setFormData({
-        name: projectData.project.name,
-        description: projectData.project.description,
-        startDate: projectData.project.startDate?.split("T")[0] || "",
-        deadline: projectData.project.deadline?.split("T")[0] || "",
-      });
-      // Set manager and staff from returned project details
-      setManager(projectData.managerDetails || null);
-      setStaff(projectData.staffDetails || []);
-
-      // Fetch project tasks to extract used skills
-      try {
-        const tasks = await projectService.getProjectTasks(projectId);
-        // tasks is expected to be an array of tasks with requiredSkills: [{ id, name }]
-        const skillMap = new Map();
-        (tasks || []).forEach((t) => {
-          (t.requiredSkills || []).forEach((s) => {
-            const id = s.id || s._id || s._id?.toString();
-            if (!skillMap.has(id)) {
-              skillMap.set(id, { _id: id, name: s.name });
-            }
-          });
-        });
-        const usedSkills = Array.from(skillMap.values());
-        setSelectedSkills(usedSkills);
-      } catch (err) {
-        console.warn("Failed to load project tasks for skills:", err);
-        setSelectedSkills([]);
-      }
-
-      // Fetch all skills for editing UI
-      try {
-        const skillsResp = await projectService.getAllSkills();
-        const skillsList = skillsResp.skills || skillsResp || [];
-        setAllSkills(skillsList);
-      } catch (err) {
-        console.warn("Failed to fetch all skills:", err);
-      }
-
-      // Fetch all employees for adding staff
-      try {
-        const emps = await projectService.getAllEmployees();
-        setAllEmployees(emps || []);
-      } catch (err) {
-        console.warn("Failed to fetch employees:", err);
-      }
-    } catch (error) {
-      console.error("Error fetching project details:", error);
-      alert(error.message || "Failed to fetch project details");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [projectId]);
-
+  // ─── Initial Load Effect ──────────────────────────────────────────────
   useEffect(() => {
-    if (isOpen && projectId) {
-      refreshProjectDetails();
-    } else if (!isOpen) {
-      setProject(null);
-      setIsLoading(true);
+    if (!isOpen || !projectId) {
+      if (!isOpen) {
+        setProject(null);
+        setIsLoading(true);
+      }
+      return;
     }
-  }, [isOpen, projectId, refreshProjectDetails]);
 
+    const loadData = async () => {
+      setIsLoading(true);
+
+      try {
+        const [projectRes, tasksRes, skillsRes, employeesRes] =
+          await Promise.allSettled([
+            projectService.getProjectById(projectId),
+            projectService.getProjectTasks(projectId),
+            projectService.getAllSkills(),
+            projectService.getAllEmployees(),
+          ]);
+
+        // 1. Project info
+        if (projectRes.status === "fulfilled") {
+          const data = projectRes.value.data;
+          if (!data?.project) throw new Error("Invalid project data");
+
+          const p = data.project;
+          setProject(p);
+          setFormData({
+            name: p.name || "",
+            description: p.description || "",
+            startDate: p.startDate?.split("T")[0] || "",
+            deadline: p.deadline?.split("T")[0] || "",
+          });
+          setManager(data.managerDetails || null);
+          setStaff(data.staffDetails || []);
+        }
+
+        // 2. Extract used skills from project tasks
+        if (tasksRes.status === "fulfilled") {
+          const tasks = tasksRes.value || [];
+          const skillMap = new Map();
+          tasks.forEach((t) =>
+            (t.requiredSkills || []).forEach((s) => {
+              const id = s._id || s.id || s._id?.toString();
+              if (!skillMap.has(id))
+                skillMap.set(id, { _id: id, name: s.name });
+            })
+          );
+          setSelectedSkills([...skillMap.values()]);
+        } else {
+          setSelectedSkills([]);
+        }
+
+        // 3. All skills
+        if (skillsRes.status === "fulfilled") {
+          const skills = skillsRes.value.skills || skillsRes.value || [];
+          setAllSkills(skills);
+        }
+
+        // 4. All employees
+        if (employeesRes.status === "fulfilled") {
+          setAllEmployees(employeesRes.value || []);
+        }
+      } catch (err) {
+        console.error("Error fetching project details:", err);
+        toast(err.message || "Failed to fetch project details", {
+          type: "error",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [isOpen, projectId]);
+
+  // ─── Handlers ──────────────────────────────────────────────
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSkillToggle = (skill) => {
-    if (selectedSkills.find((s) => s._id === skill._id)) {
-      setSelectedSkills(selectedSkills.filter((s) => s._id !== skill._id));
-    } else {
-      setSelectedSkills([...selectedSkills, skill]);
-    }
-  };
-
-  //  Save updated project
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updateData = {
+      await projectService.updateProject(projectId, {
         name: formData.name,
         description: formData.description,
         deadline: formData.deadline,
-        // Save selected project-level skills (array of skill ids)
         skills: selectedSkills.map((s) => s._id),
-      };
-      await projectService.updateProject(projectId, updateData);
-      alert("Project updated successfully!");
-      setIsEditing(false);
-      await refreshProjectDetails();
-      if (onProjectUpdated) onProjectUpdated();
-    } catch (error) {
-      console.error("Error updating project:", error);
-      alert(error.message || "Failed to update project");
+      });
+
+      // Fetch fresh project data
+      const response = await projectService.getProjectById(projectId);
+      const data = response.data;
+
+      if (data?.project) {
+        const p = data.project;
+        setProject(p);
+        setFormData({
+          name: p.name || "",
+          description: p.description || "",
+          startDate: p.startDate?.split("T")[0] || "",
+          deadline: p.deadline?.split("T")[0] || "",
+        });
+        setManager(data.managerDetails || null);
+        setStaff(data.staffDetails || []);
+      }
+
+      onProjectUpdated?.();
+
+      toast(`Project successfully updated`, {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "top-center",
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error("Error updating project:", err);
+      toast(err.message || "Failed to update project", {
+        type: "error",
+      });
     } finally {
       setIsSaving(false);
+      setIsEditing(false);
     }
   };
 
-  const handleAddStaff = async () => {
-    if (!addEmployeeId) return alert("Please select an employee to add");
-    try {
-      await projectService.updateProject(projectId, {
-        addStaffIds: [addEmployeeId],
-      });
-      alert("Staff added to project");
-      setAddEmployeeId("");
-      await refreshProjectDetails();
-      if (onProjectUpdated) onProjectUpdated();
-    } catch (err) {
-      console.error("Error adding staff:", err);
-      alert(err.message || "Failed to add staff");
-    }
-  };
-
-  const handleRemoveStaff = async (staffId) => {
-    if (!confirm("Remove this staff member from project?")) return;
-    try {
-      await projectService.updateProject(projectId, {
-        removeStaffIds: [staffId],
-      });
-      alert("Staff removed from project");
-      await refreshProjectDetails();
-      if (onProjectUpdated) onProjectUpdated();
-    } catch (err) {
-      console.error("Error removing staff:", err);
-      alert(err.message || "Failed to remove staff");
-    }
-  };
-
-  // Delete project
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this project?")) return;
+    setIsLoading(true);
     try {
       await projectService.deleteProject(projectId);
-      alert("Project deleted successfully!");
+      toast("Project deleted successfully", {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "top-center",
+        duration: 5000,
+      });
+      onProjectUpdated?.();
       onClose();
-      if (onProjectUpdated) onProjectUpdated();
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      alert(error.message || "Failed to delete project");
+    } catch (err) {
+      console.error("Error deleting project:", err);
+      toast(err.message || "Failed to delete project", {
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  //  Mark as complete
   const handleComplete = async () => {
     if (!confirm("Mark this project as completed?")) return;
+    setIsLoading(true);
     try {
       const res = await projectService.updateProjectStatus(
         projectId,
         "completed"
       );
-      // res: { success: true, data: updatedProject, message }
-      const updatedProject = res?.data || null;
-      alert("Project marked as completed!");
-      // Refresh local dialog details
-      await refreshProjectDetails();
-      // Notify parent with optional updated project payload so parent can update UI without full refetch
-      if (onProjectUpdated) onProjectUpdated(updatedProject);
-    } catch (error) {
-      console.error("Error completing project:", error);
-      alert(error.message || "Failed to complete project");
+
+      // Update local state directly
+      setProject((prev) => ({ ...prev, status: "completed" }));
+
+      onProjectUpdated?.(res?.data);
+      toast("Project completed successfully", {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "top-center",
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error("Error completing project:", err);
+      toast(err.message || "Failed to complete project", {
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-700";
-      case "active":
-        return "bg-blue-100 text-blue-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const getStatusText = (status) =>
-    status === "completed" ? "Completed" : "In Progress";
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "Not set";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  //  Keep your original UI
+  // ─── Render ──────────────────────────────────────────────
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        {isLoading ? (
-          <div className="py-12 text-center">
-            <p className="text-gray-500">Loading project details...</p>
-          </div>
-        ) : project ? (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                ) : (
-                  project.name
-                )}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              {/* Description */}
-              <div>
-                {isEditing ? (
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                ) : (
-                  <p className="text-gray-600">{project.description}</p>
-                )}
-              </div>
-
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <div className="flex items-center gap-2 text-gray-600 mb-2">
-                    <span className="font-medium">Start Date</span>
-                  </div>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {isLoading || isSaving ? (
+            <div className="py-12 text-center">
+              <p className="text-gray-500">Loading project details...</p>
+            </div>
+          ) : project ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold mr-10">
                   {isEditing ? (
                     <input
-                      type="date"
-                      name="startDate"
-                      value={formData.startDate}
+                      type="text"
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   ) : (
-                    <p className="text-gray-900">
-                      {formatDate(project.startDate)}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 text-gray-600 mb-2">
-                    <span className="font-medium">Project Deadline</span>
-                  </div>
-                  {isEditing ? (
-                    <input
-                      type="date"
-                      name="deadline"
-                      value={formData.deadline}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <p className="text-gray-900">
-                      {formatDate(project.deadline)}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 text-gray-600 mb-2">
-                    <span className="font-medium">Number of Members</span>
-                  </div>
-                  <p className="text-gray-900">
-                    {project?.teamMemberCount || 0}
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 text-gray-600 mb-2">
-                    <span className="font-medium">Project Status</span>
-                  </div>
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                      project.status
-                    )}`}
-                  >
-                    {getStatusText(project.status)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Skills Used */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  Skills Used
-                </h3>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {selectedSkills && selectedSkills.length > 0 ? (
-                    selectedSkills.map((skill) => (
-                      <span
-                        key={skill._id}
-                        className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-800"
+                    <>
+                      {project.name}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="ml-2 p-1 text-red-500 hover:text-red-700 cursor-pointer"
                       >
-                        {skill.name}
-                      </span>
-                    ))
+                        <Trash />
+                      </Button>
+                    </>
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6 py-4">
+                {/* Description */}
+                <div>
+                  {isEditing ? (
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   ) : (
-                    <p className="text-sm text-gray-500">No skills recorded</p>
+                    <p className="text-gray-600">{project.description}</p>
                   )}
                 </div>
 
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  Team Members
-                </h3>
-                <div className="space-y-1">
-                  {staff && staff.length > 0 ? (
-                    staff.map((member) => (
-                      <p key={member._id} className="text-sm text-gray-700">
-                        {member.name} - {member.position?.name || "N/A"}{" "}
-                        {member.isTechLead && (
-                          <span className="text-xs text-blue-600">
-                            (Tech Lead)
-                          </span>
-                        )}
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                      <span className="font-medium">Start Date</span>
+                    </div>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">
+                        {formatDate(project.startDate)}
                       </p>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      No team members assigned
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                      <span className="font-medium">Project Deadline</span>
+                    </div>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        name="deadline"
+                        value={formData.deadline}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">
+                        {formatDate(project.deadline)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                      <span className="font-medium">Number of Members</span>
+                    </div>
+                    <p className="text-gray-900">
+                      {project?.teamMemberCount || 0}
                     </p>
-                  )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                      <span className="font-medium">Project Status</span>
+                    </div>
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
+                        project.status
+                      )}`}
+                    >
+                      {getStatusText(project.status)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Skills Used */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">
+                    Skills Used
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {selectedSkills && selectedSkills.length > 0 ? (
+                      selectedSkills.map((skill) => (
+                        <span
+                          key={skill._id}
+                          className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-800"
+                        >
+                          {skill.name}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No skills recorded
+                      </p>
+                    )}
+                  </div>
+
+                  <h3 className="font-semibold text-gray-900 mb-3">
+                    Team Members
+                  </h3>
+                  <div className="space-y-1">
+                    {staff && staff.length > 0 ? (
+                      staff.map((member) => (
+                        <p key={member._id} className="text-sm text-gray-700">
+                          {member.name} - {member.position?.name || "N/A"}{" "}
+                          {member.isTechLead && (
+                            <span className="text-xs text-blue-600">
+                              (Tech Lead)
+                            </span>
+                          )}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No team members assigned
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Buttons */}
-            <div className="flex gap-3 pt-4 border-t">
-              {isEditing ? (
-                <>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium disabled:opacity-50"
-                  >
-                    {isSaving ? "Saving..." : "Save Changes"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={handleDelete}
-                    className="px-6 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 font-medium"
-                  >
-                    Delete Project
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={handleComplete}
-                    disabled={project.status === "completed"}
-                    className="flex-1 px-6 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium disabled:opacity-50"
-                  >
-                    {project.status === "completed"
-                      ? "Completed"
-                      : "Complete the Project"}
-                  </button>
-                </>
-              )}
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                {isEditing ? (
+                  <>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSaving ? "Saving..." : "Save Changes"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditing(true)}
+                      disabled={project.status === "completed"}
+                      className="cursor-pointer"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={handleComplete}
+                      disabled={project.status === "completed"}
+                      className="flex-1 px-6 py-2 bg-primer cursor-pointer"
+                    >
+                      {project.status === "completed"
+                        ? "Completed"
+                        : "Complete the Project"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="py-12 text-center">
+              <p className="text-gray-500">Project not found</p>
             </div>
-          </>
-        ) : (
-          <div className="py-12 text-center">
-            <p className="text-gray-500">Project not found</p>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Are you sure to delete this project?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This project will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 cursor-pointer"
+            >
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
