@@ -80,6 +80,12 @@ export default function HRDashboard() {
     return "bg-yellow-100 text-yellow-800";
   };
 
+  const handleTimeFilterChange = (newFilter) => {
+    setTimeFilter(newFilter);
+  };
+
+  if (loading) return <div className="p-6">Loading dashboard...</div>;
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Stats Cards */}
@@ -110,7 +116,7 @@ export default function HRDashboard() {
 
       {/* Project Statistic & Top Contributors */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Project Statistic - 2 columns */}
+        {/* Project Statistic */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Project Statistic
@@ -122,12 +128,12 @@ export default function HRDashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="count" fill="#516e9cff" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Top Contributors - 1 column */}
+        {/* Top Contributors */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -135,35 +141,42 @@ export default function HRDashboard() {
             </h3>
             <select
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value)}
+              onChange={(e) => handleTimeFilterChange(e.target.value)}
               className="text-sm border rounded px-2 py-1"
             >
-              <option>This Month</option>
-              <option>Last Month</option>
-              <option>This Year</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="this_year">This Year</option>
+              <option value="all">All Time</option>
             </select>
           </div>
           <div className="space-y-3">
-            {topContributors.map((contributor, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
-                    {contributor.avatar}
+            {topContributors.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No contributors found
+              </p>
+            ) : (
+              topContributors.map((contributor, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
+                      {contributor.avatar}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {contributor.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {contributor.position}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {contributor.name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {contributor.position}
-                    </div>
+                  <div className="text-sm text-gray-600">
+                    {contributor.projects} Tasks
                   </div>
                 </div>
-                <div className="text-sm text-gray-600">
-                  {contributor.projects} Projects
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -193,53 +206,65 @@ export default function HRDashboard() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                  Employee Name
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                  Position
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                  Manager
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                  Project Availability
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-300"></div>
-                      <span className="text-sm font-medium text-gray-900">
-                        {employee.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-600">
-                    {employee.position}
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-600">
-                    {employee.manager}
-                  </td>
-                  <td className="py-4 px-4">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getProjectColor(
-                        employee.projects
-                      )}`}
-                    >
-                      {employee.projects} Projects
-                    </span>
-                  </td>
+          {employees.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">
+              No employee data available
+            </p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                    Employee Name
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                    Position
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                    Manager
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                    Project Availability
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {employees.map((employee, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-semibold">
+                          {employee.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">
+                          {employee.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-600">
+                      {employee.position}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-600">
+                      {employee.manager}
+                    </td>
+                    <td className="py-4 px-4">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getProjectColor(
+                          employee.projects
+                        )}`}
+                      >
+                        {employee.projects} Projects
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

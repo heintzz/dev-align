@@ -177,7 +177,7 @@ const Column = ({
 
   useEffect(() => {
     fetchAssigneeProject(projectId);
-  }, []);
+  }, [projectId]);
 
   return (
     <div className={`w-72 ${className}`}>

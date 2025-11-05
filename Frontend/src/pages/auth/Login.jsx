@@ -33,8 +33,9 @@ export default function Login() {
       );
 
       if (response.success) {
-        const { token, role, id } = response.data;
-        login(token, role, id);
+        const { token, role, id, name, email } = response.data;
+        console.log(name);
+        login(token, role, id, name, email);
         navigate("/dashboard", { replace: true });
       }
     } catch (err) {

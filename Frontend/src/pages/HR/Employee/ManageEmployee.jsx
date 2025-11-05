@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -9,7 +10,7 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   flexRender,
-} from "@tanstack/react-table";
+} from '@tanstack/react-table';
 import {
   Table,
   TableBody,
@@ -17,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -26,23 +27,23 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 
 //icon
 import {
@@ -75,7 +76,7 @@ export default function ManageEmployee() {
 
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
-  const [loadingText, setLoadingText] = useState("");
+  const [loadingText, setLoadingText] = useState('');
 
   const navigate = useNavigate();
 
@@ -85,52 +86,42 @@ export default function ManageEmployee() {
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
           Name
           <span className="ml-1 text-xs">
-            {column.getIsSorted() === "asc"
-              ? "▲"
-              : column.getIsSorted() === "desc"
-              ? "▼"
-              : ""}
+            {column.getIsSorted() === 'asc' ? '▲' : column.getIsSorted() === 'desc' ? '▼' : ''}
           </span>
         </button>
       ),
     },
     {
-      accessorKey: "email",
-      header: "Email",
+      accessorKey: 'email',
+      header: 'Email',
     },
     {
-      accessorKey: "position.name",
-      header: "Position",
+      accessorKey: 'position.name',
+      header: 'Position',
     },
     {
-      accessorKey: "role",
-      header: "Role",
+      accessorKey: 'role',
+      header: 'Role',
     },
     {
-      accessorKey: "active",
-      header: "Status",
+      accessorKey: 'active',
+      header: 'Status',
       cell: ({ row }) => {
-        const isActive = row.getValue("active");
+        const isActive = row.getValue('active');
         return (
-          <span
-            className={
-              isActive
-                ? "text-green-600 font-medium"
-                : "text-red-500 font-medium"
-            }
-          >
-            {isActive ? "Active" : "Resigned"}
+          <span className={isActive ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
+            {isActive ? 'Active' : 'Resigned'}
           </span>
         );
       },
     },
     {
-      id: "actions",
-      header: "Actions",
+      id: 'actions',
+      header: 'Actions',
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -145,10 +136,7 @@ export default function ManageEmployee() {
             >
               Details
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => deativate(row.original.id)}
-              className="cursor-pointer"
-            >
+            <DropdownMenuItem onClick={() => deativate(row.original.id)} className="cursor-pointer">
               Deactivate
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -179,19 +167,19 @@ export default function ManageEmployee() {
   };
 
   const getExcelTemplate = async () => {
-    const response = await api.get("/hr/employees/template", {
-      responseType: "blob",
+    const response = await api.get('/hr/employees/template', {
+      responseType: 'blob',
     });
 
     console.log(response);
     const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
 
     // Set the file name dynamically
-    const fileName = "employee-import-template.xlsx";
+    const fileName = 'employee-import-template.xlsx';
 
-    link.setAttribute("download", fileName);
+    link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
 
@@ -202,21 +190,21 @@ export default function ManageEmployee() {
 
   const AddEmployeeByExcel = async () => {
     if (!excelFile) {
-      alert("Please select a file first!");
+      alert('Please select a file first!');
       return;
     }
 
     const formData = new FormData();
-    formData.append("file", excelFile);
+    formData.append('file', excelFile);
 
     try {
       setLoadingState(true);
       setLoadingState("Adding Employee...");
       const response = await api.post(
-        "/hr/employees/import?dryRun=false&sendEmails=false",
+        '/hr/employees/import?dryRun=false&sendEmails=false',
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 'Content-Type': 'multipart/form-data' },
         }
       );
 
@@ -232,8 +220,8 @@ export default function ManageEmployee() {
       );
       setOpenAddExcel(false);
     } catch (error) {
-      console.error("Failed to import employees:", error);
-      alert("Failed to import employees.");
+      console.error('Failed to import employees:', error);
+      alert('Failed to import employees.');
     } finally {
       getEmployees();
       setLoadingState(true);
@@ -260,10 +248,7 @@ export default function ManageEmployee() {
       sorting,
     },
     onPaginationChange: (updater) => {
-      const newState =
-        typeof updater === "function"
-          ? updater({ pageIndex, pageSize })
-          : updater;
+      const newState = typeof updater === 'function' ? updater({ pageIndex, pageSize }) : updater;
       setPageIndex(newState.pageIndex);
       setPageSize(newState.pageSize);
     },
@@ -478,9 +463,7 @@ export default function ManageEmployee() {
             <DialogTitle className="flex justify-between items-center">
               Add Multiple Employee
             </DialogTitle>
-            <DialogDescription>
-              Add multiple employee by uploading excell
-            </DialogDescription>
+            <DialogDescription>Add multiple employee by uploading excell</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <Button
