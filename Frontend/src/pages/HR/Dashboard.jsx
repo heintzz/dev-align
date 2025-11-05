@@ -10,20 +10,29 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getDashboardStats, getEmployeesList } from "../../services/dashboard.service";
+import projectService from "../../services/project.service";
 
 export default function HRDashboard() {
   const [timeFilter, setTimeFilter] = useState("This Month");
   const [dashboardData, setDashboardData] = useState(null);
   const [employees, setEmployees] = useState([]);
+  const [positionsList, setPositionsList] = useState([]);
+  const [positionFilter, setPositionFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [dashResponse, empResponse] = await Promise.all([
+        // fetch dashboard stats and positions in parallel
+        const [dashResponse, positionsRes] = await Promise.all([
           getDashboardStats(),
-          getEmployeesList({ page: 1, limit: 10 })
+          projectService.getAllPositions()
         ]);
+
+        // fetch employees separately so we can include the position filter
+        const empParams = { page: 1, limit: 10 };
+        if (positionFilter && positionFilter !== 'all') empParams.position = positionFilter;
+        const empResponse = await getEmployeesList(empParams);
         
         console.log('Dashboard data:', dashResponse.data);
         console.log('Employee statistics:', {
@@ -38,6 +47,12 @@ export default function HRDashboard() {
           projects: emp.projectCount || 0,
           status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
         })));
+        // normalize positions response
+        let positions = [];
+        if (Array.isArray(positionsRes)) positions = positionsRes;
+        else if (positionsRes && positionsRes.data && positionsRes.data.positions) positions = positionsRes.data.positions;
+        else if (positionsRes && positionsRes.positions) positions = positionsRes.positions;
+        setPositionsList(positions || []);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -47,6 +62,29 @@ export default function HRDashboard() {
 
     fetchDashboardData();
   }, []);
+
+  // refetch employees when positionFilter changes
+  useEffect(() => {
+    const fetchEmployeesForFilter = async () => {
+      try {
+        const empParams = { page: 1, limit: 10 };
+        if (positionFilter && positionFilter !== 'all') empParams.position = positionFilter;
+        const empResponse = await getEmployeesList(empParams);
+        setEmployees(empResponse.data.map(emp => ({
+          name: emp.name,
+          position: emp.position?.name || emp.position || '-',
+          manager: emp.manager?.name || '-',
+          projects: emp.projectCount || 0,
+          status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
+        })));
+      } catch (err) {
+        console.error('Failed to fetch employees for position filter', err);
+      }
+    };
+
+    // only fetch when positions list is already loaded (avoid double calls on mount)
+    if (positionsList.length > 0) fetchEmployeesForFilter();
+  }, [positionFilter, positionsList]);
 
   // Data untuk statistik cards
   const stats = dashboardData ? [
@@ -190,22 +228,20 @@ export default function HRDashboard() {
           <h3 className="text-lg font-semibold text-gray-900">
             Employee Status
           </h3>
-          <button className="flex items-center gap-2 text-sm text-gray-600 border rounded px-3 py-1.5 hover:bg-gray-50">
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-              />
-            </svg>
-            Filter & Short
-          </button>
+            <div className="flex items-center">
+              <select
+                value={positionFilter}
+                onChange={(e) => setPositionFilter(e.target.value)}
+                className="text-sm border rounded px-3 py-1.5"
+              >
+                <option value="all">All Positions</option>
+                {positionsList.map((p) => (
+                  <option key={p._id || p.id || p.name} value={String(p._id || p.id || p.name)}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
         </div>
 
         <div className="overflow-x-auto">
