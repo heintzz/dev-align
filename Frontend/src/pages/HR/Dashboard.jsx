@@ -74,7 +74,7 @@ export default function HRDashboard() {
     name: tc.name,
     position: tc.position || '-',
     projects: tc.doneCount,
-    avatar: tc.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+    avatar: tc.name.split(' ').map(n => n[0]).join('').toUpperCase()
   })) : [];
 
   const getProjectColor = (projects) => {
