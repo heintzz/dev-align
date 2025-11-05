@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const verifyToken = require('../middlewares/token');
-const auth = require('../middlewares/authorization');
-const { getDashboardData } = require('../controllers/dashboard.controller');
+const verifyToken = require("../middlewares/token");
+const auth = require("../middlewares/authorization");
+const { getDashboardData } = require("../controllers/dashboard.controller");
 
 /**
  * @swagger
@@ -18,12 +18,19 @@ const { getDashboardData } = require('../controllers/dashboard.controller');
  *         schema:
  *           type: string
  *           enum: [this_month, last_month, this_year, all]
- *         description: Period filter for top contributors (default: this_month)
+ *         description: >
+ *           Period filter for the report.
+ *           Available values: `this_month`, `last_month`, `this_year`, or `all`.
+ *           Default is `this_month`.
+ *
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Max number of top contributors to return (default: 10)
+ *         description: >
+ *           Maximum number of contributors to return.
+ *           Default is `10`.
+ *
  *     responses:
  *       200:
  *         description: Complete dashboard data
@@ -78,6 +85,6 @@ const { getDashboardData } = require('../controllers/dashboard.controller');
  *                             type: integer
  */
 // Allow any authenticated user to access this endpoint (no role restriction)
-router.get('/', verifyToken, getDashboardData);
+router.get("/", verifyToken, getDashboardData);
 
 module.exports = router;

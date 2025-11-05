@@ -1,36 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
-  PopoverContent,
   PopoverTrigger,
+  PopoverContent,
 } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-
 import { PlusCircle, Check, X } from "lucide-react";
 import { useSkillStore } from "@/store/useSkillStore";
+import api from "@/api/axios";
 
 export function SkillSelector({
   selectedSkills,
   onChange,
   isEditing = true,
   className = "h-max-20",
+  allowCustomAdd = false,
 }) {
-  //   console.log(selectedSkills);
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { listSkills, fetchSkills } = useSkillStore();
 
   useEffect(() => {
-    if (!listSkills.length) fetchSkills();
-  }, [listSkills, fetchSkills]);
+    fetchSkills();
+  }, [fetchSkills]);
+
+  const filteredSkills = useMemo(() => {
+    if (!searchTerm) return listSkills;
+    return listSkills.filter((s) =>
+      s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, listSkills]);
 
   const handleAddSkill = (skill) => {
     const alreadySelected = selectedSkills.some((s) => s._id === skill._id);
@@ -42,91 +43,126 @@ export function SkillSelector({
   };
 
   const handleRemoveSkill = (skill) => {
-    onChange((prev) => prev.filter((s) => s.name !== skill.name));
+    onChange((prev) => prev.filter((s) => s._id !== skill._id));
+  };
+
+  const handleCustomAdd = async () => {
+    if (!allowCustomAdd || !searchTerm.trim()) return;
+    try {
+      const { data } = await api.post("/skill", { name: searchTerm.trim() });
+      const newSkill = data.data; // backend returns skill under data.data
+
+      // Add the new skill to global list
+      useSkillStore.setState((state) => ({
+        listSkills: [...state.listSkills, newSkill],
+      }));
+
+      // Add to selected if not already
+      const exists = selectedSkills.some(
+        (s) => s.name.toLowerCase() === newSkill.name.toLowerCase()
+      );
+      if (!exists) {
+        onChange([...selectedSkills, newSkill]); // ✅ use the same object with _id
+      }
+
+      setSearchTerm("");
+      setOpen(false);
+    } catch (error) {
+      console.error("Error adding skill:", error);
+    }
   };
 
   return (
-    <>
-      <Popover open={open} onOpenChange={setOpen}>
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen} modal={false}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            role="combobox"
             className="w-full justify-between cursor-pointer"
             disabled={!isEditing}
           >
             Add skill
-            <PlusCircle className="ml-2 h-4 w-4 opacity-50" />
+            <PlusCircle className="ml-2 h-4 w-4 opacity-60" />
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent className="w-80 p-0">
-          <Command>
-            <CommandInput
-              placeholder="Search skill..."
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandEmpty>
-              <div className="p-2 text-sm text-muted-foreground">
-                No skill found.
-              </div>
-            </CommandEmpty>
+        <PopoverContent
+          align="start"
+          className="w-[90vw] max-w-sm max-h-[60vh] overflow-y-auto p-3 space-y-2"
+          onWheel={(e) => e.stopPropagation()}
+        >
+          <Input
+            placeholder="Search skills..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            autoFocus
+          />
 
-            <CommandGroup className="max-h-[40vh] overflow-y-auto ">
-              {listSkills
-                .filter((skill) =>
-                  skill.name.toLowerCase().includes(search.toLowerCase())
-                )
-                .map((skill) => {
-                  const isSelected = selectedSkills.some(
-                    (s) => s._id === skill._id
-                  );
-                  return (
-                    <CommandItem
-                      key={skill._id}
-                      onSelect={() => handleAddSkill(skill)}
-                      className={`flex justify-between cursor-pointer ${
-                        isSelected ? "bg-primer/10 text-primer" : ""
-                      }`}
-                    >
-                      <span>{skill.name}</span>
-                      {isSelected && <Check className="h-4 w-4 text-primer" />}
-                    </CommandItem>
-                  );
-                })}
-            </CommandGroup>
-          </Command>
+          {allowCustomAdd && searchTerm.trim() && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-primary"
+              onClick={handleCustomAdd}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add “{searchTerm.trim()}”
+            </Button>
+          )}
+
+          <div className="max-h-[40vh] overflow-y-auto">
+            {filteredSkills.length > 0 ? (
+              filteredSkills.map((skill) => {
+                const isSelected = selectedSkills.some(
+                  (s) => s._id === skill._id
+                );
+                return (
+                  <div
+                    key={skill._id}
+                    onClick={() => handleAddSkill(skill)}
+                    className={`flex justify-between items-center p-2 rounded-md cursor-pointer hover:bg-muted ${
+                      isSelected ? "bg-primary/10 text-primary" : ""
+                    }`}
+                  >
+                    <span>{skill.name}</span>
+                    {isSelected && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No skills found
+              </p>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
 
       {selectedSkills.length > 0 ? (
         <div
-          className={`flex flex-wrap gap-2 mt-2 overflow-y-auto ${className}`}
+          className={`flex flex-wrap gap-2 max-h-20 overflow-y-auto ${className}`}
         >
           {selectedSkills.map((skill) => (
             <Badge
-              key={skill.name}
+              key={skill._id}
               variant="secondary"
               className="flex items-center gap-1"
             >
               {skill.name}
-              <button
-                type="button"
-                onClick={() => handleRemoveSkill(skill)}
-                className="enabled:hover:text-destructive focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!isEditing}
-              >
-                <X className="h-3 w-3" />
-              </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSkill(skill)}
+                  className="hover:text-destructive focus:outline-none cursor-pointer"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </Badge>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground mt-2">
-          No skills added yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No skills added yet.</p>
       )}
-    </>
+    </div>
   );
 }

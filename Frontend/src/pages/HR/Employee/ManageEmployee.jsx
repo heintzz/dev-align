@@ -10,7 +10,7 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   flexRender,
-} from "@tanstack/react-table";
+} from '@tanstack/react-table';
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -27,23 +27,23 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 
 //icon
 import {
@@ -55,104 +55,73 @@ import {
   FilePenLine,
   Sheet,
   Download,
+  CircleCheckBig,
 } from "lucide-react";
 import api from "@/api/axios";
 import UploadFile from "@/components/UploadFile";
 import AddEmployee from "./AddEmployee";
+import { toast } from "@/lib/toast";
 
 export default function ManageEmployee() {
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize] = useState(5);
+  const [total, setTotal] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0); // 0-based
+  const [pageSize, setPageSize] = useState(10);
+  const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sorting, setSorting] = useState([]);
-  const [rowSelection, setRowSelection] = useState({});
+
   const [employees, setEmployees] = useState([]);
   const [openAddExcel, setOpenAddExcel] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
 
+  const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
-  const [loadingText, setLoadingText] = useState("");
+  const [loadingText, setLoadingText] = useState('');
 
   const navigate = useNavigate();
 
   const columns = [
     {
-      accessorKey: "id",
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          className="cursor-pointer"
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          className="cursor-pointer"
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
       accessorKey: "name",
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
           Name
           <span className="ml-1 text-xs">
-            {column.getIsSorted() === "asc"
-              ? "▲"
-              : column.getIsSorted() === "desc"
-              ? "▼"
-              : ""}
+            {column.getIsSorted() === 'asc' ? '▲' : column.getIsSorted() === 'desc' ? '▼' : ''}
           </span>
         </button>
       ),
     },
     {
-      accessorKey: "email",
-      header: "Email",
+      accessorKey: 'email',
+      header: 'Email',
     },
     {
-      accessorKey: "position.name",
-      header: "Position",
+      accessorKey: 'position.name',
+      header: 'Position',
     },
     {
-      accessorKey: "role",
-      header: "Role",
+      accessorKey: 'role',
+      header: 'Role',
     },
     {
-      accessorKey: "active",
-      header: "Status",
+      accessorKey: 'active',
+      header: 'Status',
       cell: ({ row }) => {
-        const isActive = row.getValue("active");
+        const isActive = row.getValue('active');
         return (
-          <span
-            className={
-              isActive
-                ? "text-green-600 font-medium"
-                : "text-red-500 font-medium"
-            }
-          >
-            {isActive ? "Active" : "Resigned"}
+          <span className={isActive ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
+            {isActive ? 'Active' : 'Resigned'}
           </span>
         );
       },
     },
     {
-      id: "actions",
-      header: "Actions",
+      id: 'actions',
+      header: 'Actions',
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -165,12 +134,9 @@ export default function ManageEmployee() {
               onClick={() => navigate(`detail/${row.original.id}`)}
               className="cursor-pointer"
             >
-              Edit
+              Details
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => deativate(row.original.id)}
-              className="cursor-pointer"
-            >
+            <DropdownMenuItem onClick={() => deativate(row.original.id)} className="cursor-pointer">
               Deactivate
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -180,25 +146,40 @@ export default function ManageEmployee() {
   ];
 
   const getEmployees = async () => {
-    const { data } = await api.get("/hr/employees");
-    console.log(data);
-    setEmployees(data.data);
+    try {
+      setLoading(true);
+      const params = {
+        page: pageIndex + 1, // backend is 1-based
+        limit: pageSize,
+        search: globalFilter || undefined,
+        active: statusFilter === "all" ? undefined : statusFilter,
+      };
+
+      const { data } = await api.get("/hr/employees", { params });
+      setEmployees(data.data);
+      setTotal(data.meta.total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      console.log("finish");
+    }
   };
 
   const getExcelTemplate = async () => {
-    const response = await api.get("/hr/employees/template", {
-      responseType: "blob",
+    const response = await api.get('/hr/employees/template', {
+      responseType: 'blob',
     });
 
     console.log(response);
     const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
 
     // Set the file name dynamically
-    const fileName = "employee-import-template.xlsx";
+    const fileName = 'employee-import-template.xlsx';
 
-    link.setAttribute("download", fileName);
+    link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
 
@@ -209,34 +190,42 @@ export default function ManageEmployee() {
 
   const AddEmployeeByExcel = async () => {
     if (!excelFile) {
-      alert("Please select a file first!");
+      alert('Please select a file first!');
       return;
     }
 
     const formData = new FormData();
-    formData.append("file", excelFile);
+    formData.append('file', excelFile);
 
     try {
-      // setLoadingUpload(true);
+      setLoadingState(true);
+      setLoadingState("Adding Employee...");
       const response = await api.post(
-        "/hr/employees/import?dryRun=false&sendEmails=false",
+        '/hr/employees/import?dryRun=false&sendEmails=false',
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 'Content-Type': 'multipart/form-data' },
         }
       );
 
       console.log("Import result:", response);
-      alert(
-        `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`
+      toast(
+        `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`,
+        {
+          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+          type: "success",
+          position: "top-center",
+          duration: 5000,
+        }
       );
       setOpenAddExcel(false);
     } catch (error) {
-      console.error("Failed to import employees:", error);
-      alert("Failed to import employees.");
+      console.error('Failed to import employees:', error);
+      alert('Failed to import employees.');
     } finally {
-      // setLoadingUpload(false);
       getEmployees();
+      setLoadingState(true);
+      setLoadingText("");
     }
   };
 
@@ -247,45 +236,30 @@ export default function ManageEmployee() {
     getEmployees();
   };
 
-  const filteredData = useMemo(() => {
-    let filtered = employees;
-
-    if (globalFilter) {
-      filtered = filtered.filter((row) =>
-        row.name.toLowerCase().includes(globalFilter.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((row) => row.status === statusFilter);
-    }
-
-    return filtered;
-  }, [employees, globalFilter, statusFilter]);
-
   const table = useReactTable({
-    data: filteredData,
+    data: employees,
     columns,
-    state: { sorting, pagination: { pageIndex, pageSize }, rowSelection },
-    onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onPaginationChange: (updater) => {
-      const newState =
-        typeof updater === "function"
-          ? updater({ pageIndex, pageSize })
-          : updater;
-      setPageIndex(newState.pageIndex);
+    manualPagination: true, // ✅ important
+    manualSorting: true, // optional if backend handles sorting
+    manualFiltering: true,
+    pageCount: Math.ceil(total / pageSize),
+    state: {
+      pagination: { pageIndex, pageSize },
+      sorting,
     },
-    pageCount: Math.ceil(filteredData.length / pageSize),
+    onPaginationChange: (updater) => {
+      const newState = typeof updater === 'function' ? updater({ pageIndex, pageSize }) : updater;
+      setPageIndex(newState.pageIndex);
+      setPageSize(newState.pageSize);
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   useEffect(() => {
     getEmployees();
-  }, []);
+  }, [pageIndex, pageSize, globalFilter, statusFilter]);
 
   return (
     <>
@@ -373,15 +347,21 @@ export default function ManageEmployee() {
                 setStatusFilter(val);
                 setPageIndex(0);
               }}
+              // className="cursor-pointer"
             >
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[150px] cursor-pointer">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="all" className="cursor-pointer">
+                  All
+                </SelectItem>
+                <SelectItem value="true" className="cursor-pointer">
+                  Active
+                </SelectItem>
+                <SelectItem value="false" className="cursor-pointer">
+                  Resigned
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -394,12 +374,10 @@ export default function ManageEmployee() {
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -407,7 +385,19 @@ export default function ManageEmployee() {
               </TableHeader>
 
               <TableBody>
-                {table.getRowModel().rows.length ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : employees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center">
+                      No data
+                    </TableCell>
+                  </TableRow>
+                ) : (
                   table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
@@ -415,45 +405,44 @@ export default function ManageEmployee() {
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
-                          ) || cell.getValue()}
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
-                    </TableCell>
-                  </TableRow>
                 )}
               </TableBody>
             </Table>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-end space-x-2 py-2 mr-5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <span className="text-sm">
-                Page {pageIndex + 1} of {table.getPageCount() || 1}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between p-5">
+              <div className="text-sm text-muted-foreground">
+                Page {pageIndex + 1} of {Math.ceil(total / pageSize)}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageIndex((p) => Math.max(p - 1, 0))}
+                  disabled={pageIndex === 0}
+                  className="cursor-pointer"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPageIndex((p) =>
+                      p + 1 < Math.ceil(total / pageSize) ? p + 1 : p
+                    )
+                  }
+                  disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
+                  className="cursor-pointer"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -474,9 +463,7 @@ export default function ManageEmployee() {
             <DialogTitle className="flex justify-between items-center">
               Add Multiple Employee
             </DialogTitle>
-            <DialogDescription>
-              Add multiple employee by uploading excell
-            </DialogDescription>
+            <DialogDescription>Add multiple employee by uploading excell</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <Button
@@ -496,9 +483,16 @@ export default function ManageEmployee() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" className="cursor-pointer">
+                Cancel
+              </Button>
             </DialogClose>
-            <Button onClick={AddEmployeeByExcel}>Add Employee</Button>
+            <Button
+              onClick={AddEmployeeByExcel}
+              className="bg-primer cursor-pointer"
+            >
+              Add Employee
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

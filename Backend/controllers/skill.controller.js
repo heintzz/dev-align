@@ -1,12 +1,12 @@
-const { Skill } = require('../models');
+const { Skill } = require("../models");
 
 const createSkill = async (req, res) => {
   const { name } = req.body;
-  if (!name || name.trim() == '') {
+  if (!name || name.trim() == "") {
     return res.status(400).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Skill name must be specified',
+      error: "Internal Server Error",
+      message: "Skill name must be specified",
     });
   }
 
@@ -16,8 +16,8 @@ const createSkill = async (req, res) => {
     if (existingSkill) {
       return res.status(400).json({
         success: false,
-        error: 'Bad Request',
-        message: 'Skill already exists',
+        error: "Bad Request",
+        message: "Skill already exists",
       });
     }
 
@@ -29,27 +29,28 @@ const createSkill = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
 };
 
 const getSkills = async (req, res) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const perPage = Math.max(1, Number(req.query.perPage) || 15);
-  const skip = perPage ? (page - 1) * perPage : 0;
+  // const page = Math.max(1, Number(req.query.page) || 1);
+  // const perPage = Math.max(1, Number(req.query.perPage) || 15);
+  // const skip = perPage ? (page - 1) * perPage : 0;
 
   try {
     const [total, skills] = await Promise.all([
       Skill.countDocuments({}),
-      Skill.find({}).sort({ name: -1 }).skip(skip).limit(perPage).select('id name'),
+      Skill.find({}).sort({ name: -1 }),
+      // .skip(skip).limit(perPage).select('id name'),
     ]);
 
     return res.status(200).json({
       success: true,
       data: {
-        perPage,
+        // perPage,
         total,
         skills,
       },
@@ -57,7 +58,7 @@ const getSkills = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -71,8 +72,8 @@ const updateSkill = async (req, res) => {
     if (!currentSkill)
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Skill not found',
+        error: "Not Found",
+        message: "Skill not found",
       });
 
     currentSkill.name = req.body.name || currentSkill.name;
@@ -85,7 +86,7 @@ const updateSkill = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -99,8 +100,8 @@ const deleteSkill = async (req, res) => {
     if (!deletedSkill)
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Skill not found',
+        error: "Not Found",
+        message: "Skill not found",
       });
 
     await deletedSkill.deleteOne();
@@ -108,7 +109,7 @@ const deleteSkill = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }

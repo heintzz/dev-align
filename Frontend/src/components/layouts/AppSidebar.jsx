@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
-import * as LucideIcons from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
+import * as LucideIcons from 'lucide-react';
 
 import {
   Sidebar,
@@ -13,42 +13,38 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
-import { ChevronDown, ChevronRight } from "lucide-react";
-import logoIcon from "@/assets/img/LogoDevAlign.png";
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import logoIcon from '@/assets/img/LogoDevAlign.png';
 
 export default function AppSidebar() {
   const { state } = useSidebar();
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenu, setOpenMenu] = useState(null);
-  const isCollapsed = state === "collapsed";
+  const isCollapsed = state === 'collapsed';
   const location = useLocation();
 
   useEffect(() => {
     const fetchMenus = async () => {
       try {
-        const res = await fetch("http://localhost:5000/menu/getMenu", {
+        const res = await fetch('http://localhost:5000/menu/getMenu', {
           headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
         });
 
-        if (!res.ok) throw new Error("Failed to fetch menu");
+        if (!res.ok) throw new Error('Failed to fetch menu');
         const data = await res.json();
-        console.log("✅ API raw data:", data);
+        console.log('✅ API raw data:', data);
 
         setMenus(data?.data?.menuList || []);
       } catch (err) {
-        console.error("❌ Error fetching menu:", err);
+        console.error('❌ Error fetching menu:', err);
       } finally {
         setLoading(false);
       }
@@ -65,9 +61,7 @@ export default function AppSidebar() {
     return (
       <Sidebar collapsible="icon" className="shadow-lg">
         <SidebarHeader>
-          <div className="flex items-center py-5 justify-center text-primer">
-            Loading...
-          </div>
+          <div className="flex items-center py-5 justify-center text-primer">Loading...</div>
         </SidebarHeader>
       </Sidebar>
     );
@@ -80,13 +74,9 @@ export default function AppSidebar() {
           <img
             src={logoIcon}
             alt="DevAlign Logo"
-            className={`transition-all duration-300 ${
-              isCollapsed ? "h-9" : "h-10 w-10"
-            }`}
+            className={`transition-all duration-300 ${isCollapsed ? 'h-9' : 'h-10 w-10'}`}
           />
-          {!isCollapsed && (
-            <h1 className="text-xl font-semibold text-primer">DevAlign</h1>
-          )}
+          {!isCollapsed && <h1 className="text-xl font-semibold text-primer">DevAlign</h1>}
         </Link>
       </SidebarHeader>
 
@@ -99,7 +89,7 @@ export default function AppSidebar() {
                 const Icon = LucideIcons[item.icon] || LucideIcons.Circle;
                 const hasChildren = item.children && item.children.length > 0;
                 const isOpen = openMenu === item._id;
-                const isActive = location.pathname.startsWith(item.path || "");
+                const isActive = location.pathname.startsWith(item.path || '');
                 console.log(location);
                 console.log(item);
                 console.log(isActive);
@@ -114,8 +104,8 @@ export default function AppSidebar() {
                             className={`flex items-center justify-center cursor-pointer transition-colors
                         ${
                           isActive
-                            ? "bg-primer text-white"
-                            : "text-primer hover:bg-primer hover:text-white"
+                            ? 'bg-primer text-white'
+                            : 'text-primer hover:bg-primer hover:text-white'
                         }`}
                             tooltip={item.title}
                           >
@@ -132,22 +122,20 @@ export default function AppSidebar() {
                           </p>
                           <div className="flex flex-col gap-1">
                             {item.children.map((child) => {
-                              const ChildIcon =
-                                LucideIcons[child.icon] || LucideIcons.Circle;
-                              const isChildActive =
-                                location.pathname.startsWith(child.path || "");
+                              const ChildIcon = LucideIcons[child.icon] || LucideIcons.Circle;
+                              const isChildActive = location.pathname.startsWith(child.path || '');
                               return (
                                 <Link
                                   key={child._id}
-                                  to={child.path || "#"}
+                                  to={child.path || '#'}
                                   onClick={
                                     () => document.activeElement?.blur() // auto-close popover
                                   }
                                   className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm 
                                   ${
                                     isChildActive
-                                      ? "bg-primer text-white"
-                                      : "text-gray-700 hover:bg-gray-100"
+                                      ? 'bg-primer text-white'
+                                      : 'text-gray-700 hover:bg-gray-100'
                                   }`}
                                 >
                                   <ChildIcon className="h-3.5 w-3.5 text-primer" />
@@ -166,14 +154,12 @@ export default function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item._id}>
                     <SidebarMenuButton
-                      onClick={() =>
-                        hasChildren ? toggleMenu(item._id) : null
-                      }
+                      onClick={() => (hasChildren ? toggleMenu(item._id) : null)}
                       asChild={!hasChildren}
                       className={`flex items-center font-semibold transition-colors ${
                         isActive
-                          ? "bg-primer text-white"
-                          : "text-primer hover:bg-primer hover:text-white"
+                          ? 'bg-primer text-white'
+                          : 'text-primer hover:bg-primer hover:text-white'
                       }`}
                       tooltip={item.title}
                     >
@@ -182,9 +168,7 @@ export default function AppSidebar() {
                           className="w-full flex items-center justify-between cursor-pointer select-none"
                           role="button"
                           tabIndex={0}
-                          onKeyDown={(e) =>
-                            e.key === "Enter" && toggleMenu(item._id)
-                          }
+                          onKeyDown={(e) => e.key === 'Enter' && toggleMenu(item._id)}
                         >
                           <div className="flex items-center space-x-2">
                             <Icon className="h-4 w-4" />
@@ -198,7 +182,7 @@ export default function AppSidebar() {
                             ))}
                         </div>
                       ) : (
-                        <Link to={item.path || "#"}>
+                        <Link to={item.path || '#'}>
                           <Icon className="h-4 w-4" />
                           <span>{item.title}</span>
                         </Link>
@@ -208,19 +192,16 @@ export default function AppSidebar() {
                     {hasChildren && isOpen && !isCollapsed && (
                       <div className="ml-6 mt-1 space-y-1">
                         {item.children.map((child) => {
-                          const ChildIcon =
-                            LucideIcons[child.icon] || LucideIcons.Circle;
-                          const isChildActive = location.pathname.startsWith(
-                            child.path || ""
-                          );
+                          const ChildIcon = LucideIcons[child.icon] || LucideIcons.Circle;
+                          const isChildActive = location.pathname.startsWith(child.path || '');
                           return (
                             <Link
                               key={child._id}
                               to={child.path || "#"}
-                              className={`flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg px-3 py-1  ${
+                              className={`flex items-center gap-2 text-sm text-gray-700 rounded-lg px-3 py-1  ${
                                 isChildActive
-                                  ? "bg-primer text-white"
-                                  : "text-gray-700 hover:bg-gray-100"
+                                  ? 'bg-primer text-white'
+                                  : 'text-gray-700 hover:bg-gray-100'
                               }`}
                             >
                               <ChildIcon className="h-3.5 w-3.5 text-primer" />

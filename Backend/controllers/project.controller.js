@@ -1425,6 +1425,13 @@ const createProjectWithAssignments = async (req, res) => {
 
     const project = await Project.create(projectData);
 
+    // IMPORTANT: Automatically assign the project creator (manager) as tech lead
+    const creatorAssignment = await ProjectAssignment.create({
+      projectId: project._id,
+      userId: req.user.id,
+      isTechLead: true, // Creator is automatically the tech lead
+    });
+
     // Categorize staff: own staff vs need approval
     const ownStaff = [];
     const needApprovalStaff = [];
@@ -1442,7 +1449,7 @@ const createProjectWithAssignments = async (req, res) => {
     }
 
     // Create assignments for own staff (direct subordinates)
-    const assignments = [];
+    const assignments = [creatorAssignment]; // Include creator assignment
     for (const staffMember of ownStaff) {
       const assignmentData = {
         projectId: project._id,
@@ -1463,8 +1470,8 @@ const createProjectWithAssignments = async (req, res) => {
       });
     }
 
-    // Update team member count to include assigned staff
-    project.teamMemberCount = 1 + ownStaff.length;
+    // Update team member count to include creator + assigned staff
+    project.teamMemberCount = 1 + ownStaff.length; // Creator + own staff
     await project.save();
 
     // Create borrow requests for staff that need approval

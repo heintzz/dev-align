@@ -1,14 +1,18 @@
 function mapUserToUserResponse(user) {
   // If managerId is populated (object), expose a manager object with key info
-  const managerObj = user && user.managerId && typeof user.managerId === 'object' && (user.managerId.name || user.managerId.email)
-    ? {
-      id: user.managerId._id || user.managerId.id,
-      name: user.managerId.name,
-      email: user.managerId.email,
-      phoneNumber: user.managerId.phoneNumber,
-      position: user.managerId.position,
-    }
-    : null;
+  const managerObj =
+    user &&
+    user.managerId &&
+    typeof user.managerId === "object" &&
+    (user.managerId.name || user.managerId.email)
+      ? {
+          id: user.managerId._id || user.managerId.id,
+          name: user.managerId.name,
+          email: user.managerId.email,
+          phoneNumber: user.managerId.phoneNumber,
+          position: user.managerId.position,
+        }
+      : null;
 
   return {
     id: user._id,
@@ -19,10 +23,17 @@ function mapUserToUserResponse(user) {
     dateOfBirth: user.dateOfBirth,
     position: user.position,
     skills: Array.isArray(user.skills)
-      ? user.skills.map((s) => (s && (s.name || s._id) ? { id: s._id || s.id, name: s.name || null } : s))
+      ? user.skills.map((s) =>
+          s && (s.name || s._id)
+            ? { _id: s._id || s.id, name: s.name || null }
+            : s
+        )
       : user.skills,
     // keep managerId as id (if populated, extract its id)
-    managerId: user && user.managerId && typeof user.managerId === 'object' ? (user.managerId._id || user.managerId.id) : user.managerId,
+    managerId:
+      user && user.managerId && typeof user.managerId === "object"
+        ? user.managerId._id || user.managerId.id
+        : user.managerId,
     // manager: null or {id,name,email,phoneNumber,position}
     manager: managerObj,
     role: user.role,
