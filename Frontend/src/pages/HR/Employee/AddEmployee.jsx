@@ -69,6 +69,7 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import { SkillSelector } from "@/components/SkillSelector";
 import Loading from "@/components/Loading";
 
@@ -208,6 +209,7 @@ export default function AddEmployee() {
       console.log("Response:", data);
       setLoadingState(false);
       setLoadingText("");
+      toast("Employee added successfully!", { type: "success" });
       navigate("/employees");
     } catch (error) {
       console.error("Error creating employee:", error);
@@ -337,7 +339,7 @@ export default function AddEmployee() {
                             required
                           />
                         </Field>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid sm:grid-cols-2 gap-4">
                           <Field>
                             <FieldLabel htmlFor="checkout-7j9-card-bplace-uw1">
                               Place of Birth
@@ -363,17 +365,17 @@ export default function AddEmployee() {
                                 <Button
                                   variant="outline"
                                   id="date"
-                                  className="w-48 justify-between font-normal cursor-pointer"
+                                  className="w-full justify-between font-normal cursor-pointer"
                                 >
-                                  <div className="flex items-center space-x-2">
-                                    <CalendarIcon />
-                                    <p>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <CalendarIcon className="flex-shrink-0" />
+                                    <p className="text-left truncate flex-1 min-w-0">
                                       {selectedDate
                                         ? format(selectedDate, "PPP")
                                         : "Select Birthdate"}
                                     </p>
+                                    <ChevronDown className="flex-shrink-0" />
                                   </div>
-                                  <ChevronDown />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent

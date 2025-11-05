@@ -242,7 +242,7 @@ export default function EmployeeDetail() {
                     />
                   </Field>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4">
                     <Field>
                       <FieldLabel>Place of Birth</FieldLabel>
                       <Input
@@ -267,15 +267,15 @@ export default function EmployeeDetail() {
                             className="w-full justify-between"
                             disabled={!isEditing}
                           >
-                            <div className="flex items-center space-x-2">
-                              <CalendarIcon />
-                              <span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CalendarIcon className="flex-shrink-0" />
+                              <span className="text-left truncate flex-1 min-w-0">
                                 {selectedDate
                                   ? format(selectedDate, "PPP")
                                   : "Select Birthdate"}
                               </span>
+                              <ChevronDown className="flex-shrink-0" />
                             </div>
-                            <ChevronDown />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">

@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +52,8 @@ export default function ProjectDetailsDialog({
   onClose,
   onProjectUpdated,
 }) {
+  const { role } = useAuthStore();
+  const isHR = role === "hr";
   const [project, setProject] = useState(null);
   const [manager, setManager] = useState(null);
   const [staff, setStaff] = useState([]);
@@ -276,14 +279,16 @@ export default function ProjectDetailsDialog({
                   ) : (
                     <>
                       {project.name}
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setShowDeleteDialog(true)}
-                        className="ml-2 p-1 text-red-500 hover:text-red-700 cursor-pointer"
-                      >
-                        <Trash />
-                      </Button>
+                      {!isHR && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setShowDeleteDialog(true)}
+                          className="ml-2 p-1 text-red-500 hover:text-red-700 cursor-pointer"
+                        >
+                          <Trash />
+                        </Button>
+                      )}
                     </>
                   )}
                 </DialogTitle>
@@ -416,43 +421,44 @@ export default function ProjectDetailsDialog({
 
               {/* Buttons */}
               <div className="flex gap-3 pt-4 border-t">
-                {isEditing ? (
-                  <>
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium disabled:opacity-50 cursor-pointer"
-                    >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditing(true)}
-                      disabled={project.status === "completed"}
-                      className="cursor-pointer"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={handleComplete}
-                      disabled={project.status === "completed"}
-                      className="flex-1 px-6 py-2 bg-primer cursor-pointer"
-                    >
-                      {project.status === "completed"
-                        ? "Completed"
-                        : "Complete the Project"}
-                    </Button>
-                  </>
-                )}
+                {!isHR &&
+                  (isEditing ? (
+                    <>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSaving ? "Saving..." : "Save Changes"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditing(true)}
+                        disabled={project.status === "completed"}
+                        className="cursor-pointer"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={handleComplete}
+                        disabled={project.status === "completed"}
+                        className="flex-1 px-6 py-2 bg-primer cursor-pointer"
+                      >
+                        {project.status === "completed"
+                          ? "Completed"
+                          : "Complete the Project"}
+                      </Button>
+                    </>
+                  ))}
               </div>
             </>
           ) : (
