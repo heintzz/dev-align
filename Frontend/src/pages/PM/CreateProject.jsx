@@ -107,7 +107,7 @@ export default function CreateProject() {
         });
         return;
       }
-
+      console.log("test");
       if (position) {
         setTeamPositions([
           ...teamPositions,
