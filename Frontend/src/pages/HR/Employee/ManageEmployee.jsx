@@ -83,6 +83,7 @@ export default function ManageEmployee() {
   const [newCount, setNewCount] = useState(0);
   const [leavingCount, setLeavingCount] = useState(0);
   const [positionsList, setPositionsList] = useState([]);
+  const [currentMonth] = useState(new Date().getMonth());
 
   const navigate = useNavigate();
 
@@ -151,6 +152,43 @@ export default function ManageEmployee() {
     },
   ];
 
+  const getEmployeeStats = async () => {
+    try {
+      // Get all employees without pagination for accurate statistics
+      const { data } = await api.get("/hr/employees", {
+        params: {
+          limit: 1000, // Large number to get all employees
+          search: globalFilter || undefined,
+          active: statusFilter === "all" ? undefined : statusFilter,
+          position: positionFilter && positionFilter !== "all" ? positionFilter : undefined
+        }
+      });
+
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+      // Calculate new and leaving employees for current month from complete data
+      const newEmployees = data.data.filter((emp) => {
+        if (!emp.createdAt) return false;
+        const joinDate = new Date(emp.createdAt);
+        return joinDate >= firstDayOfMonth;
+      });
+
+      const leavingEmployees = data.data.filter((emp) => {
+        if (emp.active) return false;
+        if (!emp.updatedAt) return false;
+        const leaveDate = new Date(emp.updatedAt);
+        return leaveDate >= firstDayOfMonth;
+      });
+
+      setTotalCount(data.meta.total);
+      setNewCount(newEmployees.length);
+      setLeavingCount(leavingEmployees.length);
+    } catch (e) {
+      console.warn('Error calculating employee stats:', e);
+    }
+  };
+
   const getEmployees = async () => {
     try {
       setLoading(true);
@@ -165,17 +203,9 @@ export default function ManageEmployee() {
       const { data } = await api.get("/hr/employees", { params });
       setEmployees(data.data);
       setTotal(data.meta.total);
-      // update summary counts
-      try {
-        const stats = await getDashboardStats();
-        const statsData = stats.data || stats;
-        setTotalCount(statsData.statistics?.totalEmployees?.count || 0);
-        setLeavingCount(statsData.statistics?.resignedEmployees?.count || 0);
-        // new employees: try to read from statistics if available
-        setNewCount(statsData.statistics?.newEmployees?.count || 0);
-      } catch (e) {
-        // ignore
-      }
+      
+      // Update statistics separately to get accurate counts
+      await getEmployeeStats();
     } catch (err) {
       console.error(err);
     } finally {
@@ -293,8 +323,14 @@ export default function ManageEmployee() {
   });
 
   useEffect(() => {
+    // Get complete statistics initially and when filters change
+    getEmployeeStats();
+  }, [globalFilter, statusFilter, positionFilter]);
+
+  useEffect(() => {
+    // Get paginated data for table when page changes
     getEmployees();
-  }, [pageIndex, pageSize, globalFilter, statusFilter]);
+  }, [pageIndex, pageSize]);
 
   useEffect(() => {
     // load positions once
@@ -357,20 +393,20 @@ export default function ManageEmployee() {
                 <UserPlus />
                 <h3>New Employee</h3>
               </div>
-              <p className="text-4xl font-extrabold">{newCount}</p>
-              {/* <p className="text-slate-800">
-                <span className=" text-green-500">+2</span> this month
-              </p> */}
+              <p className="text-4xl font-extrabold text-green-600">{newCount}</p>
+              <p className="text-slate-800">
+                this month
+              </p>
             </div>
             <div className="space-y-2 text-center">
               <div className="flex justify-center space-x-2">
                 <UserMinus />
                 <h3>Leaving</h3>
               </div>
-              <p className="text-4xl font-extrabold">{leavingCount}</p>
-              {/* <p className="text-slate-800">
-                <span className=" text-red-500">0</span> this month
-              </p> */}
+              <p className="text-4xl font-extrabold text-red-500">{leavingCount}</p>
+              <p className="text-slate-800">
+                this month
+              </p>
             </div>
           </div>
         </div>

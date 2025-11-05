@@ -43,36 +43,38 @@ const getDashboardData = async (req, res) => {
     // 2. Get project statistics
     const projectStats = await Project.aggregate([
       {
+        $addFields: {
+          // Normalize status to lowercase for consistent matching
+          normalizedStatus: { $toLower: "$status" }
+        }
+      },
+      {
         $group: {
-          _id: '$status',
+          _id: '$normalizedStatus',
           count: { $sum: 1 }
         }
       }
     ]);
 
+    // Debug log to see actual statuses
+    console.log('Raw Project Stats:', projectStats);
+
     const projectStatistics = {
       completed: 0,
-      inProgress: 0,
-      onHold: 0,
-      rejected: 0
+      inProgress: 0
     };
 
     projectStats.forEach(stat => {
-      switch(stat._id.toLowerCase()) {
-        case 'completed':
-          projectStatistics.completed = stat.count;
-          break;
-        case 'in progress':
-          projectStatistics.inProgress = stat.count;
-          break;
-        case 'on hold':
-          projectStatistics.onHold = stat.count;
-          break;
-        case 'rejected':
-          projectStatistics.rejected = stat.count;
-          break;
+      const status = stat._id?.toLowerCase() || '';
+      if (status === 'completed') {
+        projectStatistics.completed = stat.count;
+      } else if (status === 'active') {
+        projectStatistics.inProgress = stat.count;
       }
     });
+
+    // Debug log final statistics
+    console.log('Final Project Statistics:', projectStatistics);
 
     // 3. Get top contributors (existing logic)
 

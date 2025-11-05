@@ -6,8 +6,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import { getDashboardStats, getEmployeesList } from "../../services/dashboard.service";
 import projectService from "../../services/project.service";
@@ -18,73 +18,102 @@ export default function HRDashboard() {
   const [employees, setEmployees] = useState([]);
   const [positionsList, setPositionsList] = useState([]);
   const [positionFilter, setPositionFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
   const [loading, setLoading] = useState(true);
+  const [pageIndex, setPageIndex] = useState(0); // 0-based
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
+  // Function to fetch all employees and handle sorting/pagination in frontend
+  const fetchPaginatedEmployees = async () => {
+    try {
+      setLoading(true);
+      // Get ALL employees without pagination
+      const empParams = {
+        limit: 1000, // Large number to get all employees
+      };
+      if (positionFilter && positionFilter !== 'all') empParams.position = positionFilter;
+      
+      const empResponse = await getEmployeesList(empParams);
+      
+      // Map all employees with their project counts
+      const allEmployees = empResponse.data.map(emp => ({
+        name: emp.name,
+        position: emp.position?.name || emp.position || '-',
+        manager: emp.manager?.name || '-',
+        projects: emp.projectCount || 0,
+        status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
+      }));
+
+      // Sort ALL employees first
+      const sortedEmployees = [...allEmployees].sort((a, b) => {
+        if (sortOrder === 'desc') {
+          return b.projects - a.projects || a.name.localeCompare(b.name);
+        }
+        return a.projects - b.projects || a.name.localeCompare(b.name);
+      });
+
+      // Set total for pagination
+      setTotal(sortedEmployees.length);
+
+      // Then get the current page's worth of employees
+      const startIndex = pageIndex * pageSize;
+      const endIndex = startIndex + pageSize;
+      const currentPageEmployees = sortedEmployees.slice(startIndex, endIndex);
+
+      setEmployees(currentPageEmployees);
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to fetch employees', err);
+      setLoading(false);
+    }
+  };
+
+  // Initial load of dashboard data and positions
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchInitialData = async () => {
       try {
-        // fetch dashboard stats and positions in parallel
-        const [dashResponse, positionsRes] = await Promise.all([
+        setLoading(true);
+        // Fetch initial dashboard data and positions
+        const [dashboardResponse, positionsRes] = await Promise.all([
           getDashboardStats(),
           projectService.getAllPositions()
         ]);
-
-        // fetch employees separately so we can include the position filter
-        const empParams = { page: 1, limit: 10 };
-        if (positionFilter && positionFilter !== 'all') empParams.position = positionFilter;
-        const empResponse = await getEmployeesList(empParams);
         
-        console.log('Dashboard data:', dashResponse.data);
-        console.log('Employee statistics:', {
-          total: dashResponse.data.statistics.totalEmployees.count,
-          resigned: dashResponse.data.statistics.resignedEmployees.count
-        });
-        setDashboardData(dashResponse.data);
-        setEmployees(empResponse.data.map(emp => ({
-          name: emp.name,
-          position: emp.position?.name || emp.position || '-',
-          manager: emp.manager?.name || '-',
-          projects: emp.projectCount || 0,
-          status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
-        })));
+        // Debug logs to track data flow
+        console.log('Raw Dashboard Response:', dashboardResponse);
+        console.log('Project Statistics:', dashboardResponse.data?.projectStatistics);
+        
+        setDashboardData(dashboardResponse.data);
+        
         // normalize positions response
         let positions = [];
         if (Array.isArray(positionsRes)) positions = positionsRes;
         else if (positionsRes && positionsRes.data && positionsRes.data.positions) positions = positionsRes.data.positions;
         else if (positionsRes && positionsRes.positions) positions = positionsRes.positions;
         setPositionsList(positions || []);
+
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('Error fetching initial data:', error);
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchInitialData();
   }, []);
 
-  // refetch employees when positionFilter changes
+  // Effect for pagination, sorting, and filtering
   useEffect(() => {
-    const fetchEmployeesForFilter = async () => {
-      try {
-        const empParams = { page: 1, limit: 10 };
-        if (positionFilter && positionFilter !== 'all') empParams.position = positionFilter;
-        const empResponse = await getEmployeesList(empParams);
-        setEmployees(empResponse.data.map(emp => ({
-          name: emp.name,
-          position: emp.position?.name || emp.position || '-',
-          manager: emp.manager?.name || '-',
-          projects: emp.projectCount || 0,
-          status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
-        })));
-      } catch (err) {
-        console.error('Failed to fetch employees for position filter', err);
-      }
-    };
+    if (positionsList.length > 0) {
+      fetchPaginatedEmployees();
+    }
+  }, [pageIndex, pageSize, positionFilter, sortOrder, positionsList]);
 
-    // only fetch when positions list is already loaded (avoid double calls on mount)
-    if (positionsList.length > 0) fetchEmployeesForFilter();
-  }, [positionFilter, positionsList]);
+  // Reset to first page when filter or sort order changes
+  useEffect(() => {
+    setPageIndex(0);
+  }, [positionFilter, sortOrder]);
 
   // Data untuk statistik cards
   const stats = dashboardData ? [
@@ -101,11 +130,39 @@ export default function HRDashboard() {
     },
   ] : [];
 
-  // Data untuk chart project statistic
-  const projectData = dashboardData ? [
-    { status: "Completed", count: dashboardData.projectStatistics.completed || 0, color: "#3b82f6" },
-    { status: "In Progress", count: dashboardData.projectStatistics.in_progress || dashboardData.projectStatistics.inProgress || 5, color: "#10b981" },
-  ] : [];
+  // Robust parsing of project statistics from backend (handle different key naming)
+  const parseProjectStatistics = (ps) => {
+    const result = { completed: 0, inProgress: 0, total: 0 };
+    if (!ps || typeof ps !== 'object') return result;
+
+    // Try explicit keys first
+    result.completed = Number(ps.completed ?? ps.completedCount ?? ps['Completed'] ?? 0) || 0;
+    result.inProgress = Number(ps.inProgress ?? ps.in_progress ?? ps['In Progress'] ?? ps['in-progress'] ?? ps.inprogress ?? ps.ongoing ?? 0) || 0;
+
+    // If values still zero, inspect keys heuristically
+    if (result.completed === 0 || result.inProgress === 0) {
+      Object.keys(ps).forEach((k) => {
+        const v = Number(ps[k]) || 0;
+        const lk = String(k).toLowerCase();
+        if (lk.includes('completed')) result.completed = v;
+        else if (lk.includes('progress') || lk.includes('ongoing') || lk.includes('in progress') || lk.includes('in-progress')) result.inProgress = v;
+      });
+    }
+
+    // As a fallback, total is sum of numeric values in ps
+    result.total = Object.values(ps).reduce((acc, cur) => acc + (Number(cur) || 0), 0);
+    return result;
+  };
+
+  const parsedProjectStats = dashboardData ? parseProjectStatistics(dashboardData.projectStatistics) : { completed: 0, inProgress: 0, total: 0 };
+  const completedCount = parsedProjectStats.completed;
+  const inProgressCount = parsedProjectStats.inProgress;
+  const totalProjects = parsedProjectStats.total || (completedCount + inProgressCount);
+
+  const projectData = [
+    { status: "Completed", count: completedCount, color: "#10b981" }, // green
+    { status: "In Progress", count: inProgressCount, color: "#3b82f6" }, // blue
+  ];
 
   // Data untuk top contributors
   const topContributors = dashboardData ? dashboardData.topContributors.map(tc => ({
@@ -162,16 +219,22 @@ export default function HRDashboard() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Project Statistic
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={projectData}>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={projectData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="status" />
               <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+              <Tooltip formatter={(value) => [`${value} Projects`, '']}/>
+              <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                {projectData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
+          <div className="text-sm text-gray-500 mt-4 text-center">
+            Total Projects: <span className="font-semibold">{totalProjects}</span>
+          </div>
         </div>
 
         {/* Top Contributors */}
@@ -228,7 +291,15 @@ export default function HRDashboard() {
           <h3 className="text-lg font-semibold text-gray-900">
             Employee Status
           </h3>
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="text-sm border rounded px-3 py-1.5"
+              >
+                <option value="desc">Most Projects</option>
+                <option value="asc">Least Projects</option>
+              </select>
               <select
                 value={positionFilter}
                 onChange={(e) => setPositionFilter(e.target.value)}
@@ -304,6 +375,33 @@ export default function HRDashboard() {
               </tbody>
             </table>
           )}
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between p-4 border-t">
+          <div className="text-sm text-gray-500">
+            Page {pageIndex + 1} of {Math.ceil(total / pageSize)}
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setPageIndex((p) => Math.max(p - 1, 0))}
+              disabled={pageIndex === 0}
+            >
+              Previous
+            </button>
+            <button
+              className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() =>
+                setPageIndex((p) =>
+                  p + 1 < Math.ceil(total / pageSize) ? p + 1 : p
+                )
+              }
+              disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>
