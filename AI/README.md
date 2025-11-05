@@ -13,6 +13,11 @@ Create a `.env` file in this directory by copying `.env.example`:
     `
 Then, fill in the necessary values for the following variables in the newly created `.env` file: - `LLM_MODEL_CV`: Specify the LLM model for CV processing. - `LLM_BASE_URL_CV`: Base URL for the CV processing LLM. - `EMBEDDING_MODEL`: Specify the embedding model to be used. - `LLM_BASE_URL_ROSTER`: Base URL for the roster processing LLM. - `LLM_API_KEY`: API key for accessing the LLM services. - `MONGO_URI`: Connection string for the MongoDB database.
 
+## run without docker
+source venv/Scripts/activate
+
+uvicorn src.main:app --reload
+
 ## Makefile Commands
 
 The following `make` commands are available to manage the AI service:
