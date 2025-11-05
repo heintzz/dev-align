@@ -1,4 +1,4 @@
-name: Deploy Frontend
+name: Deploy Frontend to EC2
 
 on:
   push:
@@ -10,13 +10,13 @@ on:
 
 jobs:
   deploy-frontend:
-    name: Deploy Frontend to EC2
+    name: Deploy Frontend with Nginx
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Deploy to Frontend EC2
         uses: appleboy/ssh-action@master
         with:
@@ -24,49 +24,115 @@ jobs:
           username: ubuntu
           key: ${{ secrets.FRONTEND_SSH_KEY }}
           script: |
-            echo "🚀 Starting frontend deployment..."
+            echo "=========================================="
+            echo "🚀 Starting Frontend Deployment"
+            echo "=========================================="
             echo "📍 Frontend Server: 18.141.166.14"
-            
-            # Navigate to app directory
-            cd /var/www/frontend
-            
-            # Backup old version
+            echo ""
+
+            # Navigate to deployment directory
+            cd /var/www/frontend || exit 1
+
+            # Backup old version (if exists)
             if [ -d "DevAlign" ]; then
               echo "📦 Backing up current version..."
               rm -rf DevAlign-backup
-              mv DevAlign DevAlign-backup
+              cp -r DevAlign DevAlign-backup
+              echo "✅ Backup created"
             fi
-            
-            # Clone latest code
-            echo "📥 Cloning repository..."
-            git clone -b dev https://github.com/PentabyteDevAlign/DevAlign.git
-            
-            # Build frontend
-            echo "🔨 Building frontend..."
-            cd DevAlign/Frontend
-            
+
+            # Clone or pull latest code from dev branch
+            if [ -d "DevAlign" ]; then
+              echo "📥 Pulling latest changes from dev branch..."
+              cd DevAlign
+              git fetch origin dev
+              git reset --hard origin/dev
+              git pull origin dev
+            else
+              echo "📥 Cloning repository..."
+              git clone -b dev https://github.com/PentabyteDevAlign/DevAlign.git
+              cd DevAlign
+            fi
+
+            echo "✅ Code updated successfully"
+            echo ""
+
+            # Navigate to Frontend directory
+            cd Frontend
+
+            # Copy production environment file
+            echo "⚙️ Setting up production environment..."
+            if [ -f "/var/www/frontend/.env.production" ]; then
+              cp /var/www/frontend/.env.production .env.production
+              echo "✅ Production environment file copied"
+            else
+              echo "⚠️ Warning: .env.production not found, using default"
+            fi
+            echo ""
+
             # Install dependencies
+            echo "📦 Installing dependencies..."
             npm install
-            
-            # Build for production (will use .env.production)
+            echo "✅ Dependencies installed"
+            echo ""
+
+            # Build for production
+            echo "🔨 Building frontend for production..."
             npm run build
-            
+
             # Verify build was created
             if [ ! -d "dist" ]; then
               echo "❌ Build failed - dist folder not found!"
               exit 1
             fi
-            
-            echo "📂 Build complete - files in dist folder"
-            ls -la dist
-            
-            # Restart Nginx
-            echo "🔄 Restarting Nginx..."
-            sudo systemctl restart nginx
-            
+
+            echo "✅ Build complete"
+            echo ""
+
+            # Show build directory contents
+            echo "📂 Build output (dist/):"
+            ls -lh dist/ | head -10
+            echo ""
+
+            # Copy build to nginx serve directory
+            echo "📋 Deploying build to Nginx..."
+            sudo rm -rf /var/www/html/*
+            sudo cp -r dist/* /var/www/html/
+            echo "✅ Build deployed to /var/www/html/"
+            echo ""
+
+            # Set proper permissions
+            echo "🔐 Setting permissions..."
+            sudo chown -R www-data:www-data /var/www/html
+            sudo chmod -R 755 /var/www/html
+            echo "✅ Permissions set"
+            echo ""
+
+            # Test Nginx configuration
+            echo "🔍 Testing Nginx configuration..."
+            sudo nginx -t
+
+            # Reload Nginx
+            echo "🔄 Reloading Nginx..."
+            sudo systemctl reload nginx
+
             # Check Nginx status
-            sudo systemctl status nginx --no-pager | head -5
-            
-            echo "✅ Frontend deployment complete!"
-            echo "🌐 Frontend is live at: http://18.141.166.14"
-            echo "🔗 API calls will be proxied to: http://13.250.231.18:5000"
+            echo ""
+            echo "📊 Nginx Status:"
+            sudo systemctl status nginx --no-pager | head -10
+
+            echo ""
+            echo "=========================================="
+            echo "✅ Frontend Deployment Complete!"
+            echo "=========================================="
+            echo "🌐 Frontend URL: http://18.141.166.14"
+            echo "🔗 API Endpoint: http://13.250.231.18:5000"
+            echo ""
+            echo "📊 Check Nginx logs with:"
+            echo "   sudo tail -f /var/log/nginx/access.log"
+            echo "   sudo tail -f /var/log/nginx/error.log"
+            echo ""
+            echo "🔄 Manage Nginx with:"
+            echo "   sudo systemctl status nginx"
+            echo "   sudo systemctl restart nginx"
+            echo "=========================================="
