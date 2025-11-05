@@ -1,12 +1,6 @@
-const {
-  Project,
-  ProjectAssignment,
-  User,
-  Task,
-  TaskAssignment,
-} = require("../models");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
+const { Project, ProjectAssignment, User, Task, TaskAssignment } = require('../models');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 dotenv.config();
 
 // Task-related functions moved from project-task.controller.js
@@ -20,7 +14,7 @@ const createTask = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid project ID format",
+        error: 'Invalid project ID format',
       });
     }
 
@@ -34,8 +28,8 @@ const createTask = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "Only tech leads can create tasks",
+        error: 'Forbidden',
+        message: 'Only tech leads can create tasks',
       });
     }
 
@@ -45,7 +39,7 @@ const createTask = async (req, res) => {
       title,
       description,
       requiredSkills,
-      status: "todo",
+      status: 'todo',
       createdBy: userId,
     });
 
@@ -58,16 +52,14 @@ const createTask = async (req, res) => {
       });
 
       const validAssigneeIds = projectMembers.map((pm) => pm.userId.toString());
-      const invalidAssigneeIds = assigneeIds.filter(
-        (id) => !validAssigneeIds.includes(id)
-      );
+      const invalidAssigneeIds = assigneeIds.filter((id) => !validAssigneeIds.includes(id));
 
       if (invalidAssigneeIds.length > 0) {
         await Task.findByIdAndDelete(task._id);
         return res.status(400).json({
           success: false,
-          error: "Bad Request",
-          message: "Some assignees are not project members",
+          error: 'Bad Request',
+          message: 'Some assignees are not project members',
           invalidAssigneeIds,
         });
       }
@@ -83,12 +75,13 @@ const createTask = async (req, res) => {
 
     // Get populated task with assignees
     const populatedTask = await Task.findById(task._id)
-      .populate("requiredSkills", "name")
-      .populate("createdBy", "name email");
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
 
-    const taskAssignments = await TaskAssignment.find({
-      taskId: task._id,
-    }).populate("userId", "name email");
+    const taskAssignments = await TaskAssignment.find({ taskId: task._id }).populate(
+      'userId',
+      'name email'
+    );
 
     const response = {
       id: populatedTask._id,
@@ -122,7 +115,7 @@ const createTask = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -136,20 +129,20 @@ const getTaskDetails = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid task ID format",
+        error: 'Invalid task ID format',
       });
     }
 
     // Get task with project info
     const task = await Task.findById(taskId)
-      .populate("requiredSkills", "name")
-      .populate("createdBy", "name email");
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
 
     if (!task) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Task not found",
+        error: 'Not Found',
+        message: 'Task not found',
       });
     }
 
@@ -162,16 +155,13 @@ const getTaskDetails = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "You are not assigned to this project",
+        error: 'Forbidden',
+        message: 'You are not assigned to this project',
       });
     }
 
     // Get task assignees
-    const taskAssignments = await TaskAssignment.find({ taskId }).populate(
-      "userId",
-      "name email"
-    );
+    const taskAssignments = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     const response = {
       id: task._id,
@@ -205,7 +195,7 @@ const getTaskDetails = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -220,7 +210,7 @@ const updateTaskDetails = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid task ID format",
+        error: 'Invalid task ID format',
       });
     }
 
@@ -229,8 +219,8 @@ const updateTaskDetails = async (req, res) => {
     if (!task) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Task not found",
+        error: 'Not Found',
+        message: 'Task not found',
       });
     }
 
@@ -244,8 +234,8 @@ const updateTaskDetails = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "Only tech leads can update task details",
+        error: 'Forbidden',
+        message: 'Only tech leads can update task details',
       });
     }
 
@@ -259,14 +249,11 @@ const updateTaskDetails = async (req, res) => {
       },
       { new: true }
     )
-      .populate("requiredSkills", "name")
-      .populate("createdBy", "name email");
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
 
     // Get task assignees
-    const taskAssignments = await TaskAssignment.find({ taskId }).populate(
-      "userId",
-      "name email"
-    );
+    const taskAssignments = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     const response = {
       id: updatedTask._id,
@@ -300,7 +287,7 @@ const updateTaskDetails = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -314,7 +301,7 @@ const deleteTask = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid task ID format",
+        error: 'Invalid task ID format',
       });
     }
 
@@ -323,8 +310,8 @@ const deleteTask = async (req, res) => {
     if (!task) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Task not found",
+        error: 'Not Found',
+        message: 'Task not found',
       });
     }
 
@@ -338,8 +325,8 @@ const deleteTask = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "Only tech leads can delete tasks",
+        error: 'Forbidden',
+        message: 'Only tech leads can delete tasks',
       });
     }
 
@@ -353,7 +340,7 @@ const deleteTask = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -368,7 +355,7 @@ const assignUsersToTask = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid task ID format",
+        error: 'Invalid task ID format',
       });
     }
 
@@ -377,8 +364,8 @@ const assignUsersToTask = async (req, res) => {
     if (!task) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Task not found",
+        error: 'Not Found',
+        message: 'Task not found',
       });
     }
 
@@ -392,8 +379,8 @@ const assignUsersToTask = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "Only tech leads can assign users to tasks",
+        error: 'Forbidden',
+        message: 'Only tech leads can assign users to tasks',
       });
     }
 
@@ -409,8 +396,8 @@ const assignUsersToTask = async (req, res) => {
     if (invalidUserIds.length > 0) {
       return res.status(400).json({
         success: false,
-        error: "Bad Request",
-        message: "Some users are not project members",
+        error: 'Bad Request',
+        message: 'Some users are not project members',
         invalidUserIds,
       });
     }
@@ -424,10 +411,7 @@ const assignUsersToTask = async (req, res) => {
     );
 
     // Get updated task with assignees
-    const taskAssignments = await TaskAssignment.find({ taskId }).populate(
-      "userId",
-      "name email"
-    );
+    const taskAssignments = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     return res.json({
       success: true,
@@ -443,7 +427,7 @@ const assignUsersToTask = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -460,7 +444,7 @@ const removeUserFromTask = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        error: "Invalid ID format",
+        error: 'Invalid ID format',
       });
     }
 
@@ -469,8 +453,8 @@ const removeUserFromTask = async (req, res) => {
     if (!task) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Task not found",
+        error: 'Not Found',
+        message: 'Task not found',
       });
     }
 
@@ -484,8 +468,8 @@ const removeUserFromTask = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "Only tech leads can remove users from tasks",
+        error: 'Forbidden',
+        message: 'Only tech leads can remove users from tasks',
       });
     }
 
@@ -499,7 +483,7 @@ const removeUserFromTask = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -513,7 +497,7 @@ const getProjectTasks = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid project ID format",
+        error: 'Invalid project ID format',
       });
     }
 
@@ -522,21 +506,21 @@ const getProjectTasks = async (req, res) => {
     if (!assignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "You are not assigned to this project",
+        error: 'Forbidden',
+        message: 'You are not assigned to this project',
       });
     }
 
     // Get all tasks for the project
     const tasks = await Task.find({ projectId })
-      .populate("requiredSkills", "name")
-      .populate("createdBy", "name email")
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 
     // Get task assignments in one query
     const taskAssignments = await TaskAssignment.find({
       taskId: { $in: tasks.map((t) => t._id) },
-    }).populate("userId", "name email");
+    }).populate('userId', 'name email');
 
     // Map tasks with assignments
     const mappedTasks = tasks.map((task) => ({
@@ -573,7 +557,7 @@ const getProjectTasks = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -588,17 +572,17 @@ const updateTaskStatus = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid task ID format",
+        error: 'Invalid task ID format',
       });
     }
 
     // Get task with project info
-    const task = await Task.findById(taskId).select("projectId status");
+    const task = await Task.findById(taskId).select('projectId status');
     if (!task) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Task not found",
+        error: 'Not Found',
+        message: 'Task not found',
       });
     }
 
@@ -610,8 +594,8 @@ const updateTaskStatus = async (req, res) => {
     if (!projectAssignment) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "You are not assigned to this project",
+        error: 'Forbidden',
+        message: 'You are not assigned to this project',
       });
     }
 
@@ -620,22 +604,22 @@ const updateTaskStatus = async (req, res) => {
     if (!taskAssignment && !projectAssignment.isTechLead) {
       return res.status(403).json({
         success: false,
-        error: "Forbidden",
-        message: "You are not assigned to this task",
+        error: 'Forbidden',
+        message: 'You are not assigned to this task',
       });
     }
 
     // Validate status transition
     const validTransitions = {
-      todo: ["in_progress"],
-      in_progress: ["done", "todo"],
-      done: ["in_progress"],
+      todo: ['in_progress'],
+      in_progress: ['done', 'todo'],
+      done: ['in_progress'],
     };
 
     if (!validTransitions[task.status]?.includes(status)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid Status Transition",
+        error: 'Invalid Status Transition',
         message: `Cannot transition from ${task.status} to ${status}`,
         allowedTransitions: validTransitions[task.status],
       });
@@ -646,19 +630,16 @@ const updateTaskStatus = async (req, res) => {
       taskId,
       {
         status,
-        ...(status === "in_progress" ? { startDate: new Date() } : {}),
-        ...(status === "done" ? { endDate: new Date() } : {}),
+        ...(status === 'in_progress' ? { startDate: new Date() } : {}),
+        ...(status === 'done' ? { endDate: new Date() } : {}),
       },
       { new: true }
     )
-      .populate("requiredSkills", "name")
-      .populate("createdBy", "name email");
+      .populate('requiredSkills', 'name')
+      .populate('createdBy', 'name email');
 
     // Get task assignees
-    const assignees = await TaskAssignment.find({ taskId }).populate(
-      "userId",
-      "name email"
-    );
+    const assignees = await TaskAssignment.find({ taskId }).populate('userId', 'name email');
 
     // Format response
     const response = {
@@ -693,7 +674,7 @@ const updateTaskStatus = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -702,19 +683,19 @@ const updateTaskStatus = async (req, res) => {
 const createProject = async (req, res) => {
   const { name, description, startDate, deadline, teamMemberCount } = req.body;
 
-  if (!name || name.trim() === "") {
+  if (!name || name.trim() === '') {
     return res.status(400).json({
       success: false,
-      error: "Bad Request",
-      message: "Project name must be specified",
+      error: 'Bad Request',
+      message: 'Project name must be specified',
     });
   }
 
-  if (!description || description.trim() === "") {
+  if (!description || description.trim() === '') {
     return res.status(400).json({
       success: false,
-      error: "Bad Request",
-      message: "Project description must be specified",
+      error: 'Bad Request',
+      message: 'Project description must be specified',
     });
   }
 
@@ -722,15 +703,13 @@ const createProject = async (req, res) => {
     const projectData = {
       name,
       description,
-      status: "active", // Auto-set to active
+      status: 'active', // Auto-set to active
       createdBy: req.user.id, // Assuming user ID comes from auth middleware
     };
 
     if (startDate) projectData.startDate = startDate;
     if (deadline) projectData.deadline = deadline;
-    if (teamMemberCount !== undefined)
-      projectData.teamMemberCount = teamMemberCount;
-    if (Array.isArray(req.body.skills)) projectData.skills = req.body.skills;
+    if (teamMemberCount !== undefined) projectData.teamMemberCount = teamMemberCount;
 
     const project = await Project.create(projectData);
 
@@ -741,7 +720,7 @@ const createProject = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -756,19 +735,15 @@ const getProjects = async (req, res) => {
     const filter = {};
 
     // If user is a manager, only show their own projects
-    if (req.user.role === "manager") {
+    if (req.user.role === 'manager') {
       filter.createdBy = req.user.id;
     }
 
     // If user is staff, only show projects they are assigned to
-    if (req.user.role === "staff") {
+    if (req.user.role === 'staff') {
       // Find all project assignments for this staff member
-      const staffAssignments = await ProjectAssignment.find({
-        userId: req.user.id,
-      });
-      const projectIds = staffAssignments.map(
-        (assignment) => assignment.projectId
-      );
+      const staffAssignments = await ProjectAssignment.find({ userId: req.user.id });
+      const projectIds = staffAssignments.map((assignment) => assignment.projectId);
       filter._id = { $in: projectIds };
     }
 
@@ -778,7 +753,7 @@ const getProjects = async (req, res) => {
     }
 
     // Allow HR to filter by specific creator if needed
-    if (req.query.createdBy && req.user.role === "hr") {
+    if (req.query.createdBy && req.user.role === 'hr') {
       filter.createdBy = req.query.createdBy;
     }
 
@@ -788,9 +763,9 @@ const getProjects = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(perPage)
-        .populate("createdBy", "name email role")
+        .populate('createdBy', 'name email role')
         .select(
-          "name description status startDate deadline teamMemberCount createdBy createdAt updatedAt"
+          'name description status startDate deadline teamMemberCount createdBy createdAt updatedAt'
         ),
     ]);
 
@@ -806,7 +781,7 @@ const getProjects = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -835,9 +810,9 @@ const getAllProjects = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(perPage)
-        .populate("createdBy", "name email role")
+        .populate('createdBy', 'name email role')
         .select(
-          "name description status startDate deadline teamMemberCount createdBy createdAt updatedAt"
+          'name description status startDate deadline teamMemberCount createdBy createdAt updatedAt'
         ),
     ]);
 
@@ -853,7 +828,7 @@ const getAllProjects = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -863,15 +838,13 @@ const getProjectById = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId)
-      .populate("createdBy", "name email")
-      .populate("skills", "_id name");
+    const project = await Project.findById(projectId).populate('createdBy', 'name email');
 
     if (!project) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Project not found",
+        error: 'Not Found',
+        message: 'Project not found',
       });
     }
 
@@ -882,7 +855,7 @@ const getProjectById = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -893,27 +866,23 @@ const getProjectDetails = async (req, res) => {
     const { projectId } = req.params;
 
     // Get project details
-    const project = await Project.findById(projectId)
-      .populate("createdBy", "_id name email role")
-      .populate("skills", "_id name");
+    const project = await Project.findById(projectId).populate('createdBy', '_id name email role');
 
     if (!project) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Project not found",
+        error: 'Not Found',
+        message: 'Project not found',
       });
     }
 
     // Get all project assignments with user details and populate position
-    const assignments = await ProjectAssignment.find({
-      projectId: project._id,
-    }).populate({
-      path: "userId",
-      select: "_id name email role position",
+    const assignments = await ProjectAssignment.find({ projectId: project._id }).populate({
+      path: 'userId',
+      select: '_id name email role position',
       populate: {
-        path: "position",
-        select: "_id name",
+        path: 'position',
+        select: '_id name',
       },
     });
 
@@ -943,9 +912,6 @@ const getProjectDetails = async (req, res) => {
           startDate: project.startDate,
           deadline: project.deadline,
           teamMemberCount: project.teamMemberCount,
-          skills: project.skills
-            ? project.skills.map((s) => ({ _id: s._id, name: s.name }))
-            : [],
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
         },
@@ -972,7 +938,7 @@ const getProjectDetails = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -981,24 +947,16 @@ const getProjectDetails = async (req, res) => {
 const updateProject = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const {
-      name,
-      description,
-      status,
-      deadline,
-      addStaffIds,
-      removeStaffIds,
-      replaceStaffIds,
-      skills,
-    } = req.body;
+    const { name, description, status, deadline, addStaffIds, removeStaffIds, replaceStaffIds } =
+      req.body;
 
     const project = await Project.findById(projectId);
 
     if (!project) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Project not found",
+        error: 'Not Found',
+        message: 'Project not found',
       });
     }
 
@@ -1008,30 +966,17 @@ const updateProject = async (req, res) => {
     if (name !== undefined) project.name = name;
     if (description !== undefined) project.description = description;
     if (deadline !== undefined) project.deadline = deadline;
-    // Update project-level skills (replace)
-    if (skills !== undefined) {
-      if (!Array.isArray(skills)) {
-        return res.status(400).json({
-          success: false,
-          error: "Bad Request",
-          message: "Skills must be an array of skill IDs",
-        });
-      }
-      project.skills = skills;
-    }
 
     // Handle staff replacements (complete replacement of all staff)
     if (replaceStaffIds && Array.isArray(replaceStaffIds)) {
       // Verify all replacement staff exist
-      const replacementStaff = await User.find({
-        _id: { $in: replaceStaffIds },
-      });
+      const replacementStaff = await User.find({ _id: { $in: replaceStaffIds } });
 
       if (replacementStaff.length !== replaceStaffIds.length) {
         return res.status(404).json({
           success: false,
-          error: "Not Found",
-          message: "One or more replacement staff members not found",
+          error: 'Not Found',
+          message: 'One or more replacement staff members not found',
         });
       }
 
@@ -1048,27 +993,23 @@ const updateProject = async (req, res) => {
         await ProjectAssignment.create({
           projectId: project._id,
           userId: staffMember._id,
-          isTechLead: staffMember.role === "manager",
+          isTechLead: staffMember.role === 'manager',
         });
       }
 
       project.teamMemberCount = replaceStaffIds.length + 1; // +1 for manager
-      messages.push(
-        `All staff replaced with ${replaceStaffIds.length} new members`
-      );
+      messages.push(`All staff replaced with ${replaceStaffIds.length} new members`);
     } else {
       // Handle individual staff additions
       if (addStaffIds && Array.isArray(addStaffIds) && addStaffIds.length > 0) {
-        const {
-          sendNotification,
-        } = require("../services/notification.service");
+        const { sendNotification } = require('../services/notification.service');
         const staffToAdd = await User.find({ _id: { $in: addStaffIds } });
 
         if (staffToAdd.length !== addStaffIds.length) {
           return res.status(404).json({
             success: false,
-            error: "Not Found",
-            message: "One or more staff members to add not found",
+            error: 'Not Found',
+            message: 'One or more staff members to add not found',
           });
         }
 
@@ -1078,26 +1019,22 @@ const updateProject = async (req, res) => {
           userId: { $in: addStaffIds },
         });
 
-        const existingUserIds = existingAssignments.map((a) =>
-          a.userId.toString()
-        );
-        const newStaff = staffToAdd.filter(
-          (s) => !existingUserIds.includes(s._id.toString())
-        );
+        const existingUserIds = existingAssignments.map((a) => a.userId.toString());
+        const newStaff = staffToAdd.filter((s) => !existingUserIds.includes(s._id.toString()));
 
         for (const staffMember of newStaff) {
           await ProjectAssignment.create({
             projectId: project._id,
             userId: staffMember._id,
-            isTechLead: staffMember.role === "manager",
+            isTechLead: staffMember.role === 'manager',
           });
 
           // Notify the staff member about assignment
           await sendNotification({
             user: staffMember,
-            title: "Added to Project",
+            title: 'Added to Project',
             message: `You have been added to the project "${project.name}".`,
-            type: "announcement",
+            type: 'announcement',
             relatedProject: project._id,
           });
         }
@@ -1107,14 +1044,8 @@ const updateProject = async (req, res) => {
       }
 
       // Handle staff removals
-      if (
-        removeStaffIds &&
-        Array.isArray(removeStaffIds) &&
-        removeStaffIds.length > 0
-      ) {
-        const {
-          sendNotification,
-        } = require("../services/notification.service");
+      if (removeStaffIds && Array.isArray(removeStaffIds) && removeStaffIds.length > 0) {
+        const { sendNotification } = require('../services/notification.service');
 
         // Get staff details before removal for notifications
         const removedStaff = await User.find({ _id: { $in: removeStaffIds } });
@@ -1137,50 +1068,39 @@ const updateProject = async (req, res) => {
         for (const staffMember of removedStaff) {
           await sendNotification({
             user: staffMember,
-            title: "Removed from Project",
+            title: 'Removed from Project',
             message: `You have been removed from the project "${project.name}".`,
-            type: "announcement",
+            type: 'announcement',
             relatedProject: project._id,
           });
         }
 
-        project.teamMemberCount = Math.max(
-          1,
-          project.teamMemberCount - removeResult.deletedCount
-        );
-        messages.push(
-          `Removed ${removeResult.deletedCount} staff members from project and tasks`
-        );
+        project.teamMemberCount = Math.max(1, project.teamMemberCount - removeResult.deletedCount);
+        messages.push(`Removed ${removeResult.deletedCount} staff members from project and tasks`);
       }
     }
 
     // Handle status change to 'completed' - transfer skills to users
-    if (
-      status !== undefined &&
-      status === "completed" &&
-      project.status === "active"
-    ) {
-      const { sendNotification } = require("../services/notification.service");
+    if (status !== undefined && status === 'completed' && project.status === 'active') {
+      const { sendNotification } = require('../services/notification.service');
 
       // Get all tasks for this project (only in_progress or done - exclude todo)
       const tasks = await Task.find({
         projectId: project._id,
-        status: { $in: ["in_progress", "done"] },
-      }).populate("requiredSkills");
+        status: { $in: ['in_progress', 'done'] },
+      }).populate('requiredSkills');
 
       // Get all task assignments for these tasks
       const taskIds = tasks.map((task) => task._id);
-      const taskAssignments = await TaskAssignment.find({
-        taskId: { $in: taskIds },
-      }).populate("userId");
+      const taskAssignments = await TaskAssignment.find({ taskId: { $in: taskIds } }).populate(
+        'userId'
+      );
 
       // Map of userId to set of skill IDs
       const userSkillsMap = new Map();
 
       for (const assignment of taskAssignments) {
-        const task = tasks.find(
-          (t) => t._id.toString() === assignment.taskId.toString()
-        );
+        const task = tasks.find((t) => t._id.toString() === assignment.taskId.toString());
         if (task && task.requiredSkills && task.requiredSkills.length > 0) {
           const userId = assignment.userId._id.toString();
 
@@ -1188,10 +1108,7 @@ const updateProject = async (req, res) => {
             // Get user's existing skills
             const user = await User.findById(userId);
             const existingSkills = user.skills || [];
-            userSkillsMap.set(
-              userId,
-              new Set(existingSkills.map((s) => s.toString()))
-            );
+            userSkillsMap.set(userId, new Set(existingSkills.map((s) => s.toString())));
           }
 
           // Add task's required skills to user's skill set (Set prevents duplicates)
@@ -1210,42 +1127,55 @@ const updateProject = async (req, res) => {
         usersUpdated++;
       }
 
-      project.status = "completed";
+      project.status = 'completed';
       messages.push(
         `Project completed. Transferred skills from ${tasks.length} task(s) to ${usersUpdated} user(s)`
       );
 
       // Notify all team members about project completion
-      const teamAssignments = await ProjectAssignment.find({
-        projectId: project._id,
-      }).populate("userId", "name email");
+      const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate(
+        'userId',
+        'name email'
+      );
       for (const assignment of teamAssignments) {
         await sendNotification({
           user: assignment.userId,
-          title: "Project Completed",
+          title: 'Project Completed',
           message: `The project "${project.name}" has been marked as completed. Your task skills have been transferred to your profile.`,
-          type: "announcement",
+          type: 'announcement',
           relatedProject: project._id,
         });
       }
 
       // Notify HR about project completion
-      const hrUsers = await User.find({ role: "hr" });
+      const hrUsers = await User.find({ role: 'hr' });
       for (const hrUser of hrUsers) {
         await sendNotification({
           user: hrUser,
-          title: "Project Completed",
+          title: 'Project Completed',
           message: `The project "${project.name}" has been completed. Skills from ${tasks.length} task(s) have been transferred to ${usersUpdated} team member(s).`,
-          type: "announcement",
+          type: 'announcement',
           relatedProject: project._id,
         });
       }
+    } else if (status !== undefined) {
+      project.status = status;
+    }
 
+    await project.save();
+
+    // Get updated project with populated data
+    const updatedProject = await Project.findById(project._id).populate(
+      'createdBy',
+      'name email role'
+    );
+
+    if (project.status == 'completed') {
       try {
-        await fetch(`${process.env.BASE_AI_URL}/project-embeddings`, {
-          method: "POST",
+        const response = await fetch(`${process.env.BASE_AI_URL}/project-embeddings`, {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             project_id: project._id,
@@ -1254,19 +1184,19 @@ const updateProject = async (req, res) => {
         const result = await response.json();
         console.log(result);
       } catch (error) {
-        console.error("⚠️ Failed to generate project embeddings:", error);
+        console.error('⚠️ Failed to generate project embeddings:', error);
       }
     }
 
     return res.status(200).json({
       success: true,
       data: updatedProject,
-      message: messages.join(". "),
+      message: messages.join('. '),
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -1275,29 +1205,27 @@ const updateProject = async (req, res) => {
 const deleteProject = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { sendNotification } = require("../services/notification.service");
+    const { sendNotification } = require('../services/notification.service');
 
-    const project = await Project.findById(projectId).populate(
-      "createdBy",
-      "name email"
-    );
+    const project = await Project.findById(projectId).populate('createdBy', 'name email');
 
     if (!project) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Project not found",
+        error: 'Not Found',
+        message: 'Project not found',
       });
     }
 
     // Get all team members before deletion to send notifications
-    const teamAssignments = await ProjectAssignment.find({
-      projectId: project._id,
-    }).populate("userId", "name email");
+    const teamAssignments = await ProjectAssignment.find({ projectId: project._id }).populate(
+      'userId',
+      'name email'
+    );
     const teamMembers = teamAssignments.map((a) => a.userId);
 
     // Get HR users
-    const hrUsers = await User.find({ role: "hr" });
+    const hrUsers = await User.find({ role: 'hr' });
 
     // Cascade delete: Find all tasks for this project
     const tasks = await Task.find({ projectId: project._id });
@@ -1313,7 +1241,7 @@ const deleteProject = async (req, res) => {
     await ProjectAssignment.deleteMany({ projectId: project._id });
 
     // Delete all borrow requests related to this project
-    const { BorrowRequest } = require("../models");
+    const { BorrowRequest } = require('../models');
     await BorrowRequest.deleteMany({ projectId: project._id });
 
     // Delete the project itself
@@ -1323,9 +1251,9 @@ const deleteProject = async (req, res) => {
     for (const member of teamMembers) {
       await sendNotification({
         user: member,
-        title: "Project Deleted",
+        title: 'Project Deleted',
         message: `The project "${project.name}" has been deleted by ${project.createdBy.name}. All associated tasks and assignments have been removed.`,
-        type: "announcement",
+        type: 'announcement',
         relatedProject: null, // Project is deleted, so no reference
       });
     }
@@ -1334,9 +1262,9 @@ const deleteProject = async (req, res) => {
     for (const hrUser of hrUsers) {
       await sendNotification({
         user: hrUser,
-        title: "Project Deleted",
+        title: 'Project Deleted',
         message: `The project "${project.name}" created by ${project.createdBy.name} has been deleted. ${teamMembers.length} team member(s) were affected.`,
-        type: "announcement",
+        type: 'announcement',
         relatedProject: null,
       });
     }
@@ -1345,7 +1273,7 @@ const deleteProject = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -1353,46 +1281,43 @@ const deleteProject = async (req, res) => {
 
 const createProjectWithAssignments = async (req, res) => {
   const { name, description, startDate, deadline, staffIds } = req.body;
-  const { sendNotification } = require("../services/notification.service");
-  const { BorrowRequest } = require("../models");
+  const { sendNotification } = require('../services/notification.service');
+  const { BorrowRequest } = require('../models');
 
   // Validation
-  if (!name || name.trim() === "") {
+  if (!name || name.trim() === '') {
     return res.status(400).json({
       success: false,
-      error: "Bad Request",
-      message: "Project name must be specified",
+      error: 'Bad Request',
+      message: 'Project name must be specified',
     });
   }
 
-  if (!description || description.trim() === "") {
+  if (!description || description.trim() === '') {
     return res.status(400).json({
       success: false,
-      error: "Bad Request",
-      message: "Project description must be specified",
+      error: 'Bad Request',
+      message: 'Project description must be specified',
     });
   }
 
   if (!staffIds || !Array.isArray(staffIds) || staffIds.length === 0) {
     return res.status(400).json({
       success: false,
-      error: "Bad Request",
-      message: "At least one staff member must be assigned to the project",
+      error: 'Bad Request',
+      message: 'At least one staff member must be assigned to the project',
     });
   }
 
   try {
     // Verify all staff members exist and get their data
-    const staff = await User.find({ _id: { $in: staffIds } }).populate(
-      "managerId",
-      "name email"
-    );
+    const staff = await User.find({ _id: { $in: staffIds } }).populate('managerId', 'name email');
 
     if (staff.length !== staffIds.length) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "One or more staff members not found",
+        error: 'Not Found',
+        message: 'One or more staff members not found',
       });
     }
 
@@ -1403,7 +1328,7 @@ const createProjectWithAssignments = async (req, res) => {
     const projectData = {
       name,
       description,
-      status: "active", // Auto-set to active
+      status: 'active', // Auto-set to active
       createdBy: req.user.id,
       teamMemberCount: 1, // Start with just manager, will increment as staff are approved
     };
@@ -1426,10 +1351,7 @@ const createProjectWithAssignments = async (req, res) => {
 
     for (const staffMember of staff) {
       // Check if this staff is a direct subordinate (managerId matches creator's ID)
-      if (
-        staffMember.managerId &&
-        staffMember.managerId._id.toString() === req.user.id
-      ) {
+      if (staffMember.managerId && staffMember.managerId._id.toString() === req.user.id) {
         ownStaff.push(staffMember);
       } else {
         needApprovalStaff.push(staffMember);
@@ -1442,7 +1364,7 @@ const createProjectWithAssignments = async (req, res) => {
       const assignmentData = {
         projectId: project._id,
         userId: staffMember._id,
-        isTechLead: staffMember.role === "manager",
+        isTechLead: staffMember.role === 'manager',
       };
 
       const assignment = await ProjectAssignment.create(assignmentData);
@@ -1451,9 +1373,9 @@ const createProjectWithAssignments = async (req, res) => {
       // Notify staff about assignment
       await sendNotification({
         user: staffMember,
-        title: "New Project Assignment",
+        title: 'New Project Assignment',
         message: `You have been assigned to the project "${name}". Your manager ${projectCreator.name} has created this project.`,
-        type: "announcement",
+        type: 'announcement',
         relatedProject: project._id,
       });
     }
@@ -1483,9 +1405,9 @@ const createProjectWithAssignments = async (req, res) => {
       // Notify the staff's manager about approval request
       await sendNotification({
         user: staffMember.managerId,
-        title: "Staff Assignment Approval Required",
+        title: 'Staff Assignment Approval Required',
         message: `${projectCreator.name} wants to assign your team member ${staffMember.name} to the project "${name}". Please review and respond to this request.`,
-        type: "project_approval",
+        type: 'project_approval',
         relatedProject: project._id,
         relatedBorrowRequest: borrowRequest._id,
       });
@@ -1493,44 +1415,45 @@ const createProjectWithAssignments = async (req, res) => {
       // Notify the staff that they're pending approval
       await sendNotification({
         user: staffMember,
-        title: "Pending Project Assignment",
+        title: 'Pending Project Assignment',
         message: `You have been nominated for the project "${name}" by ${projectCreator.name}. Waiting for approval from your manager.`,
-        type: "announcement",
+        type: 'announcement',
         relatedProject: project._id,
       });
     }
 
     // Get HR users to notify
-    const hrUsers = await User.find({ role: "hr" });
+    const hrUsers = await User.find({ role: 'hr' });
 
     // Notify HR about new project
     for (const hrUser of hrUsers) {
       await sendNotification({
         user: hrUser,
-        title: "New Project Created",
+        title: 'New Project Created',
         message: `${projectCreator.name} has created a new project: "${name}". ${ownStaff.length} staff member(s) assigned, ${needApprovalStaff.length} pending approval.`,
-        type: "announcement",
+        type: 'announcement',
         relatedProject: project._id,
       });
     }
 
     // Populate project and assignments for response
-    const populatedProject = await Project.findById(project._id)
-      .populate("createdBy", "name email role")
-      .populate("skills", "_id name");
+    const populatedProject = await Project.findById(project._id).populate(
+      'createdBy',
+      'name email role'
+    );
 
     const populatedAssignments = await ProjectAssignment.find({
       projectId: project._id,
     })
       .populate({
-        path: "userId",
-        select: "name email role position",
+        path: 'userId',
+        select: 'name email role position',
         populate: {
-          path: "position",
-          select: "_id name",
+          path: 'position',
+          select: '_id name',
         },
       })
-      .populate("projectId", "name description status");
+      .populate('projectId', 'name description status');
 
     return res.status(201).json({
       success: true,
@@ -1544,7 +1467,7 @@ const createProjectWithAssignments = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -1559,16 +1482,16 @@ const assignTechLead = async (req, res) => {
     if (!staffId) {
       return res.status(400).json({
         success: false,
-        error: "Bad Request",
-        message: "Staff ID must be specified",
+        error: 'Bad Request',
+        message: 'Staff ID must be specified',
       });
     }
 
-    if (typeof isTechLead !== "boolean") {
+    if (typeof isTechLead !== 'boolean') {
       return res.status(400).json({
         success: false,
-        error: "Bad Request",
-        message: "isTechLead must be a boolean value",
+        error: 'Bad Request',
+        message: 'isTechLead must be a boolean value',
       });
     }
 
@@ -1578,8 +1501,8 @@ const assignTechLead = async (req, res) => {
     if (!project) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Project not found",
+        error: 'Not Found',
+        message: 'Project not found',
       });
     }
 
@@ -1587,23 +1510,22 @@ const assignTechLead = async (req, res) => {
     const staffAssignment = await ProjectAssignment.findOne({
       projectId: project._id,
       userId: staffId,
-    }).populate("userId", "role");
+    }).populate('userId', 'role');
 
     if (!staffAssignment) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Staff is not assigned to this project",
+        error: 'Not Found',
+        message: 'Staff is not assigned to this project',
       });
     }
 
     // Prevent changing tech lead status of managers
-    if (staffAssignment.userId.role === "manager") {
+    if (staffAssignment.userId.role === 'manager') {
       return res.status(400).json({
         success: false,
-        error: "Bad Request",
-        message:
-          "Cannot change tech lead status of a manager. Managers are always tech leads.",
+        error: 'Bad Request',
+        message: 'Cannot change tech lead status of a manager. Managers are always tech leads.',
       });
     }
 
@@ -1612,20 +1534,19 @@ const assignTechLead = async (req, res) => {
       // Count current tech leads (excluding managers)
       const allAssignments = await ProjectAssignment.find({
         projectId: project._id,
-      }).populate("userId", "role");
+      }).populate('userId', 'role');
 
       const currentTechLeads = allAssignments.filter(
-        (assignment) =>
-          assignment.isTechLead === true && assignment.userId.role !== "manager"
+        (assignment) => assignment.isTechLead === true && assignment.userId.role !== 'manager'
       );
 
       // Maximum 1 staff can be tech lead (manager is always tech lead, so max 2 total)
       if (currentTechLeads.length >= 1) {
         return res.status(400).json({
           success: false,
-          error: "Bad Request",
+          error: 'Bad Request',
           message:
-            "Maximum tech lead limit reached. A project can have maximum 2 tech leads (1 manager + 1 staff). Please remove existing staff tech lead first.",
+            'Maximum tech lead limit reached. A project can have maximum 2 tech leads (1 manager + 1 staff). Please remove existing staff tech lead first.',
         });
       }
     }
@@ -1635,30 +1556,28 @@ const assignTechLead = async (req, res) => {
     await staffAssignment.save();
 
     // Get updated assignment with populated data
-    const updatedAssignment = await ProjectAssignment.findById(
-      staffAssignment._id
-    )
+    const updatedAssignment = await ProjectAssignment.findById(staffAssignment._id)
       .populate({
-        path: "userId",
-        select: "name email role position",
+        path: 'userId',
+        select: 'name email role position',
         populate: {
-          path: "position",
-          select: "_id name",
+          path: 'position',
+          select: '_id name',
         },
       })
-      .populate("projectId", "name description status");
+      .populate('projectId', 'name description status');
 
     return res.status(200).json({
       success: true,
       data: updatedAssignment,
       message: isTechLead
-        ? "Staff successfully assigned as tech lead"
-        : "Tech lead status removed from staff",
+        ? 'Staff successfully assigned as tech lead'
+        : 'Tech lead status removed from staff',
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
@@ -1675,8 +1594,8 @@ const getProjectStaff = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return res.status(400).json({
         success: false,
-        error: "Bad Request",
-        message: "Invalid project ID format",
+        error: 'Bad Request',
+        message: 'Invalid project ID format',
       });
     }
 
@@ -1685,15 +1604,15 @@ const getProjectStaff = async (req, res) => {
     if (!project) {
       return res.status(404).json({
         success: false,
-        error: "Not Found",
-        message: "Project not found",
+        error: 'Not Found',
+        message: 'Project not found',
       });
     }
 
     // Get all project assignments with user details
     const assignments = await ProjectAssignment.find({ projectId })
-      .populate("userId", "_id name email role")
-      .sort({ "userId.name": 1 });
+      .populate('userId', '_id name email role')
+      .sort({ 'userId.name': 1 });
 
     // Format response with just id and name
     const staff = assignments.map((assignment) => ({
@@ -1716,7 +1635,7 @@ const getProjectStaff = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: "Internal Server Error",
+      error: 'Internal Server Error',
       message: err.message,
     });
   }
