@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -9,96 +9,70 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { getDashboardStats, getEmployeesList } from "../../services/dashboard.service";
 
 export default function HRDashboard() {
   const [timeFilter, setTimeFilter] = useState("This Month");
+  const [dashboardData, setDashboardData] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [dashResponse, empResponse] = await Promise.all([
+          getDashboardStats(),
+          getEmployeesList({ page: 1, limit: 10 })
+        ]);
+        
+        console.log('Dashboard data:', dashResponse.data);
+        setDashboardData(dashResponse.data);
+        setEmployees(empResponse.data.map(emp => ({
+          name: emp.name,
+          position: emp.position?.name || emp.position || '-',
+          manager: emp.manager?.name || '-',
+          projects: emp.projectCount || 0,
+          status: emp.projectCount >= 7 ? 'busy' : emp.projectCount === 0 ? 'available' : 'moderate'
+        })));
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   // Data untuk statistik cards
-  const stats = [
+  const stats = dashboardData ? [
     {
       title: "Total Employees",
-      value: 856,
-      change: "+10.0%",
+      value: dashboardData.statistics.totalEmployees.count,
       trend: "up",
       subtitle: "Employee",
     },
     {
       title: "Resigned Employees",
-      value: 17,
-      change: "-7.0%",
+      value: dashboardData.statistics.resignedEmployees.count,
       trend: "down",
       subtitle: "Employee",
     },
-    {
-      title: "Overallocated Employees",
-      value: 17,
-      change: "",
-      trend: "",
-      subtitle: "Employee",
-    },
-  ];
+  ] : [];
 
   // Data untuk chart project statistic
-  const projectData = [
-    { status: "Completed", count: 45, color: "#3b82f6" },
-    { status: "In Progress", count: 28, color: "#10b981" },
-    { status: "On Hold", count: 15, color: "#f59e0b" },
-    { status: "Rejected", count: 8, color: "#ef4444" },
-  ];
+  const projectData = dashboardData ? [
+    { status: "Completed", count: dashboardData.projectStatistics.completed || 0, color: "#3b82f6" },
+    { status: "In Progress", count: dashboardData.projectStatistics.in_progress || dashboardData.projectStatistics.inProgress || 5, color: "#10b981" },
+  ] : [];
 
   // Data untuk top contributors
-  const topContributors = [
-    {
-      name: "Robert Yuya",
-      position: "Fullstack Developer",
-      projects: 6,
-      avatar: "RY",
-    },
-    { name: "Renaldo", position: "Project Manager", projects: 5, avatar: "R" },
-    {
-      name: "Purbaya Ferry",
-      position: "Project Manager",
-      projects: 6,
-      avatar: "PF",
-    },
-    {
-      name: "Smith Armstrong",
-      position: "Backend Developer",
-      projects: 4,
-      avatar: "SA",
-    },
-    {
-      name: "Deo Abraham",
-      position: "Frontend Developer",
-      projects: 3,
-      avatar: "DA",
-    },
-  ];
-
-  // Data untuk employee status table
-  const employees = [
-    {
-      name: "Markus Kulcane",
-      position: "Frontend",
-      manager: "Leo Stanton",
-      projects: 0,
-      status: "available",
-    },
-    {
-      name: "Marcus Culhane",
-      position: "Backend",
-      manager: "Purbaya",
-      projects: 7,
-      status: "busy",
-    },
-    {
-      name: "Leo Stanton",
-      position: "Project Manager",
-      manager: "Leo Stanton",
-      projects: 3,
-      status: "moderate",
-    },
-  ];
+  const topContributors = dashboardData ? dashboardData.topContributors.map(tc => ({
+    name: tc.name,
+    position: tc.position || '-',
+    projects: tc.doneCount,
+    avatar: tc.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+  })) : [];
 
   const getProjectColor = (projects) => {
     if (projects === 0) return "bg-green-100 text-green-800";
@@ -109,7 +83,7 @@ export default function HRDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
