@@ -1242,6 +1242,8 @@ const updateProject = async (req, res) => {
       }
 
       try {
+        console.log(process.env.BASE_AI_URL);
+        console.log(project.status);
         await fetch(`${process.env.BASE_AI_URL}/project-embeddings`, {
           method: "POST",
           headers: {
