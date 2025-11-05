@@ -26,7 +26,6 @@ export default function PMDashboard() {
     { 
       title: "Total Projects", 
       value: dashboardData.data.statistics.totalProjects || 0,
-      change: "+10.0%",
       subtitle: "Projects" 
     },
     { 
