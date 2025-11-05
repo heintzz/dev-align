@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class CandidateModel(BaseModel):
     """Model to represent a candidate with relevant metrics."""
+    _id: str
     name: str
     position: str
     skills: List[str]

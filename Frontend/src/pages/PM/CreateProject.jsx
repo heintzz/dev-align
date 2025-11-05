@@ -11,12 +11,19 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Loading from "@/components/Loading";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CircleCheckBig } from "lucide-react";
+import { toast } from "@/lib/toast";
+import api from "@/api/axios";
 
 export default function CreateProject() {
   const navigate = useNavigate();
@@ -43,9 +50,17 @@ export default function CreateProject() {
 
   // Recommendations state
   const [employees, setEmployees] = useState([]);
+  const [manualEmployees, setManualEmployees] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [manualMeta, setManualMeta] = useState({
+    page: 1,
+    total: 0,
+    limit: 10,
+  });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Fetch positions from database
   useEffect(() => {
@@ -74,6 +89,13 @@ export default function CreateProject() {
   const handleAddPosition = () => {
     if (positionInput && quantityInput > 0) {
       const position = positions.find((p) => p._id === positionInput);
+      if (quantityInput > position.userCount) {
+        toast("Quantity can't exceed the available position", {
+          type: "error",
+          position: "top-center",
+        });
+        return;
+      }
       if (position) {
         setTeamPositions([
           ...teamPositions,
@@ -93,10 +115,7 @@ export default function CreateProject() {
     setLoadingState(true);
     setLoadingText("Getting The Best Staff...");
     setIsGenerating(true);
-    setEmployees([]); // Clear previous results
-
     try {
-      // Validate required fields
       if (!formData.projectDescription.trim()) {
         throw new Error(
           "Project description is required for AI recommendations"
@@ -106,10 +125,10 @@ export default function CreateProject() {
       if (teamPositions.length === 0) {
         throw new Error("At least one position must be specified");
       }
-
       console.log("Starting team recommendation generation...");
+      setEmployees([]); // Clear previous results
 
-      // Format request data for AI endpoint
+      // ✅ Prepare the data for backend AI
       const requestData = {
         description: formData.projectDescription,
         positions: teamPositions.map((p) => ({
@@ -121,49 +140,22 @@ export default function CreateProject() {
 
       console.log("Request data:", requestData);
 
-      console.log("Calling AI recommendation endpoint...");
+      // ✅ Call AI service
       const response = await projectService.getTeamRecommendations(requestData);
-
       console.log("AI Response:", response);
 
-      if (!response || !response.data) {
+      if (!response?.data) {
         throw new Error("Invalid response from AI service");
       }
 
-      // Transform AI recommendations (grouped by position) into flat array
-      // and try to resolve each candidate to a real user ID from backend employees
-      console.log("Fetching employee list for matching...");
-      let backendEmployees = [];
-      try {
-        backendEmployees = await projectService.getAllEmployees();
-        console.log("Backend employees:", backendEmployees);
-      } catch (err) {
-        console.warn("Could not fetch full employee list:", err);
-      }
-
-      const backendMap = new Map();
-      backendEmployees.forEach((emp) => {
-        const key = `${(emp.name || "").toLowerCase()}|${(
-          (emp.position && emp.position.name) ||
-          ""
-        ).toLowerCase()}`;
-        backendMap.set(key, emp._id || emp.id || emp.id);
-      });
-
-      const transformedEmployees = [];
-      Object.entries(response.data).forEach(([positionName, candidates]) => {
-        candidates.forEach((candidate) => {
-          const normalizedKey = `${(candidate.name || "").toLowerCase()}|${(
-            positionName || ""
-          ).toLowerCase()}`;
-
-          const resolvedId = backendMap.get(normalizedKey) || null;
-
-          transformedEmployees.push({
-            _id: resolvedId || candidate._id || `temp_${Math.random()}`, // prefer real ID
+      // ✅ Directly transform AI data (no need to fetch backend employees)
+      const transformedEmployees = Object.entries(response.data).flatMap(
+        ([positionName, candidates]) =>
+          candidates.map((candidate, index) => ({
+            _id: candidate._id,
             name: candidate.name,
             position: { name: positionName },
-            skills: (candidate.skills || []).map((skill) => ({ name: skill })),
+            skills: (candidate.skills || []).map((s) => ({ name: s })),
             currentWorkload: Math.round(
               (1 - (candidate.currentWorkload || 0)) * 100
             ),
@@ -176,38 +168,26 @@ export default function CreateProject() {
             matchingPercentage: Math.round(
               (candidate.matchingPercentage || 0) * 100
             ),
-            aiRank: candidate.rank,
+            aiRank: candidate.rank ?? index + 1,
             aiReason: candidate.reason,
-            isResolved: !!resolvedId,
-          });
-        });
-      });
+            isResolved: true, // we trust AI data as source of truth now
+          }))
+      );
 
       setEmployees(transformedEmployees);
     } catch (error) {
       console.error("Error generating recommendations:", error);
-      if (error.response) {
-        console.error("Error response:", error.response);
-        console.error("Error data:", error.response.data);
-        alert(
-          `Error: ${
-            error.response.data?.message ||
-            error.message ||
-            "Failed to generate recommendations"
-          }`
-        );
-      } else if (error.request) {
-        console.error("No response received:", error.request);
-        toast("The best fit employee has been retrieved", {
-          icon: <CircleCheckBig className="w-5 h-5 text-white" />,
-          type: "success",
-          position: "top-center",
-          duration: 5000,
-        });
-      } else {
-        console.error("Error:", error.message);
-        alert(error.message || "Failed to generate recommendations");
-      }
+
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to generate recommendations";
+
+      toast(message, {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setIsGenerating(false);
       setLoadingState(false);
@@ -215,41 +195,75 @@ export default function CreateProject() {
     }
   };
 
+  const getManualTeams = async (page = 1) => {
+    setLoadingState(true);
+    setLoadingText("Getting The Best Staff...");
+
+    try {
+      const params = {
+        page,
+        limit: manualMeta.limit,
+        active: "true",
+        role: "staff",
+      };
+
+      const { data } = await api.get("/hr/employees", { params });
+
+      const transformed = data.data.map((emp) => {
+        let workload;
+        if (emp.projectCount === 0) workload = 1.0;
+        else if (emp.projectCount >= 5) workload = 0.0;
+        else workload = 1.0 - emp.projectCount * 0.2;
+
+        return {
+          _id: emp.id || emp._id,
+          name: emp.name,
+          position: { name: emp.position?.name || "Unknown" },
+          skills: (emp.skills || []).map((s) => ({ name: s.name })),
+          currentWorkload: Math.round((1 - workload) * 100),
+          availability:
+            workload > 0.7
+              ? "Unavailable"
+              : workload > 0.3
+              ? "Partially Available"
+              : "Available",
+          matchingPercentage: 0,
+          aiRank: null,
+          aiReason: null,
+          email: emp.email,
+          phoneNumber: emp.phoneNumber,
+        };
+      });
+
+      setManualEmployees(transformed);
+      setManualMeta(data.meta);
+    } catch (error) {
+      console.error("Error fetching staff:", error);
+      toast(error.response?.data?.message || "Failed to get staff", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setIsLoadingMore(false);
+      setLoadingText("");
+    }
+  };
+
   const handleCheckboxClick = (e, employeeId) => {
-    // e.stopPropagation() mencegah event click naik ke <div> parent
     e.stopPropagation();
-    // Panggil fungsi toggle yang sudah ada
     handleToggleEmployee(employeeId);
   };
 
   const handleToggleEmployee = (employeeId) => {
+    console.log(selectedEmployees);
+    console.log(employeeId);
     if (selectedEmployees.includes(employeeId)) {
       setSelectedEmployees(selectedEmployees.filter((id) => id !== employeeId));
     } else {
       setSelectedEmployees([...selectedEmployees, employeeId]);
     }
-  };
-
-  const handleAutoAssignBestTeam = () => {
-    // Group employees by position
-    const employeesByPosition = employees.reduce((acc, emp) => {
-      const pos = emp.position.name;
-      if (!acc[pos]) acc[pos] = [];
-      acc[pos].push(emp);
-      return acc;
-    }, {});
-
-    // For each position, select the top N employees based on rank
-    const newSelectedEmployees = teamPositions.flatMap((pos) => {
-      const positionEmployees = employeesByPosition[pos.name] || [];
-      // Sort by AI rank (lower is better) and take required quantity
-      return positionEmployees
-        .sort((a, b) => (a.aiRank || Infinity) - (b.aiRank || Infinity))
-        .slice(0, pos.quantity)
-        .map((e) => e._id);
-    });
-
-    setSelectedEmployees(newSelectedEmployees);
   };
 
   const handleSubmit = async () => {
@@ -275,8 +289,10 @@ export default function CreateProject() {
 
     try {
       // Ensure all selected employees are resolved to real user IDs
+      console.log(selectedEmployees);
       const unresolved = selectedEmployees.filter((id) => {
-        const emp = employees.find((e) => e._id === id);
+        const emp = manualEmployees.find((e) => e._id === id);
+        console.log(emp);
         return !emp || emp.isResolved === false;
       });
 
@@ -372,180 +388,190 @@ export default function CreateProject() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start lg:h-full">
           {/* Left Form */}
-          <div className="lg:col-span-1 space-y-6 flex flex-col h-full">
-            {/* Project Details */}
-            <div className="bg-white rounded-lg shadow p-6 flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Project Details
-              </h3>
+          <div className="lg:col-span-1 h-full flex flex-col">
+            <div className="bg-white shadow-sm border rounded-xl p-6 flex flex-col justify-between h-full">
+              {/* --- TOP CONTENT --- */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Project Details
+                </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Name
-                  </label>
-                  <input
-                    type="text"
-                    name="projectName"
-                    value={formData.projectName}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Phoenix Project"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Description
-                  </label>
-                  <textarea
-                    name="projectDescription"
-                    value={formData.projectDescription}
-                    onChange={handleInputChange}
-                    placeholder="Describe the project goals, scope, and deliverables."
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Date
+                      Project Name
                     </label>
                     <input
-                      type="date"
-                      name="startDate"
-                      value={formData.startDate}
+                      type="text"
+                      name="projectName"
+                      value={formData.projectName}
                       onChange={handleInputChange}
+                      placeholder="e.g. Phoenix Project"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Project Deadline
+                      Project Description
                     </label>
-                    <input
-                      type="date"
-                      name="deadline"
-                      value={formData.deadline}
+                    <textarea
+                      name="projectDescription"
+                      value={formData.projectDescription}
                       onChange={handleInputChange}
+                      placeholder="Describe the project goals, scope, and deliverables."
+                      rows={4}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Required Skills & Team Size */}
-            <div className="bg-white rounded-lg shadow p-6 flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Required Skills & Team Size
-              </h3>
-
-              <div className="space-y-4">
-                {/* Skills */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Skill
-                  </label>
-                  <SkillSelector
-                    selectedSkills={skills}
-                    onChange={setSkills}
-                    isEditing={true}
-                    className="max-h-12"
-                    allowCustomAdd
-                  />
-                </div>
-
-                {/* Position */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Position & Quantity
-                  </label>
-
-                  {/* Scrollable container */}
-                  <div className="max-h-56 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                    <div className="grid grid-cols-1 sm:grid-cols-7 gap-3 items-center">
-                      {/* Position Select */}
-                      <Select
-                        value={positionInput}
-                        onValueChange={setPositionInput}
-                      >
-                        <SelectTrigger className="w-full sm:col-span-3">
-                          <SelectValue placeholder="Select Position" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {positions.map((position) => (
-                            <SelectItem key={position._id} value={position._id}>
-                              {position.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Quantity Input */}
-                      <Input
-                        type="number"
-                        min="1"
-                        value={quantityInput}
-                        onChange={(e) =>
-                          setQuantityInput(parseInt(e.target.value) || 1)
-                        }
-                        className="w-full sm:col-span-2"
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-
-                      {/* Add Button */}
-                      <Button
-                        onClick={handleAddPosition}
-                        className="w-full sm:col-span-2 bg-[#2C3F48] hover:bg-[#1F2E35]"
-                      >
-                        Add
-                      </Button>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Project Deadline
+                      </label>
+                      <input
+                        type="date"
+                        name="deadline"
+                        value={formData.deadline}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Selected Positions */}
-                <div className=" max-h-16 overflow-auto">
-                  {teamPositions.length > 0 && (
-                    <div className="space-y-2">
-                      {teamPositions.map((position, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
+                <h3 className="text-lg font-semibold text-gray-900 my-4">
+                  Required Skills & Team Size
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Skills */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Skill
+                    </label>
+                    <SkillSelector
+                      selectedSkills={skills}
+                      onChange={setSkills}
+                      isEditing={true}
+                      className="max-h-12"
+                      allowCustomAdd
+                    />
+                  </div>
+
+                  {/* Position */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Position & Quantity
+                    </label>
+
+                    {/* Scrollable container */}
+                    <div className="max-h-56 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                      <div className="grid grid-cols-1 sm:grid-cols-7 gap-3 items-center">
+                        {/* Position Select */}
+                        <Select
+                          value={positionInput}
+                          onValueChange={setPositionInput}
                         >
-                          <span className="text-sm font-medium text-gray-900">
-                            {position.name} × {position.quantity}
-                          </span>
-                          <button
-                            onClick={() => handleRemovePosition(index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                          <SelectTrigger className="w-full sm:col-span-3">
+                            <SelectValue placeholder="Select Position" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {positions.map((position) => (
+                              <SelectItem
+                                key={position._id}
+                                value={position._id}
+                              >
+                                {position.name} - available {position.userCount}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {/* Quantity Input */}
+                        <Input
+                          type="number"
+                          min="1"
+                          value={quantityInput}
+                          onChange={(e) =>
+                            setQuantityInput(parseInt(e.target.value) || 1)
+                          }
+                          className="w-full sm:col-span-2"
+                        />
+
+                        {/* Add Button */}
+                        <Button
+                          onClick={handleAddPosition}
+                          className="w-full sm:col-span-2 bg-[#2C3F48] hover:bg-[#1F2E35]"
+                        >
+                          Add
+                        </Button>
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Selected Positions */}
+                  <div className="h-36 overflow-auto">
+                    {teamPositions.length > 0 && (
+                      <div className="space-y-2">
+                        {teamPositions.map((position, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
+                          >
+                            <span className="text-sm font-medium text-gray-900">
+                              {position.name} × {position.quantity}
+                            </span>
+                            <button
+                              onClick={() => handleRemovePosition(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={handleGenerateRecommendations}
+                    className="w-full py-3 bg-primer text-white rounded-lg hover:bg-[#1F2E35] font-medium cursor-pointer"
+                  >
+                    {isGenerating
+                      ? "Generating..."
+                      : "Generate Team Recommendations"}
+                  </button>
+
+                  <button
+                    onClick={() => getManualTeams()}
+                    className="w-full mt-2 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium disabled:opacity-50 cursor-pointer"
+                  >
+                    Get All Staff
+                  </button>
                 </div>
               </div>
-
-              <button
-                onClick={handleGenerateRecommendations}
-                disabled={isGenerating}
-                className="w-full mt-6 py-3 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium disabled:opacity-50"
-              >
-                {isGenerating
-                  ? "Generating..."
-                  : "Generate Team Recommendations"}
-              </button>
             </div>
           </div>
 
           {/* Right - AI Recommendations */}
-          <div className="lg:col-span-2 flex flex-col max-h-full">
-            <Card className="bg-white shadow-sm border rounded-xl flex flex-col flex-grow h-full">
+          <div className="lg:col-span-2 space-y-3 flex flex-col h-[calc(100vh+200px)]">
+            <Card className="bg-white shadow-sm border rounded-xl flex-1 overflow-y-auto">
               <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
                   AI Team Recommendations
@@ -562,7 +588,7 @@ export default function CreateProject() {
                 </div>
               </CardHeader>
 
-              <CardContent className="p-4 sm:p-6 flex-1 overflow-y-auto">
+              <CardContent className="p-4 sm:p-6 max-h-[500px] overflow-y-auto">
                 {employees.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center py-12 text-gray-500">
                     <p>
@@ -601,7 +627,7 @@ export default function CreateProject() {
                                 }
                                 className="absolute -top-1 -left-1"
                               />
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
+                              <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
                                 {employee.name
                                   .split(" ")
                                   .map((n) => n[0])
@@ -610,7 +636,7 @@ export default function CreateProject() {
                             </div>
 
                             {/* Employee Info */}
-                            <div className="flex-1">
+                            <div className="">
                               <div className="flex items-start justify-between mb-2">
                                 <div>
                                   <h4 className="font-semibold text-gray-900 leading-tight text-base">
@@ -638,7 +664,7 @@ export default function CreateProject() {
                                   <p className="text-xs text-gray-600 mb-1">
                                     Skills
                                   </p>
-                                  <div className="flex flex-wrap gap-1">
+                                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
                                     {employee.skills.map((skill, idx) => (
                                       <span
                                         key={idx}
@@ -701,6 +727,171 @@ export default function CreateProject() {
                   </div>
                 )}
               </CardContent>
+            </Card>
+            <Card className="bg-white shadow-sm border rounded-xl flex-1 overflow-y-auto">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  All Staff
+                </h3>
+
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium"
+                  >
+                    {isSubmitting ? "Creating Project..." : "Create Project"}
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-4 sm:p-6  max-h-[500px] overflow-y-auto">
+                {manualEmployees.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center py-12 text-gray-500">
+                    <p>Click “Get Staff” to see all</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {manualEmployees.map((employee) => {
+                      const isSelected = selectedEmployees.includes(
+                        employee._id
+                      );
+
+                      return (
+                        <div
+                          key={employee._id}
+                          onClick={() => handleToggleEmployee(employee._id)}
+                          className={cn(
+                            "cursor-pointer rounded-xl border transition-all p-4 bg-white shadow-sm hover:shadow-md hover:scale-[1.01] duration-200",
+                            isSelected
+                              ? "border-blue-500 bg-blue-50"
+                              : getMatchingColor(employee.matchingPercentage)
+                          )}
+                        >
+                          {/* Top Section */}
+                          <div className="flex items-start gap-3">
+                            {/* Avatar + Checkbox */}
+                            <div className="relative shrink-0">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) =>
+                                  handleCheckboxClick(
+                                    { target: { checked } },
+                                    employee._id
+                                  )
+                                }
+                                className="absolute -top-1 -left-1"
+                              />
+                              <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
+                                {employee.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </div>
+                            </div>
+
+                            {/* Employee Info */}
+                            <div className="">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900 leading-tight text-base">
+                                    {employee.name}
+                                  </h4>
+                                  <p className="text-xs sm:text-sm text-gray-600">
+                                    {employee.position?.name}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Matching Skills */}
+                              {employee.skills?.length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-xs text-gray-600 mb-1">
+                                    Skills
+                                  </p>
+                                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                                    {employee.skills.map((skill, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                                      >
+                                        {skill.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Workload Bar */}
+                              <div className="mb-2">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-gray-600">
+                                    Current Workload ({employee.currentWorkload}
+                                    %)
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className={cn(
+                                      "h-2 rounded-full transition-all",
+                                      getWorkloadColor(employee.currentWorkload)
+                                    )}
+                                    style={{
+                                      width: `${employee.currentWorkload}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Availability */}
+                              <p
+                                className={cn(
+                                  "text-xs font-medium mt-1",
+                                  getAvailabilityColor(employee.availability)
+                                )}
+                              >
+                                ● {employee.availability}
+                              </p>
+
+                              {/* AI Reason */}
+                              {employee.aiReason && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <p className="text-xs font-medium text-gray-500 mb-1">
+                                    AI Reasoning
+                                  </p>
+                                  <p className="text-sm text-gray-700 leading-snug max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
+                                    {employee.aiReason}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-end items-center mt-4 space-x-2">
+                <Button
+                  disabled={manualMeta.page === 1}
+                  onClick={() => getManualTeams(manualMeta.page - 1)}
+                >
+                  Previous
+                </Button>
+
+                <p className="text-sm text-gray-500">
+                  Page {manualMeta.page} of{" "}
+                  {Math.ceil(manualMeta.total / manualMeta.limit)}
+                </p>
+
+                <Button
+                  disabled={manualEmployees.length >= manualMeta.total}
+                  onClick={() => getManualTeams(manualMeta.page + 1)}
+                >
+                  Next {manualEmployees.length} - {manualMeta.total}
+                </Button>
+              </CardFooter>
             </Card>
           </div>
         </div>

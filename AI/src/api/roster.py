@@ -289,6 +289,7 @@ def get_recommendations(request: SkillRequest):
 
         # 5. Merge all the data
         result = {
+            "_id": str(user_id),
             "name": user.get("name"),
             "position": position_name,
             "skills":  [skill["name"] for skill in skills],
@@ -313,6 +314,7 @@ def get_recommendations(request: SkillRequest):
     # group by position
     grouped = defaultdict(list)
     for s in scores:
+        print(s)
         grouped[s["position"]].append(s)
 
     required_map = {p.name: p.numOfRequest for p in required_positions}
@@ -339,6 +341,7 @@ def get_recommendations(request: SkillRequest):
             project_description=project_description,
             candidates=candidates
         )
+        print(response)
 
         indexes = response.ordered_indexes
         reasoning = response.reasoning
@@ -354,9 +357,13 @@ def get_recommendations(request: SkillRequest):
 
         # Terapkan urutan ke kandidat
         ordered = [top_candidates[position][i] for i in indexes]
+        print("odde")
+        print(ordered)
 
         # Tambahkan rank number
         for idx, c in enumerate(ordered, start=1):
+            print("caca")
+            print(c)
             c["rank"] = idx
             c["reason"] = reasoning
 
@@ -365,5 +372,6 @@ def get_recommendations(request: SkillRequest):
     
     logs["total_execution_time"] = time.time() - total_start_time
     print(logs)
-
+    print("ptada")
+    print(top_candidates)
     return {"success": True, "data": top_candidates}

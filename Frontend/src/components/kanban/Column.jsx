@@ -381,6 +381,7 @@ const Column = ({
                     onChange={setSkills}
                     isEditing={true}
                     className="max-h-12"
+                    allowCustomAdd
                   />
                 </div>
               </div>
