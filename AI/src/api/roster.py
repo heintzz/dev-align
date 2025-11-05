@@ -34,7 +34,7 @@ def clean_skills_name(str):
     
 router = APIRouter()
 
-@router.post("/project-embeddings", response_model=ProjectEmbeddingsResponse)
+@router.post("/project-embeddings")
 async def create_project_embeddings(request: EmbeddingProjectRequest):
     print(request.project_id)
     database = get_database()
@@ -148,11 +148,12 @@ async def create_project_embeddings(request: EmbeddingProjectRequest):
         }
 
         database.projectembeddings.insert_one(doc)
-
-    return {
-        "status": "success",
-        "project_id": request.project_id
-    }
+    
+    print(results)
+    # return {
+    #     "status": "success",
+    #     "project_id": request.project_id
+    # }
 
 @router.post("/roster-recommendations", response_model=RosterRecommendationsResponse)
 def get_recommendations(request: SkillRequest):

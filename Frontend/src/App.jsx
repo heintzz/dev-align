@@ -1,32 +1,39 @@
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
 
 // Components
-import CustomToaster from '@/components/CustomToaster';
+import CustomToaster from "@/components/CustomToaster";
 
 // Pages
-import Login from '@/pages/auth/Login'; // pastikan path-nya sesuai
-import ResetPassword from '@/pages/auth/ResetPassword';
-import HRDashboard from '@/pages/HR/Dashboard';
-import ManageEmployee from '@/pages/HR/Employee/ManageEmployee';
-import Kanban from '@/pages/Kanban';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import AddEmployee from './pages/HR/Employee/AddEmployee';
-import EmployeeDetail from './pages/HR/Employee/EmployeeDetail';
-import CreateProject from './pages/PM/CreateProject';
-import PMDashboard from './pages/PM/Dashboard';
-import ListProjects from './pages/PM/ListProject';
-import StaffDashboard from './pages/Staff/Dashboard';
+import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
+import ResetPassword from "@/pages/auth/ResetPassword";
+import HRDashboard from "@/pages/HR/Dashboard";
+import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
+import Kanban from "@/pages/Kanban";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import AddEmployee from "./pages/HR/Employee/AddEmployee";
+import EmployeeDetail from "./pages/HR/Employee/EmployeeDetail";
+import CreateProject from "./pages/PM/CreateProject";
+import PMDashboard from "./pages/PM/Dashboard";
+import ListProjects from "./pages/PM/ListProject";
+import StaffDashboard from "./pages/Staff/Dashboard";
+import ProfilePage from "./pages/Profile";
+import ChangePasswordPage from "./pages/ChangePassword";
 
 // Layout
-import AppLayout from '@/components/layouts/AppLayout';
+import AppLayout from "@/components/layouts/AppLayout";
 
-import GuestRoute from '@/components/GuestRoute';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { useAuthStore } from '@/store/useAuthStore';
-import ManagerTeam from './pages/PM/ManagerTeam';
-import StaffTeam from './pages/Staff/StaffTeam';
-import Inbox from '@/pages/Inbox';
-import SpecificRoleRoute from './components/SpecificRoleRoute';
+import GuestRoute from "@/components/GuestRoute";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuthStore } from "@/store/useAuthStore";
+import ManagerTeam from "./pages/PM/ManagerTeam";
+import StaffTeam from "./pages/Staff/StaffTeam";
+import Inbox from "@/pages/Inbox";
+import SpecificRoleRoute from "./components/SpecificRoleRoute";
 
 function App() {
   const { token, role } = useAuthStore();
@@ -35,6 +42,23 @@ function App() {
     <>
       <Router>
         <Routes>
+          {/* Profile and Change Password */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePasswordPage />
+              </ProtectedRoute>
+            }
+          />
           {/* Halaman Login tanpa layout */}
           <Route
             path="/login"
@@ -67,9 +91,9 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  {role == 'hr' ? (
+                  {role == "hr" ? (
                     <HRDashboard />
-                  ) : role == 'manager' ? (
+                  ) : role == "manager" ? (
                     <PMDashboard />
                   ) : (
                     <StaffDashboard />
@@ -183,7 +207,10 @@ function App() {
           />
 
           {/* Redirect default ke /login */}
-          <Route path="*" element={<Navigate to={token ? '/dashboard' : '/login'} replace />} />
+          <Route
+            path="*"
+            element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
+          />
         </Routes>
       </Router>
       <CustomToaster />
