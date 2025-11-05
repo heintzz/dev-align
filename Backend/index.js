@@ -28,7 +28,15 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const corsOptions = { origin: "*" };
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",           // Local development
+    "http://18.141.166.14",            // Frontend EC2
+    "http://13.250.231.18:5000"        // Backend EC2
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
 
 // Create HTTP server
 const server = http.createServer(app);
