@@ -351,10 +351,9 @@ const importEmployees = async (req, res) => {
     return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
-  // Defaults per agreement: dryRun = true by default, sendEmails = false by default
-  const dryRun =
-    req.query.dryRun === undefined ? true : !(req.query.dryRun === "false");
-  const sendEmails = req.query.sendEmails === "true";
+  // Always proceed with import and send emails
+  const dryRun = false;
+  const sendEmails = true;
 
   try {
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
