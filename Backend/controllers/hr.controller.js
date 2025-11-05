@@ -201,7 +201,7 @@ const listEmployees = async (req, res) => {
     if (userIds.length > 0) {
       const counts = await ProjectAssignment.aggregate([
         { $match: { userId: { $in: userIds } } },
-        { $group: { _id: '$userId', count: { $sum: 1 } } },
+        { $group: { _id: "$userId", count: { $sum: 1 } } },
       ]).exec();
       counts.forEach((c) => projectCountsMap.set(String(c._id), c.count));
     }
@@ -263,7 +263,9 @@ const getEmployee = async (req, res) => {
     const response = userDto.mapUserToUserResponse(user);
     // attach project count for this employee
     try {
-      const projCount = await ProjectAssignment.countDocuments({ userId: user._id });
+      const projCount = await ProjectAssignment.countDocuments({
+        userId: user._id,
+      });
       response.projectCount = projCount;
     } catch (e) {
       // non-fatal: if counting fails, default to 0
@@ -802,32 +804,33 @@ const parseCv = async (req, res) => {
 const getColleagues = async (req, res) => {
   try {
     const currentUserId = req.user.id || req.user._id;
-    const currentUser = await User.findById(currentUserId).select('role managerId').lean();
+    const currentUser = await User.findById(currentUserId)
+      .select("role managerId")
+      .lean();
 
     if (!currentUser) {
       return res.status(404).json({
         success: false,
         error: "Not Found",
-        message: "Current user not found"
+        message: "Current user not found",
       });
     }
 
     let colleagues = [];
     let directManager = null;
 
-    if (currentUser.role === 'manager') {
+    if (currentUser.role === "manager") {
       // If user is manager, get all direct subordinates (members with managerId = currentUser._id)
       colleagues = await User.find({
         managerId: currentUserId,
         active: true,
-        _id: { $ne: currentUserId }  // Exclude self
+        _id: { $ne: currentUserId }, // Exclude self
       })
         .populate("position", "name")
         .populate("skills", "name")
         .select("_id name email role position skills")
         .sort({ name: 1 })
         .lean();
-
     } else {
       // If user is staff or HR, get teammates (colleagues with same manager) and include direct manager
       if (currentUser.managerId) {
@@ -841,7 +844,7 @@ const getColleagues = async (req, res) => {
         const teammates = await User.find({
           managerId: currentUser.managerId,
           active: true,
-          _id: { $ne: currentUserId }  // Exclude self
+          _id: { $ne: currentUserId }, // Exclude self
         })
           .populate("position", "name")
           .populate("skills", "name")
@@ -854,19 +857,23 @@ const getColleagues = async (req, res) => {
     }
 
     // Format response
-    const formattedColleagues = colleagues.map(colleague => ({
+    const formattedColleagues = colleagues.map((colleague) => ({
       id: colleague._id,
       name: colleague.name,
       email: colleague.email,
       role: colleague.role,
-      position: colleague.position ? {
-        id: colleague.position._id,
-        name: colleague.position.name
-      } : null,
-      skills: colleague.skills ? colleague.skills.map(skill => ({
-        id: skill._id,
-        name: skill.name
-      })) : []
+      position: colleague.position
+        ? {
+            id: colleague.position._id,
+            name: colleague.position.name,
+          }
+        : null,
+      skills: colleague.skills
+        ? colleague.skills.map((skill) => ({
+            id: skill._id,
+            name: skill.name,
+          }))
+        : [],
     }));
 
     const response = {
@@ -874,8 +881,8 @@ const getColleagues = async (req, res) => {
       data: {
         userRole: currentUser.role,
         colleagues: formattedColleagues,
-        totalColleagues: formattedColleagues.length
-      }
+        totalColleagues: formattedColleagues.length,
+      },
     };
 
     // Include manager info if it exists
@@ -885,10 +892,12 @@ const getColleagues = async (req, res) => {
         name: directManager.name,
         email: directManager.email,
         role: directManager.role,
-        position: directManager.position ? {
-          id: directManager.position._id,
-          name: directManager.position.name
-        } : null
+        position: directManager.position
+          ? {
+              id: directManager.position._id,
+              name: directManager.position.name,
+            }
+          : null,
       };
     }
 
@@ -897,7 +906,7 @@ const getColleagues = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Internal Server Error",
-      message: err.message
+      message: err.message,
     });
   }
 };
