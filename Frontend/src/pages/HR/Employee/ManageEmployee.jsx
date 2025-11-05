@@ -58,6 +58,7 @@ import {
   CircleCheckBig,
 } from "lucide-react";
 import api from "@/api/axios";
+import { getDashboardStats } from "../../../services/dashboard.service";
 import UploadFile from "@/components/UploadFile";
 import AddEmployee from "./AddEmployee";
 import { toast } from "@/lib/toast";
@@ -69,6 +70,7 @@ export default function ManageEmployee() {
   const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [positionFilter, setPositionFilter] = useState("all");
 
   const [employees, setEmployees] = useState([]);
   const [openAddExcel, setOpenAddExcel] = useState(false);
@@ -77,6 +79,11 @@ export default function ManageEmployee() {
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const [newCount, setNewCount] = useState(0);
+  const [leavingCount, setLeavingCount] = useState(0);
+  const [positionsList, setPositionsList] = useState([]);
+  const [currentMonth] = useState(new Date().getMonth());
 
   const navigate = useNavigate();
 
@@ -145,6 +152,43 @@ export default function ManageEmployee() {
     },
   ];
 
+  const getEmployeeStats = async () => {
+    try {
+      // Get all employees without pagination for accurate statistics
+      const { data } = await api.get("/hr/employees", {
+        params: {
+          limit: 1000, // Large number to get all employees
+          search: globalFilter || undefined,
+          active: statusFilter === "all" ? undefined : statusFilter,
+          position: positionFilter && positionFilter !== "all" ? positionFilter : undefined
+        }
+      });
+
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+      // Calculate new and leaving employees for current month from complete data
+      const newEmployees = data.data.filter((emp) => {
+        if (!emp.createdAt) return false;
+        const joinDate = new Date(emp.createdAt);
+        return joinDate >= firstDayOfMonth;
+      });
+
+      const leavingEmployees = data.data.filter((emp) => {
+        if (emp.active) return false;
+        if (!emp.updatedAt) return false;
+        const leaveDate = new Date(emp.updatedAt);
+        return leaveDate >= firstDayOfMonth;
+      });
+
+      setTotalCount(data.meta.total);
+      setNewCount(newEmployees.length);
+      setLeavingCount(leavingEmployees.length);
+    } catch (e) {
+      console.warn('Error calculating employee stats:', e);
+    }
+  };
+
   const getEmployees = async () => {
     try {
       setLoading(true);
@@ -153,16 +197,37 @@ export default function ManageEmployee() {
         limit: pageSize,
         search: globalFilter || undefined,
         active: statusFilter === "all" ? undefined : statusFilter,
+        position: positionFilter && positionFilter !== "all" ? positionFilter : undefined,
       };
 
       const { data } = await api.get("/hr/employees", { params });
       setEmployees(data.data);
       setTotal(data.meta.total);
+      
+      // Update statistics separately to get accurate counts
+      await getEmployeeStats();
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
       console.log("finish");
+    }
+  };
+
+  const loadPositions = async () => {
+    try {
+      const projectService = await import("../../../services/project.service");
+      const res = await projectService.default.getAllPositions();
+      // res may be { perPage, total, positions } or array
+      let list = [];
+      if (Array.isArray(res)) list = res;
+      else if (res && res.positions) list = res.positions;
+      else if (res && res.data && res.data.positions) list = res.data.positions;
+      setPositionsList(list || []);
+    } catch (e) {
+      // fallback: ignore
+      console.warn('Failed to load positions', e);
+      setPositionsList([]);
     }
   };
 
@@ -258,8 +323,25 @@ export default function ManageEmployee() {
   });
 
   useEffect(() => {
+    // Get complete statistics initially and when filters change
+    getEmployeeStats();
+  }, [globalFilter, statusFilter, positionFilter]);
+
+  useEffect(() => {
+    // Get paginated data for table when page changes
     getEmployees();
-  }, [pageIndex, pageSize, globalFilter, statusFilter]);
+  }, [pageIndex, pageSize]);
+
+  useEffect(() => {
+    // load positions once
+    loadPositions();
+  }, []);
+
+  useEffect(() => {
+    // refetch employees when position filter changes
+    setPageIndex(0);
+    getEmployees();
+  }, [positionFilter]);
 
   return (
     <>
@@ -301,19 +383,19 @@ export default function ManageEmployee() {
                 <Users />
                 <h3>Total Employees</h3>
               </div>
-              <p className="text-4xl font-extrabold">300</p>
-              <p className="text-slate-800">
+              <p className="text-4xl font-extrabold">{totalCount}</p>
+              {/* <p className="text-slate-800">
                 <span className=" text-green-500">+2</span> this month
-              </p>
+              </p> */}
             </div>
             <div className="space-y-2 text-center">
               <div className="flex justify-center space-x-2">
                 <UserPlus />
                 <h3>New Employee</h3>
               </div>
-              <p className="text-4xl font-extrabold">2</p>
+              <p className="text-4xl font-extrabold text-green-600">{newCount}</p>
               <p className="text-slate-800">
-                <span className=" text-green-500">+2</span> this month
+                this month
               </p>
             </div>
             <div className="space-y-2 text-center">
@@ -321,9 +403,9 @@ export default function ManageEmployee() {
                 <UserMinus />
                 <h3>Leaving</h3>
               </div>
-              <p className="text-4xl font-extrabold">0</p>
+              <p className="text-4xl font-extrabold text-red-500">{leavingCount}</p>
               <p className="text-slate-800">
-                <span className=" text-red-500">0</span> this month
+                this month
               </p>
             </div>
           </div>
@@ -341,29 +423,50 @@ export default function ManageEmployee() {
               className="w-full sm:w-1/3"
             />
 
-            <Select
-              value={statusFilter}
-              onValueChange={(val) => {
-                setStatusFilter(val);
-                setPageIndex(0);
-              }}
-              // className="cursor-pointer"
-            >
-              <SelectTrigger className="w-[150px] cursor-pointer">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="cursor-pointer">
-                  All
-                </SelectItem>
-                <SelectItem value="true" className="cursor-pointer">
-                  Active
-                </SelectItem>
-                <SelectItem value="false" className="cursor-pointer">
-                  Resigned
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val);
+                  setPageIndex(0);
+                }}
+                // className="cursor-pointer"
+              >
+                <SelectTrigger className="w-[150px] cursor-pointer">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="cursor-pointer">
+                    All
+                  </SelectItem>
+                  <SelectItem value="true" className="cursor-pointer">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="false" className="cursor-pointer">
+                    Resigned
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={positionFilter}
+                onValueChange={(val) => {
+                  setPositionFilter(val);
+                }}
+              >
+                <SelectTrigger className="w-[200px] cursor-pointer">
+                  <SelectValue placeholder="Filter by position" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="cursor-pointer">All Positions</SelectItem>
+                  {positionsList.map((p) => (
+                    <SelectItem key={p._id || p.id || p.name} value={String(p._id || p.id || p.name)}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Table */}

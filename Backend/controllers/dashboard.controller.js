@@ -43,36 +43,38 @@ const getDashboardData = async (req, res) => {
     // 2. Get project statistics
     const projectStats = await Project.aggregate([
       {
+        $addFields: {
+          // Normalize status to lowercase for consistent matching
+          normalizedStatus: { $toLower: "$status" }
+        }
+      },
+      {
         $group: {
-          _id: '$status',
+          _id: '$normalizedStatus',
           count: { $sum: 1 }
         }
       }
     ]);
 
+    // Debug log to see actual statuses
+    console.log('Raw Project Stats:', projectStats);
+
     const projectStatistics = {
       completed: 0,
-      inProgress: 0,
-      onHold: 0,
-      rejected: 0
+      inProgress: 0
     };
 
     projectStats.forEach(stat => {
-      switch(stat._id.toLowerCase()) {
-        case 'completed':
-          projectStatistics.completed = stat.count;
-          break;
-        case 'in progress':
-          projectStatistics.inProgress = stat.count;
-          break;
-        case 'on hold':
-          projectStatistics.onHold = stat.count;
-          break;
-        case 'rejected':
-          projectStatistics.rejected = stat.count;
-          break;
+      const status = stat._id?.toLowerCase() || '';
+      if (status === 'completed') {
+        projectStatistics.completed = stat.count;
+      } else if (status === 'active') {
+        projectStatistics.inProgress = stat.count;
       }
     });
+
+    // Debug log final statistics
+    console.log('Final Project Statistics:', projectStatistics);
 
     // 3. Get top contributors (existing logic)
 
@@ -205,8 +207,11 @@ const getManagerDashboard = async (req, res) => {
 
   const managerId = new mongoose.Types.ObjectId(String(requesterId));
 
-    // find team members (direct reports)
-    const teamMembers = await User.find({ managerId: managerId }).select('_id name email position').lean();
+    // find active team members only (direct reports)
+    const teamMembers = await User.find({ 
+      managerId: managerId,
+      active: true  // only include active team members
+    }).select('_id name email position').lean();
     const teamIds = teamMembers.map((m) => new mongoose.Types.ObjectId(String(m._id)));
 
     // Get position details for team members
@@ -222,37 +227,11 @@ const getManagerDashboard = async (req, res) => {
       positions.forEach((p) => positionMap.set(String(p._id), p.name));
     }
 
-    // if no team members, return empty dashboard
-    if (teamIds.length === 0) {
-      return res.json({
-        success: true,
-        data: {
-          statistics: {
-            totalProjects: 0,
-            projectsComplete: 0,
-            projectsOnGoing: 0,
-          },
-          team: [],
-        },
-      });
-    }
-
-    // aggregate distinct projects assigned to team and count by project.status
-    const projectStatusAgg = await ProjectAssignment.aggregate([
-      { $match: { userId: { $in: teamIds } } },
-      {
-        $lookup: {
-          from: 'projects',
-          localField: 'projectId',
-          foreignField: '_id',
-          as: 'project',
-        },
-      },
-      { $unwind: '$project' },
-      // group by project to dedupe assignments
-      { $group: { _id: '$project._id', status: { $first: '$project.status' } } },
-      // now group by status
-      { $group: { _id: '$status', count: { $sum: 1 } } },
+    // Count projects created by the manager grouped by status
+    const Project = require('../models').Project;
+    const projectStatusAgg = await Project.aggregate([
+      { $match: { createdBy: managerId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
     ]).exec();
 
     let totalProjects = 0;
