@@ -26,6 +26,10 @@ export default function HRDashboard() {
         ]);
         
         console.log('Dashboard data:', dashResponse.data);
+        console.log('Employee statistics:', {
+          total: dashResponse.data.statistics.totalEmployees.count,
+          resigned: dashResponse.data.statistics.resignedEmployees.count
+        });
         setDashboardData(dashResponse.data);
         setEmployees(empResponse.data.map(emp => ({
           name: emp.name,
@@ -48,14 +52,13 @@ export default function HRDashboard() {
   const stats = dashboardData ? [
     {
       title: "Total Employees",
-      value: dashboardData.statistics.totalEmployees.count,
+      value: dashboardData.statistics.totalEmployees.count || 0,
       trend: "up",
       subtitle: "Employee",
     },
     {
       title: "Resigned Employees",
-      value: dashboardData.statistics.resignedEmployees.count,
-      trend: "down",
+      value: dashboardData.statistics.resignedEmployees.count || 0,
       subtitle: "Employee",
     },
   ] : [];

@@ -38,7 +38,7 @@ const getDashboardData = async (req, res) => {
 
     // 1. Get employee statistics
     const totalEmployees = await User.countDocuments({});
-    const resignedEmployees = await User.countDocuments({ isActive: false });
+    const resignedEmployees = await User.countDocuments({ active: false });  // Changed from isActive to active
 
     // 2. Get project statistics
     const projectStats = await Project.aggregate([
@@ -206,8 +206,21 @@ const getManagerDashboard = async (req, res) => {
   const managerId = new mongoose.Types.ObjectId(String(requesterId));
 
     // find team members (direct reports)
-  const teamMembers = await User.find({ managerId: managerId }).select('_id name email position').lean();
-  const teamIds = teamMembers.map((m) => new mongoose.Types.ObjectId(String(m._id)));
+    const teamMembers = await User.find({ managerId: managerId }).select('_id name email position').lean();
+    const teamIds = teamMembers.map((m) => new mongoose.Types.ObjectId(String(m._id)));
+
+    // Get position details for team members
+    const Position = require('../models').Position;
+    const positionIds = teamMembers
+      .map((m) => (m.position ? String(m.position) : null))
+      .filter(Boolean);
+    
+    // Create position map
+    const positionMap = new Map();
+    if (positionIds.length > 0) {
+      const positions = await Position.find({ _id: { $in: positionIds } }).select('name').lean();
+      positions.forEach((p) => positionMap.set(String(p._id), p.name));
+    }
 
     // if no team members, return empty dashboard
     if (teamIds.length === 0) {
@@ -262,7 +275,10 @@ const getManagerDashboard = async (req, res) => {
       id: m._id,
       name: m.name,
       email: m.email,
-      position: m.position || null,
+      position: {
+        id: m.position || null,
+        name: m.position ? positionMap.get(String(m.position)) || null : null
+      },
       projectCount: countsMap.get(String(m._id)) || 0,
     }));
 

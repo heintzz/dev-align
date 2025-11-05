@@ -1,36 +1,55 @@
-// import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getManagerDashboard } from "../../services/dashboard.service";
 
 export default function PMDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await getManagerDashboard();
+        console.log('Manager dashboard data:', response);
+        setDashboardData(response); // Remove .data as the service already returns the data
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching manager dashboard:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   // Data untuk statistik cards
-  const stats = [
-    { title: "Total Projects", value: 20, change: "+10.0%", subtitle: "Projects" },
-    { title: "Projects Complete", value: 10, subtitle: "Projects" },
-  ];
+  const stats = dashboardData?.data ? [
+    { 
+      title: "Total Projects", 
+      value: dashboardData.data.statistics.totalProjects || 0,
+      change: "+10.0%",
+      subtitle: "Projects" 
+    },
+    { 
+      title: "Projects Complete", 
+      value: dashboardData.data.statistics.projectsComplete || 0, 
+      subtitle: "Projects" 
+    },
+    { 
+      title: "Projects On Going", 
+      value: dashboardData.data.statistics.projectsOnGoing || 0, 
+      subtitle: "Projects" 
+    },
+  ] : [];
 
   // Data untuk team status
-  const teamMembers = [
-    { 
-      name: "Markus Kulcane", 
-      position: "Frontend", 
-      manager: "Leo Stanton", 
-      projects: 0,
-      avatar: "https://i.pravatar.cc/150?img=1"
-    },
-    { 
-      name: "Marcus Culhane", 
-      position: "Backend", 
-      manager: "Purbaya", 
-      projects: 7,
-      avatar: "https://i.pravatar.cc/150?img=2"
-    },
-    { 
-      name: "Leo Stanton", 
-      position: "Project Manager", 
-      manager: "Leo Stanton", 
-      projects: 3,
-      avatar: "https://i.pravatar.cc/150?img=3"
-    },
-  ];
+  const teamMembers = dashboardData?.data ? (dashboardData.data.team || []).map(member => ({
+      name: member.name,
+      position: member.position?.name || '-',
+      email: member.email,
+      projects: member.projectCount || 0,
+    // generate initials (like HR dashboard) and keep any existing avatar field if needed elsewhere
+    avatar: (member.name || '').split(' ').map(n => n[0] || '').join('').toUpperCase().slice(0, 2)
+  })) : [];
 
   const getProjectColor = (projects) => {
     if (projects === 0) return "bg-green-100 text-green-800";
@@ -38,10 +57,20 @@ export default function PMDashboard() {
     return "bg-yellow-100 text-yellow-800";
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
@@ -75,9 +104,9 @@ export default function PMDashboard() {
             <thead>
               <tr className="border-b">
                 <th className="text-left py-4 px-4 text-sm font-medium text-gray-500">Employee Name</th>
+                <th className="text-left py-4 px-4 text-sm font-medium text-gray-500">Email</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-gray-500">Position</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-gray-500">Manager</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-gray-500">Project Availability</th>
+                <th className="text-left py-4 px-4 text-sm font-medium text-gray-500">Project Count</th>
               </tr>
             </thead>
             <tbody>
@@ -85,16 +114,14 @@ export default function PMDashboard() {
                 <tr key={index} className="border-b hover:bg-gray-50">
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
-                      <img 
-                        src={member.avatar} 
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full"
-                      />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-semibold">
+                        {member.avatar}
+                      </div>
                       <span className="text-sm font-semibold text-gray-900">{member.name}</span>
                     </div>
                   </td>
-                  <td className="py-4 px-4 text-sm font-semibold text-gray-900">{member.position}</td>
-                  <td className="py-4 px-4 text-sm font-semibold text-gray-900">{member.manager}</td>
+                  <td className="py-4 px-4 text-sm text-gray-600">{member.email}</td>
+                  <td className="py-4 px-4 text-sm text-gray-600">{member.position}</td>
                   <td className="py-4 px-4">
                     <span className={`inline-block px-4 py-1.5 rounded-lg text-sm font-semibold ${getProjectColor(member.projects)}`}>
                       {member.projects} Projects
