@@ -96,6 +96,18 @@ export default function CreateProject() {
         });
         return;
       }
+      console.log(position);
+      console.log(teamPositions);
+      // check if position already exists
+      const alreadyExists = teamPositions.some((p) => p._id === position._id);
+      if (alreadyExists) {
+        toast("Position already added!", {
+          type: "warning",
+          position: "top-center",
+        });
+        return;
+      }
+      console.log("test");
       if (position) {
         setTeamPositions([
           ...teamPositions,
@@ -289,21 +301,6 @@ export default function CreateProject() {
     setLoadingText("Creating Project...");
 
     try {
-      // Ensure all selected employees are resolved to real user IDs
-      console.log(selectedEmployees);
-      const unresolved = selectedEmployees.filter((id) => {
-        const emp = manualEmployees.find((e) => e._id === id);
-        console.log(emp);
-        return !emp || emp.isResolved === false;
-      });
-
-      if (unresolved.length > 0) {
-        alert(
-          "Some selected employees are not matched to real users. Please select resolved users or Auto-Assign the team."
-        );
-        setIsSubmitting(false);
-        return;
-      }
       // Prepare project data according to backend API
       const projectData = {
         name: formData.projectName,
@@ -397,7 +394,7 @@ export default function CreateProject() {
                   Project Details
                 </h3>
 
-                <div className="space-y-4">
+                <div className="space-y-4 mx-1">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Project Name

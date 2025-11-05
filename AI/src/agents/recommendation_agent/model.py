@@ -1,11 +1,11 @@
 import dspy
 
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class CandidateModel(BaseModel):
     """Model to represent a candidate with relevant metrics."""
-    _id: str
+    id: str = Field(alias="_id")
     name: str
     position: str
     skills: List[str]

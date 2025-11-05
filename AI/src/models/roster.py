@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field
 from typing import List, Dict
 from bson import ObjectId
 
@@ -7,7 +7,7 @@ class ProjectEmbeddingsResponse(BaseModel):
     project_id: str
 
 class Candidate(BaseModel):
-    _id: str
+    id: str = Field(alias="_id")
     name: str
     position: str
     skills: List[str]
@@ -17,12 +17,6 @@ class Candidate(BaseModel):
     matchingPercentage: float
     rank: int
     reason: str
-
-    @field_validator('_id', mode='before')
-    def convert_objectId(cls, v):
-        if isinstance(v, ObjectId):
-            return str(v)
-        return v
 
 class RosterRecommendationsResponse(BaseModel):
     success: bool
