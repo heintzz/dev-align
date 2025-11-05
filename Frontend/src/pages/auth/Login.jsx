@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-import logoKiri from "../../assets/img/loginkiri.png";
+import logoKiri from "../../assets/img/logokiribaru.png";
 import logoKecil from "../../assets/img/loginkanan.png";
 import authService from "../../services/auth.service";
 import Loading from "@/components/Loading";
@@ -51,13 +51,23 @@ export default function Login() {
     <div className="flex min-h-screen">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
-      {/* Left Side - Logo Section */}
-      <div className="flex-1 overflow-hidden">
+      {/* Left Side - Illustration + Text */}
+      <div className="flex-1 overflow-hidden bg-[#2C3F48] flex flex-col items-center justify-center px-8 relative">
         <img
           src={logoKiri}
-          alt="DevAlign Logo"
-          className="w-full h-screen object-cover"
+          alt="DevAlign Illustration"
+          className="w-[700px] h-[700px] object-contain opacity-90 mb-3"
         />
+
+        <div className="text-center -mt-4">
+          <h3 className="text-white text-2xl font-semibold leading-tight mb-2">
+            Empower Your Team with AI-Powered HRIS
+          </h3>
+          <p className="text-white/85 text-base max-w-md mx-auto">
+            Smart workforce analytics and intelligent project allocation,
+            aligning every employee with the right opportunity for impact.
+          </p>
+        </div>
       </div>
 
       {/* Right Side - Login Form */}
