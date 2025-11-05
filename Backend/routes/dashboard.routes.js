@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middlewares/token");
 const auth = require("../middlewares/authorization");
-const { getDashboardData } = require("../controllers/dashboard.controller");
+const { getDashboardData, getManagerDashboard } = require("../controllers/dashboard.controller");
 
 /**
  * @swagger
@@ -86,5 +86,8 @@ const { getDashboardData } = require("../controllers/dashboard.controller");
  */
 // Allow any authenticated user to access this endpoint (no role restriction)
 router.get("/", verifyToken, getDashboardData);
+
+// Manager-specific dashboard: only team members of the authenticated manager are counted
+router.get('/manager', verifyToken, getManagerDashboard);
 
 module.exports = router;
