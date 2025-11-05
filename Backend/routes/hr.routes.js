@@ -2,15 +2,15 @@ const express = require('express');
 const router = express.Router();
 
 const {
-	createEmployee,
-	listEmployees,
-	getEmployee,
-	updateEmployee,
-	deleteEmployee,
-	importEmployees,
-	parseCv,
-	getImportTemplate,
-	getColleagues,
+  createEmployee,
+  listEmployees,
+  getEmployee,
+  updateEmployee,
+  changeEmployeeStatus,
+  importEmployees,
+  parseCv,
+  getImportTemplate,
+  getColleagues,
 } = require('../controllers/hr.controller');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -137,13 +137,11 @@ router.get('/employee/:id', verifyToken, getEmployee);
  */
 router.put('/employee/:id', verifyToken, auth('hr'), updateEmployee);
 
-
-
 /**
  * @swagger
  * /hr/employee/{id}:
  *   delete:
- *     summary: Delete employee
+ *     summary: Deactivate or hard-delete an employee
  *     tags: [HR]
  *     security:
  *       - bearerAuth: []
@@ -153,11 +151,61 @@ router.put('/employee/:id', verifyToken, auth('hr'), updateEmployee);
  *         required: true
  *         schema:
  *           type: string
+ *         description: The ID of the employee to deactivate or delete.
+ *       - in: query
+ *         name: active
+ *         schema:
+ *           type: boolean
+ *         description: Set to 'true' to activate an employee. If omitted or 'false', the employee will be deactivated (soft-deleted).
+ *       - in: query
+ *         name: hard
+ *         schema:
+ *           type: boolean
+ *         description: Set to 'true' to permanently delete the employee. This action is irreversible. Only applicable if 'active' is not 'true'.
  *     responses:
  *       200:
- *         description: Employee deleted
+ *         description: Employee status changed successfully (deactivated, activated, or hard-deleted).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Employee deactivated
+ *       400:
+ *         description: Bad request (e.g., invalid ID, already active/deactivated).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: Invalid ID
+ *       404:
+ *         description: Employee not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *       500:
+ *         description: Internal server error.
  */
-router.delete('/employee/:id', verifyToken, auth('hr'), deleteEmployee);
+router.delete('/employee/:id', changeEmployeeStatus);
 
 /**
  * @swagger
