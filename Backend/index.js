@@ -21,6 +21,9 @@ const borrowRequestRoutes = require("./routes/borrow-request.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const swaggerUi = require("swagger-ui-express");
 
+// Import email worker
+const { startEmailWorker } = require("./workers/email.worker");
+
 dotenv.config();
 
 const app = express();
@@ -69,7 +72,16 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/task", taskRoutes);
 
 // Change app.listen to server.listen
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`Server listening on port ${port}`);
   console.log(`Socket.IO ready`);
+
+  // Start email worker for background job processing
+  try {
+    await startEmailWorker();
+    console.log('Email worker started - ready to process queued emails');
+  } catch (error) {
+    console.error('Failed to start email worker:', error);
+    console.log('Server will continue without email worker');
+  }
 });
