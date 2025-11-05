@@ -47,11 +47,9 @@ export default function PMDashboard() {
       position: member.position?.name || '-',
       email: member.email,
       projects: member.projectCount || 0,
-    // generate initials (like HR dashboard) and keep any existing avatar field if needed elsewhere
-    avatar: (member.name || '').split(' ').map(n => n[0] || '').join('').toUpperCase().slice(0, 2)
-  })) : [];
-
-  const getProjectColor = (projects) => {
+      // generate initials like HR dashboard employee list (all initials)
+      avatar: (member.name || '').split(' ').map(n => n[0] || '').join('').toUpperCase()
+  })) : [];  const getProjectColor = (projects) => {
     if (projects === 0) return "bg-green-100 text-green-800";
     if (projects >= 7) return "bg-red-100 text-red-800";
     return "bg-yellow-100 text-yellow-800";
