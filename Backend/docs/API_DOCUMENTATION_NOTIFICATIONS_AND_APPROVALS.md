@@ -1,16 +1,87 @@
 # API Documentation - Notifications & Project Approval System
 
 ## Overview
-This document provides comprehensive documentation for the Notification System and Project Approval Workflow implemented in the `feat/crud_project` branch.
+This document provides comprehensive documentation for the Notification System and Project Approval Workflow.
 
 **Base URL**: `http://localhost:5000`
 
 **Swagger Documentation**: `http://localhost:5000/api-docs`
 
+**📧 Email Queue System**: Notifications now use an asynchronous queue-based system powered by Agenda for improved performance and reliability.
+
+---
+
+## 🚀 Email Queue System (New Feature)
+
+### Overview
+The notification system now uses **Agenda** (a job scheduling library for Node.js) to queue and process email notifications asynchronously. This means:
+
+- **Non-blocking**: API responses are instant - emails are queued and processed in the background
+- **Reliable**: Jobs are persisted in MongoDB and automatically retried on failure
+- **Scalable**: Multiple emails can be processed concurrently
+- **Monitored**: Job status tracking and statistics available
+
+### How It Works
+1. When an API endpoint triggers a notification, the in-app notification is created **immediately**
+2. The email is **queued** for background processing (doesn't block the API response)
+3. A separate **worker** processes the email queue asynchronously
+4. Users get instant API responses without waiting for emails to send
+
+### Benefits
+- ⚡ **Faster API responses** - No waiting for SMTP connections (50-200ms vs 2-5 seconds)
+- 🔄 **Automatic retries** - Failed emails are retried automatically with exponential backoff
+- 📊 **Job tracking** - Monitor queue status and email delivery via MongoDB
+- 🎯 **Better UX** - Frontend doesn't freeze while sending emails
+
+### API Response Changes
+
+All notification-triggering endpoints now return email queue information instead of immediate email status:
+
+**Before (Synchronous)**:
+```json
+{
+  "success": true,
+  "data": {...},
+  "emailResult": {
+    "success": true,
+    "messageId": "abc123@smtp.gmail.com"
+  }
+}
+```
+
+**After (Asynchronous)**:
+```json
+{
+  "success": true,
+  "data": {...},
+  "emailResult": {
+    "success": true,
+    "queued": true,
+    "jobId": "507f1f77bcf86cd799439011",
+    "message": "Email notification queued for processing"
+  }
+}
+```
+
+**Note**: The API is fully backward compatible. The `success: true` still means the operation succeeded, and `emailResult` still contains success status. The additional `queued` and `jobId` fields provide queue tracking information.
+
+### Technical Details
+
+For comprehensive technical documentation about the email queue system, including:
+- Architecture and flow diagrams
+- Configuration options
+- Worker implementation
+- Monitoring and debugging
+- Troubleshooting guide
+- Performance metrics
+
+Please refer to: [`EMAIL_QUEUE_SYSTEM.md`](./EMAIL_QUEUE_SYSTEM.md)
+
 ---
 
 ## Table of Contents
 - [Authentication](#authentication)
+- [Email Queue System](#email-queue-system-new-feature)
 - [Colleague Endpoints](#colleague-endpoints)
   - [Get Colleagues List](#get-colleagues-list)
 - [Notification System](#notification-system)
