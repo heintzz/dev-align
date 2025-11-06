@@ -33,45 +33,43 @@ function getDateRange(period) {
 
 const getDashboardData = async (req, res) => {
   try {
-    const period = (req.query.period || 'this_month'); // this_month | last_month | this_year | all
+    const period = req.query.period || 'this_month'; // this_month | last_month | this_year | all
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
 
     // 1. Get employee statistics
     const totalEmployees = await User.countDocuments({});
-    const resignedEmployees = await User.countDocuments({ active: false });  // Changed from isActive to active
+    const resignedEmployees = await User.countDocuments({ active: false }); // Changed from isActive to active
 
     // 2. Get project statistics
     const projectStats = await Project.aggregate([
       {
         $addFields: {
-          // Normalize status to lowercase for consistent matching
-          normalizedStatus: { $toLower: "$status" }
-        }
+          normalizedStatus: { $toLower: '$status' },
+        },
       },
       {
-        $group: {
-          _id: '$normalizedStatus',
-          count: { $sum: 1 }
-        }
-      }
+        $facet: {
+          completed: [{ $match: { normalizedStatus: 'completed' } }, { $count: 'count' }],
+          inProgress: [{ $match: { normalizedStatus: { $ne: 'completed' } } }, { $count: 'count' }],
+          overdue: [
+            { $match: { normalizedStatus: { $ne: 'completed' }, deadline: { $lt: new Date() } } },
+            { $count: 'count' },
+          ],
+        },
+      },
+      {
+        $project: {
+          completed: { $ifNull: [{ $arrayElemAt: ['$completed.count', 0] }, 0] },
+          inProgress: { $ifNull: [{ $arrayElemAt: ['$inProgress.count', 0] }, 0] },
+          overdue: { $ifNull: [{ $arrayElemAt: ['$overdue.count', 0] }, 0] },
+        },
+      },
     ]);
 
     // Debug log to see actual statuses
     console.log('Raw Project Stats:', projectStats);
 
-    const projectStatistics = {
-      completed: 0,
-      inProgress: 0
-    };
-
-    projectStats.forEach(stat => {
-      const status = stat._id?.toLowerCase() || '';
-      if (status === 'completed') {
-        projectStatistics.completed = stat.count;
-      } else if (status === 'active') {
-        projectStatistics.inProgress = stat.count;
-      }
-    });
+    const projectStatistics = projectStats[0]
 
     // Debug log final statistics
     console.log('Final Project Statistics:', projectStatistics);
@@ -148,7 +146,7 @@ const getDashboardData = async (req, res) => {
       }
     );
 
-  const results = await TaskAssignment.aggregate(pipeline).exec();
+    const results = await TaskAssignment.aggregate(pipeline).exec();
 
     // Fetch position details for users that have position id to return name if available
     const positionIds = results
@@ -159,7 +157,9 @@ const getDashboardData = async (req, res) => {
     let positionMap = new Map();
     if (positionIds.length > 0) {
       const Position = require('../models').Position;
-      const posDocs = await Position.find({ _id: { $in: positionIds } }).select('name').lean();
+      const posDocs = await Position.find({ _id: { $in: positionIds } })
+        .select('name')
+        .lean();
       posDocs.forEach((p) => positionMap.set(String(p._id), p.name));
     }
 
@@ -171,25 +171,29 @@ const getDashboardData = async (req, res) => {
       doneCount: r.doneCount,
     }));
 
+    const topContributors = formatted.sort((a, b) => b.doneCount - a.doneCount).slice(0, 5);
+
     return res.json({
       success: true,
       data: {
         statistics: {
           totalEmployees: {
-            count: totalEmployees
+            count: totalEmployees,
           },
           resignedEmployees: {
-            count: resignedEmployees
-          }
+            count: resignedEmployees,
+          },
         },
         projectStatistics: projectStatistics,
-        topContributors: formatted
-      }
+        topContributors: topContributors,
+      },
     });
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('getDashboardData error', err);
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Internal Server Error', message: err.message });
   }
 };
 
@@ -199,19 +203,22 @@ module.exports = {
 
 const getManagerDashboard = async (req, res) => {
   try {
-  const requester = req.user || {};
-  // token payload may carry `id` or `_id` depending on where it was generated
-  const requesterId = requester._id || requester.id;
-  if (!requesterId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-  if (requester.role !== 'manager') return res.status(403).json({ success: false, error: 'Forbidden' });
+    const requester = req.user || {};
+    // token payload may carry `id` or `_id` depending on where it was generated
+    const requesterId = requester._id || requester.id;
+    if (!requesterId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (requester.role !== 'manager')
+      return res.status(403).json({ success: false, error: 'Forbidden' });
 
-  const managerId = new mongoose.Types.ObjectId(String(requesterId));
+    const managerId = new mongoose.Types.ObjectId(String(requesterId));
 
     // find active team members only (direct reports)
-    const teamMembers = await User.find({ 
+    const teamMembers = await User.find({
       managerId: managerId,
-      active: true  // only include active team members
-    }).select('_id name email position').lean();
+      active: true, // only include active team members
+    })
+      .select('_id name email position')
+      .lean();
     const teamIds = teamMembers.map((m) => new mongoose.Types.ObjectId(String(m._id)));
 
     // Get position details for team members
@@ -219,11 +226,13 @@ const getManagerDashboard = async (req, res) => {
     const positionIds = teamMembers
       .map((m) => (m.position ? String(m.position) : null))
       .filter(Boolean);
-    
+
     // Create position map
     const positionMap = new Map();
     if (positionIds.length > 0) {
-      const positions = await Position.find({ _id: { $in: positionIds } }).select('name').lean();
+      const positions = await Position.find({ _id: { $in: positionIds } })
+        .select('name')
+        .lean();
       positions.forEach((p) => positionMap.set(String(p._id), p.name));
     }
 
@@ -231,7 +240,7 @@ const getManagerDashboard = async (req, res) => {
     const Project = require('../models').Project;
     const projectStatusAgg = await Project.aggregate([
       { $match: { createdBy: managerId } },
-      { $group: { _id: '$status', count: { $sum: 1 } } }
+      { $group: { _id: '$status', count: { $sum: 1 } } },
     ]).exec();
 
     let totalProjects = 0;
@@ -256,7 +265,7 @@ const getManagerDashboard = async (req, res) => {
       email: m.email,
       position: {
         id: m.position || null,
-        name: m.position ? positionMap.get(String(m.position)) || null : null
+        name: m.position ? positionMap.get(String(m.position)) || null : null,
       },
       projectCount: countsMap.get(String(m._id)) || 0,
     }));
@@ -275,7 +284,9 @@ const getManagerDashboard = async (req, res) => {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('getManagerDashboard error', err);
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Internal Server Error', message: err.message });
   }
 };
 
