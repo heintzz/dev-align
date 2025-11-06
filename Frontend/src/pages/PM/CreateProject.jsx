@@ -368,7 +368,7 @@ export default function CreateProject() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-5">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       <div className="max-w-7xl mx-auto">

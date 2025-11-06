@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import projectService from '../../services/project.service';
-import ProjectDetailsDialog from './ProjectDetails';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import projectService from "../../services/project.service";
+import ProjectDetailsDialog from "./ProjectDetails";
+import { useAuthStore } from "@/store/useAuthStore";
 
 import {
   Select,
@@ -10,16 +10,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 
 export default function ListProjects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [activeFilter, setActiveFilter] = useState("All");
   const [filters, setFilters] = useState({
-    deadline: '',
-    teamSize: '',
+    deadline: "",
+    teamSize: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
@@ -37,7 +37,7 @@ export default function ListProjects() {
       const response = await projectService.getAllProjects();
       // Response: { success: true, data: { page, perPage, total, projects: [...] } }
       const projectsList = response.data.projects || [];
-      console.log('test');
+      console.log("test");
 
       // Transform projects to add computed fields
       const transformedProjects = projectsList.map((project) => ({
@@ -51,8 +51,8 @@ export default function ListProjects() {
       setProjects(transformedProjects);
       setFilteredProjects(transformedProjects);
     } catch (error) {
-      console.error('Error fetching projects:', error);
-      alert(error.message || 'Failed to fetch projects');
+      console.error("Error fetching projects:", error);
+      alert(error.message || "Failed to fetch projects");
     } finally {
       setIsLoading(false);
     }
@@ -61,15 +61,15 @@ export default function ListProjects() {
   // Convert backend status to display status
   const getDisplayStatus = (status, deadline) => {
     // Backend only has: 'active', 'completed'
-    if (status === 'completed') return 'Completed';
-    if (status === 'active') {
+    if (status === "completed") return "Completed";
+    if (status === "active") {
       // Check if overdue
       if (deadline && new Date(deadline) < new Date()) {
-        return 'Overdue';
+        return "Overdue";
       }
-      return 'In Progress';
+      return "In Progress";
     }
-    return 'In Progress';
+    return "In Progress";
   };
 
   // Filter projects based on active filter
@@ -77,14 +77,14 @@ export default function ListProjects() {
     let filtered = [...projects];
 
     // Filter by status tab
-    if (activeFilter !== 'All') {
+    if (activeFilter !== "All") {
       filtered = filtered.filter((p) => p.displayStatus === activeFilter);
     }
 
     // Filter by deadline sort
     if (filters.deadline) {
       filtered = filtered.sort((a, b) => {
-        if (filters.deadline === 'Earliest') {
+        if (filters.deadline === "Earliest") {
           return new Date(a.deadline) - new Date(b.deadline);
         } else {
           return new Date(b.deadline) - new Date(a.deadline);
@@ -97,7 +97,7 @@ export default function ListProjects() {
       filtered = filtered.sort((a, b) => {
         const aSize = a.teamMemberCount || 0;
         const bSize = b.teamMemberCount || 0;
-        if (filters.teamSize === 'Smallest') {
+        if (filters.teamSize === "Smallest") {
           return aSize - bSize;
         } else {
           return bSize - aSize;
@@ -121,20 +121,20 @@ export default function ListProjects() {
 
   const getStatusColor = (status) => {
     const colors = {
-      'In Progress': 'bg-blue-100 text-blue-700',
-      Completed: 'bg-green-100 text-green-700',
-      Overdue: 'bg-red-100 text-red-700',
+      "In Progress": "bg-blue-100 text-blue-700",
+      Completed: "bg-green-100 text-green-700",
+      Overdue: "bg-red-100 text-red-700",
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return colors[status] || "bg-gray-100 text-gray-700";
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'No deadline';
+    if (!dateString) return "No deadline";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -162,7 +162,10 @@ export default function ListProjects() {
           };
           return {
             ...newProject,
-            displayStatus: getDisplayStatus(newProject.status, newProject.deadline),
+            displayStatus: getDisplayStatus(
+              newProject.status,
+              newProject.deadline
+            ),
           };
         }
         return project;
@@ -182,15 +185,15 @@ export default function ListProjects() {
 
   // Navigate to create project page
   const handleCreateProject = () => {
-    navigate('/create-project');
+    navigate("/create-project");
   };
 
   const { role } = useAuthStore();
-  const isHR = role === 'hr';
-  const isManager = role === 'manager';
+  const isHR = role === "hr";
+  const isManager = role === "manager";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-5">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -208,14 +211,14 @@ export default function ListProjects() {
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex gap-2">
-            {['All', 'In Progress', 'Completed', 'Overdue'].map((status) => (
+            {["All", "In Progress", "Completed", "Overdue"].map((status) => (
               <button
                 key={status}
                 onClick={() => setActiveFilter(status)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                   activeFilter === status
-                    ? 'bg-[#2C3F48] text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                    ? "bg-[#2C3F48] text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 {status}
@@ -225,7 +228,7 @@ export default function ListProjects() {
 
           {/* Dropdown Filters */}
           <div className="flex gap-3">
-            <Select onValueChange={(v) => handleFilterChange('deadline', v)}>
+            <Select onValueChange={(v) => handleFilterChange("deadline", v)}>
               <SelectTrigger className="w-[180px] cursor-pointer">
                 <SelectValue placeholder="Deadline" />
               </SelectTrigger>
@@ -239,7 +242,7 @@ export default function ListProjects() {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(v) => handleFilterChange('teamSize', v)}>
+            <Select onValueChange={(v) => handleFilterChange("teamSize", v)}>
               <SelectTrigger className="w-[180px] cursor-pointer">
                 <SelectValue placeholder="Team Size" />
               </SelectTrigger>
@@ -295,7 +298,7 @@ export default function ListProjects() {
 
                 {/* Description */}
                 <p className="text-sm text-gray-600 line-clamp-2 mb-4">
-                  {project.description || 'No description provided.'}
+                  {project.description || "No description provided."}
                 </p>
 
                 {/* Meta Info */}
@@ -315,7 +318,7 @@ export default function ListProjects() {
                       />
                     </svg>
                     <span className="truncate">
-                      <strong className="text-gray-700">Deadline:</strong>{' '}
+                      <strong className="text-gray-700">Deadline:</strong>{" "}
                       {formatDate(project.deadline)}
                     </span>
                   </div>
@@ -335,7 +338,7 @@ export default function ListProjects() {
                       />
                     </svg>
                     <span>
-                      <strong className="text-gray-700">Members:</strong>{' '}
+                      <strong className="text-gray-700">Members:</strong>{" "}
                       {project.teamMemberCount || 0}
                     </span>
                   </div>

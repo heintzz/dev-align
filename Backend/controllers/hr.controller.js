@@ -831,6 +831,17 @@ const parseCv = async (req, res) => {
 const getColleagues = async (req, res) => {
   try {
     const currentUserId = req.user.id || req.user._id;
+
+    // ========== PAGINATION PARAMETERS ==========
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // ========== SEARCH AND SORT PARAMETERS ==========
+    const search = req.query.search || "";
+    const sortBy = req.query.sortBy || "name";
+    const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
+
     const currentUser = await User.findById(currentUserId)
       .select("role managerId")
       .lean();
@@ -845,21 +856,55 @@ const getColleagues = async (req, res) => {
 
     let colleagues = [];
     let directManager = null;
+    let totalCount = 0;
+
+    // ========== BUILD BASE QUERY ==========
+    let baseQuery = {
+      active: true,
+      _id: { $ne: currentUserId },
+    };
+
+    // Add search filter
+    if (search) {
+      baseQuery.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // ========== BUILD SORT OBJECT ==========
+    let sortObject = {};
+    switch (sortBy) {
+      case "email":
+        sortObject = { email: sortOrder };
+        break;
+      case "position":
+        sortObject = { position: sortOrder };
+        break;
+      case "name":
+      default:
+        sortObject = { name: sortOrder };
+        break;
+    }
 
     if (currentUser.role === "manager") {
-      // If user is manager, get all direct subordinates (members with managerId = currentUser._id)
-      colleagues = await User.find({
-        managerId: currentUserId,
-        active: true,
-        _id: { $ne: currentUserId }, // Exclude self
-      })
+      // Manager: get subordinates
+      baseQuery.managerId = currentUserId;
+
+      // Get total count
+      totalCount = await User.countDocuments(baseQuery);
+
+      // Get paginated colleagues
+      colleagues = await User.find(baseQuery)
         .populate("position", "name")
         .populate("skills", "name")
         .select("_id name email role position skills")
-        .sort({ name: 1 })
+        .sort(sortObject)
+        .skip(skip)
+        .limit(limit)
         .lean();
     } else {
-      // If user is staff or HR, get teammates (colleagues with same manager) and include direct manager
+      // Staff/HR: get teammates
       if (currentUser.managerId) {
         // Get direct manager details
         directManager = await User.findById(currentUser.managerId)
@@ -867,23 +912,25 @@ const getColleagues = async (req, res) => {
           .select("_id name email role position")
           .lean();
 
-        // Get all teammates with the same manager (excluding self)
-        const teammates = await User.find({
-          managerId: currentUser.managerId,
-          active: true,
-          _id: { $ne: currentUserId }, // Exclude self
-        })
+        // Get teammates
+        baseQuery.managerId = currentUser.managerId;
+
+        // Get total count
+        totalCount = await User.countDocuments(baseQuery);
+
+        // Get paginated colleagues
+        colleagues = await User.find(baseQuery)
           .populate("position", "name")
           .populate("skills", "name")
           .select("_id name email role position skills")
-          .sort({ name: 1 })
+          .sort(sortObject)
+          .skip(skip)
+          .limit(limit)
           .lean();
-
-        colleagues = teammates;
       }
     }
 
-    // Format response
+    // ========== FORMAT RESPONSE ==========
     const formattedColleagues = colleagues.map((colleague) => ({
       id: colleague._id,
       name: colleague.name,
@@ -903,16 +950,29 @@ const getColleagues = async (req, res) => {
         : [],
     }));
 
+    // ========== CALCULATE PAGINATION METADATA ==========
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
     const response = {
       success: true,
       data: {
         userRole: currentUser.role,
         colleagues: formattedColleagues,
-        totalColleagues: formattedColleagues.length,
+        totalColleagues: totalCount,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: limit,
+          hasNextPage,
+          hasPrevPage,
+        },
       },
     };
 
-    // Include manager info if it exists
+    // Include manager info if exists
     if (directManager) {
       response.data.directManager = {
         id: directManager._id,
@@ -930,6 +990,7 @@ const getColleagues = async (req, res) => {
 
     return res.json(response);
   } catch (err) {
+    console.error("getColleagues error:", err);
     return res.status(500).json({
       success: false,
       error: "Internal Server Error",
