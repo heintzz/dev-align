@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import { useAssigneeStore } from "@/store/useAssigneeStore";
 import api from "@/api/axios";
+import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 const TaskCard = ({ task, projectId }) => {
   const [openCalendar, setOpenCalendar] = useState(false);
@@ -60,6 +62,9 @@ const TaskCard = ({ task, projectId }) => {
     editedTask.deadline ? new Date(editedTask.deadline) : null
   );
   const [skills, setSkills] = useState(editedTask.requiredSkills || []);
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   const { listAssigneeProject, fetchAssigneeProject } = useAssigneeStore();
 
@@ -82,6 +87,9 @@ const TaskCard = ({ task, projectId }) => {
   const handleSave = async () => {
     console.log("Saving task:", editedTask);
 
+    setLoadingState(true);
+    setLoadingText("Editing the task...");
+
     const updatedTask = {
       ...editedTask,
       assignedTo: editedTask?.assignedUsers?.[0]?._id
@@ -98,27 +106,45 @@ const TaskCard = ({ task, projectId }) => {
       console.log("Task updated successfully:", data);
     } catch (error) {
       console.error("Error saving task:", error);
+      toast(error.response?.data?.message || "Failed to edit task", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setIsEditing(false);
       setOpen(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   // Handle delete
   const handleDelete = async () => {
+    setLoadingState(true);
+    setLoadingText("Deleting the task...");
     try {
       await api.delete(`/task/${task._id}`);
 
       setConfirmDelete(false);
       setOpen(false);
     } catch (error) {
-      alert("Failed to delete task");
       setConfirmDelete(false);
+      toast(error.response?.data?.message || "Failed to delete task", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("Deleting the task...");
     }
   };
 
   return (
     <>
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
       <Card
         onClick={() => setOpen(true)}
         className="w-full shadow-sm hover:shadow-md transition cursor-grab active:cursor-grabbing p-5"
@@ -157,11 +183,12 @@ const TaskCard = ({ task, projectId }) => {
           <div className="grid grid-cols-3  items-center">
             {(task.assignedUsers && task.assignedUsers.length > 0 && (
               <div className="col-span-2 flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
+                <div className="w-7 h-7 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-semibold">
                   {task.assignedUsers[0]?.name
                     .split(" ")
                     .map((n) => n[0])
-                    .join("")}
+                    .join("")
+                    .slice(0, 3)}
                 </div>
                 <p className="text-sm font-medium text-gray-700 truncate max-w-20">
                   {task.assignedUsers[0]?.name}

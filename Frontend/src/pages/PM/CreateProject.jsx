@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Loading from "@/components/Loading";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CircleCheckBig } from "lucide-react";
+import { CircleCheckBig, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import api from "@/api/axios";
 
@@ -377,7 +377,7 @@ export default function CreateProject() {
             Create New Project
           </h1>
           <button
-            onClick={() => navigate("/dashboard-pm")}
+            onClick={() => navigate("/projects")}
             className="px-4 py-2 text-gray-600 hover:text-gray-900"
           >
             Cancel
@@ -387,9 +387,9 @@ export default function CreateProject() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start lg:h-full">
           {/* Left Form */}
           <div className="lg:col-span-1 h-full flex flex-col">
-            <div className="bg-white shadow-sm border rounded-xl p-6 flex flex-col justify-between h-full">
+            <div className="bg-white shadow-sm border rounded-xl p-6 h-full">
               {/* --- TOP CONTENT --- */}
-              <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+              <div className="flex flex-col justify-between h-full overflow-y-auto pr-1 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Project Details
                 </h3>
@@ -528,17 +528,18 @@ export default function CreateProject() {
                         {teamPositions.map((position, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
+                            className="flex justify-between items-center bg-gray-100 px-3 py-2 rounded-lg"
                           >
                             <span className="text-sm font-medium text-gray-900">
                               {position.name} × {position.quantity}
                             </span>
-                            <button
+                            <Button
+                              variant="ghost"
                               onClick={() => handleRemovePosition(index)}
-                              className="text-red-500 hover:text-red-700"
+                              className="text-red-500 hover:text-red-700 cursor-pointer"
                             >
-                              ×
-                            </button>
+                              <X className="w-4 h-4" />
+                            </Button>
                           </div>
                         ))}
                       </div>
@@ -547,21 +548,13 @@ export default function CreateProject() {
                 </div>
 
                 <div className="mt-6">
-                  <button
-                    onClick={handleGenerateRecommendations}
-                    className="w-full py-3 bg-primer text-white rounded-lg hover:bg-[#1F2E35] font-medium cursor-pointer"
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium cursor-pointer"
                   >
-                    {isGenerating
-                      ? "Generating..."
-                      : "Generate Team Recommendations"}
-                  </button>
-
-                  <button
-                    onClick={() => getManualTeams()}
-                    className="w-full mt-2 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium disabled:opacity-50 cursor-pointer"
-                  >
-                    Get All Staff
-                  </button>
+                    {isSubmitting ? "Creating Project..." : "Create Project"}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -577,11 +570,12 @@ export default function CreateProject() {
 
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium"
+                    onClick={handleGenerateRecommendations}
+                    className="w-full sm:w-auto bg-primer  text-white font-medium cursor-pointer"
                   >
-                    {isSubmitting ? "Creating Project..." : "Create Project"}
+                    {isGenerating
+                      ? "Generating..."
+                      : "Generate Team Recommendations"}
                   </Button>
                 </div>
               </CardHeader>
@@ -734,16 +728,15 @@ export default function CreateProject() {
 
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium"
+                    onClick={() => getManualTeams()}
+                    className="w-full sm:w-auto bg-sekunder hover:bg-slate-700  text-white font-medium cursor-pointer"
                   >
-                    {isSubmitting ? "Creating Project..." : "Create Project"}
+                    Get All Staff
                   </Button>
                 </div>
               </CardHeader>
 
-              <CardContent className="p-4 sm:p-6  max-h-[500px] overflow-y-auto">
+              <CardContent className="p-4 sm:p-6  h-[500px] overflow-y-auto">
                 {manualEmployees.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center py-12 text-gray-500">
                     <p>Click “Get Staff” to see all</p>

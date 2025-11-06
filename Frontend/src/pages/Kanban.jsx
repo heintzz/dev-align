@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import api from "@/api/axios";
 
@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import Loading from "@/components/Loading";
 
 import { toast } from "@/lib/toast";
-import { CirclePlus, CircleCheckBig } from "lucide-react";
+import { CirclePlus, CircleCheckBig, MoveLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Kanban() {
   const [socket, setSocket] = useState(null);
@@ -28,26 +29,48 @@ export default function Kanban() {
   const token = localStorage.getItem("token");
 
   const getColumns = async () => {
+    setLoadingState(true);
+    setLoadingText("Getting the columns...");
     try {
       const { data } = await api.get(`/task/columns?projectId=${projectId}`);
       console.log(data.data);
       setListColumns(data.data);
     } catch (error) {
       console.error(error);
+      toast(error.response?.data?.message || "Failed to get columns", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const getTasks = async () => {
+    setLoadingState(true);
+    setLoadingText("Getting the tasks...");
     try {
       const { data } = await api.get(`task?projectId=${projectId}`);
       console.log(data.data);
       setColumns(data.data);
     } catch (error) {
       console.error(error);
+      toast(error.response?.data?.message || "Failed to get tasks", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const addNewList = async () => {
+    setLoadingState(true);
+    setLoadingText("Add new list...");
     try {
       const { data } = await api.post("/task/column", {
         projectId: projectId,
@@ -59,8 +82,15 @@ export default function Kanban() {
       }
     } catch (error) {
       console.error(error);
+      toast(error.response?.data?.message || "Failed to add list", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setNewListName("");
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -93,6 +123,11 @@ export default function Kanban() {
       console.log(data);
     } catch (error) {
       console.error(error);
+      toast(error.response?.data?.message || "Failed to move task", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setLoadingState(false);
       setLoadingText("");
@@ -330,9 +365,22 @@ export default function Kanban() {
 
   return (
     <div className="p-4">
-      {/* <Toaster /> */}
       <Loading status={loadingState} fullscreen text={loadingText} />
-
+      <Link
+        to="/projects"
+        className={cn(
+          "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
+        )}
+      >
+        <MoveLeft
+          className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
+          aria-hidden="true"
+        />
+        <span className="whitespace-nowrap group-hover:underline">
+          Back to Projects
+        </span>
+      </Link>
       <div className="overflow-x-auto">
         <div className="flex gap-6 items-start px-2 py-4 min-w-max">
           <DragDropContext onDragEnd={onDragEnd}>

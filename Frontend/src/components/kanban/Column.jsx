@@ -67,6 +67,8 @@ import {
 import api from "@/api/axios";
 import { useAssigneeStore } from "@/store/useAssigneeStore";
 import { SkillSelector } from "../SkillSelector";
+import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 const Column = ({
   projectId,
@@ -98,6 +100,9 @@ const Column = ({
 
   const { listAssigneeProject, fetchAssigneeProject } = useAssigneeStore();
 
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+
   const handleSelectChange = (field, value) => {
     setNewTask((prev) => ({
       ...prev,
@@ -124,6 +129,8 @@ const Column = ({
 
   const addTask = async () => {
     // if (!newTask.trim()) return;
+    setLoadingState(true);
+    setLoadingText("Creating new task...");
     const columnDetail = listColumns.filter((col) => col._id === column._id);
     console.log(columnDetail[0].key);
     const formData = {
@@ -140,11 +147,21 @@ const Column = ({
       setOpenAddTask(false);
     } catch (error) {
       console.error(error);
+      toast(error.response?.data?.message || "Failed to add task", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const editColumn = async () => {
     console.log("edit column", columnName);
+    setLoadingState(true);
+    setLoadingText("Editing the column...");
     try {
       const { data } = await api.patch("/task/column", {
         columnId: column._id,
@@ -155,10 +172,20 @@ const Column = ({
       }
     } catch (error) {
       console.error(error);
+      toast(error.response?.data?.message || "Failed to edit columns", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const deleteColumn = async () => {
+    setLoadingState(true);
+    setLoadingText("Deleting the column...");
     try {
       const url = moveToColumn
         ? `/task/column/${column._id}?moveTasksTo=${moveToColumn}`
@@ -171,7 +198,14 @@ const Column = ({
       // UI updates via socket
     } catch (error) {
       console.error("Failed to delete column:", error);
-      alert(error.response?.data?.message || "Failed to delete column");
+      toast(error.response?.data?.message || "Failed to delete column", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -181,6 +215,8 @@ const Column = ({
 
   return (
     <div className={`w-72 ${className}`}>
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
       <Card className="bg-white p-5">
         <div className="flex items-center justify-between mb-3">
           {isEdited ? (

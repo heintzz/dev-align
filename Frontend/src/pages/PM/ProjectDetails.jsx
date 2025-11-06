@@ -141,7 +141,7 @@ export default function ProjectDetailsDialog({
         }
       } catch (err) {
         console.error("Error fetching project details:", err);
-        toast(err.message || "Failed to fetch project details", {
+        toast(err.response.data.message || "Failed to fetch project details", {
           type: "error",
         });
       } finally {
@@ -195,7 +195,7 @@ export default function ProjectDetailsDialog({
       });
     } catch (err) {
       console.error("Error updating project:", err);
-      toast(err.message || "Failed to update project", {
+      toast(err.response.data.message || "Failed to update project", {
         type: "error",
       });
     } finally {
@@ -218,7 +218,7 @@ export default function ProjectDetailsDialog({
       onClose();
     } catch (err) {
       console.error("Error deleting project:", err);
-      toast(err.message || "Failed to delete project", {
+      toast(err.response.data.message || "Failed to delete project", {
         type: "error",
       });
     } finally {
@@ -247,7 +247,7 @@ export default function ProjectDetailsDialog({
       });
     } catch (err) {
       console.error("Error completing project:", err);
-      toast(err.message || "Failed to complete project", {
+      toast(err.response.data.message || "Failed to complete project", {
         type: "error",
       });
     } finally {
@@ -284,6 +284,7 @@ export default function ProjectDetailsDialog({
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => setShowDeleteDialog(true)}
+                          disabled={project.status === "completed"}
                           className="ml-2 p-1 text-red-500 hover:text-red-700 cursor-pointer"
                         >
                           <Trash />
@@ -375,25 +376,29 @@ export default function ProjectDetailsDialog({
 
                 {/* Skills Used */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Skills Used
-                  </h3>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {selectedSkills && selectedSkills.length > 0 ? (
-                      selectedSkills.map((skill) => (
-                        <span
-                          key={skill._id}
-                          className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-800"
-                        >
-                          {skill.name}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        No skills recorded
-                      </p>
-                    )}
-                  </div>
+                  {!isHR && (
+                    <>
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        Skills Used
+                      </h3>
+                      <div className="flex flex-wrap gap-2 mb-4 max-h-24 overflow-auto">
+                        {selectedSkills && selectedSkills.length > 0 ? (
+                          selectedSkills.map((skill) => (
+                            <span
+                              key={skill._id}
+                              className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-800"
+                            >
+                              {skill.name}
+                            </span>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500">
+                            No skills recorded
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   <h3 className="font-semibold text-gray-900 mb-3">
                     Team Members
