@@ -41,7 +41,7 @@ const getAvatarColor = (index) => {
 
 export default function PMDashboard() {
   const [loadingState, setLoadingState] = useState(false);
-  const [loadingText, setLoadingText] = useState("true");
+  const [loadingText, setLoadingText] = useState("");
   const [dashboardData, setDashboardData] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -137,7 +137,7 @@ export default function PMDashboard() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen p-5">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       {/* Header */}
