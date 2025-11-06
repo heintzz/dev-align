@@ -347,12 +347,29 @@ const createTask = async (req, res) => {
       });
     }
 
+    // const existingTask = await Task.findOne({
+    //   projectId,
+    //   title: { $regex: new RegExp(`^${title}$`, "i") },
+    // });
+
+    // console.log("title: " + title);
+
+    // if (existingTask) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     error: "Duplicate Task",
+    //     message: `A task with the title '${title}' already exists in this project.`,
+    //   });
+    // }
+
     const maxOrderTask = await Task.findOne({
       projectId,
       columnKey,
     })
       .sort({ order: -1 })
       .select("order");
+
+    console.log(maxOrderTask);
 
     const order = maxOrderTask ? maxOrderTask.order + 1 : 0;
 

@@ -4,6 +4,14 @@ import projectService from "../../services/project.service";
 import ProjectDetailsDialog from "./ProjectDetails";
 import { useAuthStore } from "@/store/useAuthStore";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export default function ListProjects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -191,7 +199,7 @@ export default function ListProjects() {
           {!isHR && (
             <button
               onClick={handleCreateProject}
-              className="px-6 py-2.5 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium"
+              className="px-6 py-2.5 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium cursor-pointer"
             >
               Create New Project
             </button>
@@ -200,13 +208,12 @@ export default function ListProjects() {
 
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
-          {/* Status Tabs - removed "On Hold" since backend doesn't have it */}
           <div className="flex gap-2">
             {["All", "In Progress", "Completed", "Overdue"].map((status) => (
               <button
                 key={status}
                 onClick={() => setActiveFilter(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                   activeFilter === status
                     ? "bg-[#2C3F48] text-white"
                     : "bg-white text-gray-600 hover:bg-gray-100"
@@ -219,25 +226,33 @@ export default function ListProjects() {
 
           {/* Dropdown Filters */}
           <div className="flex gap-3">
-            <select
-              value={filters.deadline}
-              onChange={(e) => handleFilterChange("deadline", e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Deadline</option>
-              <option value="Earliest">Earliest First</option>
-              <option value="Latest">Latest First</option>
-            </select>
+            <Select onValueChange={(v) => handleFilterChange("deadline", v)}>
+              <SelectTrigger className="w-[180px] cursor-pointer">
+                <SelectValue placeholder="Deadline" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Earliest" className="cursor-pointer">
+                  Earliest First
+                </SelectItem>
+                <SelectItem value="Latest" className="cursor-pointer">
+                  Latest First
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-            <select
-              value={filters.teamSize}
-              onChange={(e) => handleFilterChange("teamSize", e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Team Size</option>
-              <option value="Smallest">Smallest First</option>
-              <option value="Largest">Largest First</option>
-            </select>
+            <Select onValueChange={(v) => handleFilterChange("teamSize", v)}>
+              <SelectTrigger className="w-[180px] cursor-pointer">
+                <SelectValue placeholder="Team Size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Smallest" className="cursor-pointer">
+                  Smallest First
+                </SelectItem>
+                <SelectItem value="Largest" className="cursor-pointer">
+                  Largest First
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -249,27 +264,29 @@ export default function ListProjects() {
         ) : filteredProjects.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">No projects found.</p>
-            <button
-              onClick={handleCreateProject}
-              className="mt-4 px-6 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
-            >
-              Create Your First Project
-            </button>
+            {projects.length === 0 && (
+              <button
+                onClick={handleCreateProject}
+                className="mt-4 px-6 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
+              >
+                Create Your First Project
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
               <div
                 key={project._id}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6"
+                className="flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 p-5"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2">
+                  <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-1">
                     {project.name}
                   </h3>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(
+                    className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(
                       project.displayStatus
                     )}`}
                   >
@@ -278,62 +295,66 @@ export default function ListProjects() {
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {project.description}
+                <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+                  {project.description || "No description provided."}
                 </p>
 
-                {/* Deadline */}
-                <div className="flex items-center gap-2 mb-4">
-                  <svg
-                    className="w-4 h-4 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span className="text-sm text-gray-600">
-                    Dec: {formatDate(project.deadline)}
-                  </span>
-                </div>
+                {/* Meta Info */}
+                <div className="flex flex-col gap-2 text-sm text-gray-600 mb-4">
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <span className="truncate">
+                      <strong className="text-gray-700">Deadline:</strong>{" "}
+                      {formatDate(project.deadline)}
+                    </span>
+                  </div>
 
-                {/* Team Members */}
-                <div className="flex items-center gap-2 mb-4">
-                  <svg
-                    className="w-4 h-4 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                  <span className="text-sm text-gray-600">
-                    {project.teamMemberCount || 0} Members
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0zM7 10a2 2 0 11-4 0 2 2 0z"
+                      />
+                    </svg>
+                    <span>
+                      <strong className="text-gray-700">Members:</strong>{" "}
+                      {project.teamMemberCount || 0}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-4 border-t">
+                <div className="mt-auto flex gap-3 pt-3 border-t border-gray-100">
                   <button
                     onClick={() => handleViewDetails(project._id)}
-                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     Details
                   </button>
+
                   {!isHR && (
                     <button
                       onClick={() => handleViewKanban(project._id)}
-                      className="flex-1 px-4 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] text-sm font-medium cursor-pointer"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-[#2C3F48] rounded-lg hover:bg-[#1F2E35] transition-colors cursor-pointer"
                     >
                       Kanban
                     </button>
