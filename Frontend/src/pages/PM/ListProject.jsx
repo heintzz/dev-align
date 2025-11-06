@@ -37,6 +37,7 @@ export default function ListProjects() {
       const response = await projectService.getAllProjects();
       // Response: { success: true, data: { page, perPage, total, projects: [...] } }
       const projectsList = response.data.projects || [];
+      console.log("test");
 
       // Transform projects to add computed fields
       const transformedProjects = projectsList.map((project) => ({
