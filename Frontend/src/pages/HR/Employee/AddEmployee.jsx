@@ -72,6 +72,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { SkillSelector } from "@/components/SkillSelector";
 import Loading from "@/components/Loading";
+import { PositionSelector } from "@/components/PositionSelector";
 
 export default function AddEmployee() {
   const [skills, setSkills] = useState([]);
@@ -173,12 +174,6 @@ export default function AddEmployee() {
     setCalendarOpen(false);
   };
 
-  const getPosition = async () => {
-    const { data } = await api.get("/position");
-    console.log(data);
-    setPositions(data.data.positions || []);
-  };
-
   const getManagers = async () => {
     const { data } = await api.get("/hr/employees", {
       params: {
@@ -219,7 +214,6 @@ export default function AddEmployee() {
   };
 
   useEffect(() => {
-    getPosition();
     getManagers();
   }, []);
 
@@ -397,23 +391,17 @@ export default function AddEmployee() {
                             <FieldLabel htmlFor="checkout-7j9-position-uw1">
                               Position
                             </FieldLabel>
-                            <Select
-                              value={employeeForm.position}
-                              onValueChange={(value) =>
-                                handleSelectChange("position", value)
+                            <PositionSelector
+                              selectedPosition={employeeForm.position}
+                              onChange={(pos) =>
+                                setEmployeeForm((prev) => ({
+                                  ...prev,
+                                  position: pos,
+                                }))
                               }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a position" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {positions.map((pos) => (
-                                  <SelectItem key={pos._id} value={pos._id}>
-                                    {pos.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              isEditing={true}
+                              allowCustomAdd
+                            />
                           </Field>
                           <Field>
                             <FieldLabel htmlFor="checkout-7j9-role-f59">

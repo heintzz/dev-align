@@ -190,6 +190,7 @@ export default function ListProjects() {
 
   const { role } = useAuthStore();
   const isHR = role === "hr";
+  const isManager = role === "manager";
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -197,7 +198,7 @@ export default function ListProjects() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
-          {!isHR && (
+          {isManager && (
             <button
               onClick={handleCreateProject}
               className="px-6 py-2.5 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35] font-medium cursor-pointer"
@@ -265,7 +266,7 @@ export default function ListProjects() {
         ) : filteredProjects.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">No projects found.</p>
-            {projects.length === 0 && (
+            {isManager && projects.length === 0 && (
               <button
                 onClick={handleCreateProject}
                 className="mt-4 px-6 py-2 bg-[#2C3F48] text-white rounded-lg hover:bg-[#1F2E35]"
