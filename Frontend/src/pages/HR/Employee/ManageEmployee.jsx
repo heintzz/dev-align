@@ -72,6 +72,7 @@ import api from "@/api/axios";
 import UploadFile from "@/components/UploadFile";
 import AddEmployee from "./AddEmployee";
 import { toast } from "@/lib/toast";
+import Loading from "@/components/Loading";
 
 export default function ManageEmployee() {
   const [total, setTotal] = useState(0);
@@ -189,17 +190,13 @@ export default function ManageEmployee() {
   ];
 
   const getEmployeeStats = async () => {
+    setLoadingState(true);
+    setLoadingText("Fetch initial data...");
     try {
       // Get all employees without pagination for accurate statistics
       const { data } = await api.get("/hr/employees", {
         params: {
           limit: 1000, // Large number to get all employees
-          search: globalFilter || undefined,
-          active: statusFilter === "all" ? undefined : statusFilter,
-          position:
-            positionFilter && positionFilter !== "all"
-              ? positionFilter
-              : undefined,
         },
       });
 
@@ -227,12 +224,22 @@ export default function ManageEmployee() {
       setTotalCount(data.meta.total);
       setNewCount(newEmployees.length);
       setLeavingCount(leavingEmployees.length);
-    } catch (e) {
-      console.warn("Error calculating employee stats:", e);
+    } catch (error) {
+      console.warn("Error calculating employee stats:", error);
+      toast(error.response?.data?.message || "Failed to get employee status", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const getEmployees = async () => {
+    setLoadingState(true);
+    setLoadingText("Get employees...");
     try {
       setLoading(true);
       const params = {
@@ -252,15 +259,22 @@ export default function ManageEmployee() {
 
       // Update statistics separately to get accurate counts
       // await getEmployeeStats();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
+      toast(error.response?.data?.message || "Failed to get employee status", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
-      setLoading(false);
-      console.log("finish");
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const loadPositions = async () => {
+    setLoadingState(true);
+    setLoadingText("Get positions...");
     try {
       const projectService = await import("../../../services/project.service");
       const res = await projectService.default.getAllPositions();
@@ -270,10 +284,18 @@ export default function ManageEmployee() {
       else if (res && res.positions) list = res.positions;
       else if (res && res.data && res.data.positions) list = res.data.positions;
       setPositionsList(list || []);
-    } catch (e) {
+    } catch (error) {
       // fallback: ignore
-      console.warn("Failed to load positions", e);
+      console.warn("Failed to load positions", error);
       setPositionsList([]);
+      toast(error.response?.data?.message || "Failed to get employee status", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -300,6 +322,9 @@ export default function ManageEmployee() {
   };
 
   const AddEmployeeByExcel = async () => {
+    setLoadingState(true);
+    setLoadingState("Adding Employee...");
+
     if (!excelFile) {
       alert("Please select a file first!");
       return;
@@ -309,8 +334,6 @@ export default function ManageEmployee() {
     formData.append("file", excelFile);
 
     try {
-      setLoadingState(true);
-      setLoadingState("Adding Employee...");
       const response = await api.post(
         "/hr/employees/import?dryRun=false&sendEmails=false",
         formData,
@@ -332,7 +355,11 @@ export default function ManageEmployee() {
       setOpenAddExcel(false);
     } catch (error) {
       console.error("Failed to import employees:", error);
-      alert("Failed to import employees.");
+      toast(error.response?.data?.message || "Failed to import employees", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       getEmployees();
       setLoadingState(true);
@@ -345,6 +372,7 @@ export default function ManageEmployee() {
     const { data } = await api.delete(`hr/employee/${id}?active=${isActive}`);
     console.log(data);
     getEmployees();
+    getEmployeeStats();
   };
 
   const table = useReactTable({
@@ -372,11 +400,6 @@ export default function ManageEmployee() {
   });
 
   useEffect(() => {
-    // Get complete statistics initially and when filters change
-    getEmployeeStats();
-  }, []);
-
-  useEffect(() => {
     // Get paginated data for table when page changes
     getEmployees();
   }, [pageIndex, pageSize, globalFilter, statusFilter, positionFilter]);
@@ -384,16 +407,12 @@ export default function ManageEmployee() {
   useEffect(() => {
     // load positions once
     loadPositions();
+    getEmployeeStats();
   }, []);
-
-  useEffect(() => {
-    // refetch employees when position filter changes
-    setPageIndex(0);
-    getEmployees();
-  }, [positionFilter]);
 
   return (
     <>
+      <Loading status={loadingState} fullscreen text={loadingText} />
       <div>
         {openConfirmation && (
           <AlertDialog
@@ -414,11 +433,14 @@ export default function ManageEmployee() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="cursor-pointer">
+                  Cancel
+                </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() =>
                     changeEmployeeStatus(userToUpdate.id, !userToUpdate.active)
                   }
+                  className="cursor-pointer"
                 >
                   Continue
                 </AlertDialogAction>
@@ -573,13 +595,7 @@ export default function ManageEmployee() {
               </TableHeader>
 
               <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="text-center">
-                      Loading...
-                    </TableCell>
-                  </TableRow>
-                ) : employees.length === 0 ? (
+                {employees.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="text-center">
                       No data
@@ -652,7 +668,8 @@ export default function ManageEmployee() {
               Add Multiple Employee
             </DialogTitle>
             <DialogDescription>
-              Add multiple employee by uploading excell
+              Please make sure each Excel file contains employees with the same
+              role only.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">

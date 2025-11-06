@@ -388,22 +388,6 @@ export default function AddEmployee() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <Field>
-                            <FieldLabel htmlFor="checkout-7j9-position-uw1">
-                              Position
-                            </FieldLabel>
-                            <PositionSelector
-                              selectedPosition={employeeForm.position}
-                              onChange={(pos) =>
-                                setEmployeeForm((prev) => ({
-                                  ...prev,
-                                  position: pos,
-                                }))
-                              }
-                              isEditing={true}
-                              allowCustomAdd
-                            />
-                          </Field>
-                          <Field>
                             <FieldLabel htmlFor="checkout-7j9-role-f59">
                               Role
                             </FieldLabel>
@@ -426,8 +410,26 @@ export default function AddEmployee() {
                               </SelectContent>
                             </Select>
                           </Field>
+                          {employeeForm.role == "staff" && (
+                            <Field>
+                              <FieldLabel htmlFor="checkout-7j9-position-uw1">
+                                Position
+                              </FieldLabel>
+                              <PositionSelector
+                                selectedPosition={employeeForm.position}
+                                onChange={(pos) =>
+                                  setEmployeeForm((prev) => ({
+                                    ...prev,
+                                    position: pos,
+                                  }))
+                                }
+                                isEditing={true}
+                                allowCustomAdd
+                              />
+                            </Field>
+                          )}
                         </div>
-                        {employeeForm.role !== "manager" && (
+                        {employeeForm.role == "staff" && (
                           <Field>
                             <FieldLabel htmlFor="checkout-7j9-manager-43j">
                               Manager
