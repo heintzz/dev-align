@@ -28,9 +28,18 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const corsOptions = { 
-  origin: "*",
-  credentials: true 
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",           // Local development frontend
+    "http://localhost:3000",           // Alternative local port
+    "http://18.141.166.14",            // Frontend EC2 instance
+    "http://13.250.231.18:5000"        // Backend EC2 instance
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: ["Content-Range", "X-Content-Range"],
+  optionsSuccessStatus: 200
 };
 
 // Create HTTP server
@@ -39,8 +48,14 @@ const server = http.createServer(app);
 // Initialize Socket.IO with CORS
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://18.141.166.14",
+      "http://13.250.231.18:5000"
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true
   },
   pingTimeout: 60000,
   pingInterval: 25000,

@@ -107,10 +107,7 @@ const createEmployee = async (req, res) => {
     const existingSkills = await Skill.find({});
     const existingSkillNames = existingSkills.map((skill) => skill.name);
 
-    const { matchedSkills, newSkills } = skillMatching(
-      req.body.skills,
-      existingSkillNames
-    );
+    const { matchedSkills, newSkills } = skillMatching(req.body.skills, existingSkillNames);
 
     let insertedIds = [];
     if (newSkills.length > 0) {
@@ -146,7 +143,7 @@ const createEmployee = async (req, res) => {
         text: message,
       });
     } catch (e) {
-      // Log and continue — don't fail creation if email sending fails
+      // Log and continue — don"t fail creation if email sending fails
       // eslint-disable-next-line no-console
       console.warn("Failed to send welcome email:", e.message || e);
     }
@@ -176,8 +173,7 @@ const listEmployees = async (req, res) => {
     filter.$or = [{ name: regex }, { email: regex }];
   }
   if (role) filter.role = role;
-  if (position && mongoose.Types.ObjectId.isValid(position))
-    filter.position = position;
+  if (position && mongoose.Types.ObjectId.isValid(position)) filter.position = position;
 
   // Default: tampilkan semua (active & inactive). Jika query active diberikan, filter sesuai.
   if (typeof req.query.active !== "undefined") {
@@ -241,8 +237,7 @@ const getEmployee = async (req, res) => {
       .populate("managerId", "name email phoneNumber position")
       .lean();
 
-    if (!user)
-      return res.status(404).json({ success: false, error: "Not Found" });
+    if (!user) return res.status(404).json({ success: false, error: "Not Found" });
 
     // Authorization: hr and manager can view any; others can view only their own record
     const requester = req.user || {};
@@ -291,15 +286,11 @@ const updateEmployee = async (req, res) => {
   // Only HR can update via middleware in routes; still check existence
   try {
     const user = await User.findById(id);
-    if (!user)
-      return res.status(404).json({ success: false, error: "Not Found" });
+    if (!user) return res.status(404).json({ success: false, error: "Not Found" });
 
     if (req.body.email && req.body.email !== user.email) {
       const exists = await User.findOne({ email: req.body.email });
-      if (exists)
-        return res
-          .status(400)
-          .json({ success: false, error: "Duplicate Email" });
+      if (exists) return res.status(400).json({ success: false, error: "Duplicate Email" });
     }
 
     const updatable = [
@@ -313,8 +304,7 @@ const updateEmployee = async (req, res) => {
       "role",
     ];
     updatable.forEach((k) => {
-      if (Object.prototype.hasOwnProperty.call(req.body, k))
-        user[k] = req.body[k];
+      if (Object.prototype.hasOwnProperty.call(req.body, k)) user[k] = req.body[k];
     });
 
     // Handle skills update if skills array is provided
@@ -326,14 +316,14 @@ const updateEmployee = async (req, res) => {
             name: new RegExp("^" + escapeRegExp(skillName) + "$", "i"),
           });
           if (!skill) {
-            // Create new skill if it doesn't exist
+            // Create new skill if it doesn"t exist
             skill = await Skill.create({ name: skillName });
           }
           return skill._id;
         })
       );
 
-      // Update user's skills
+      // Update user"s skills
       user.skills = skillIds;
     }
 
@@ -357,29 +347,37 @@ const updateEmployee = async (req, res) => {
   }
 };
 
-const deleteEmployee = async (req, res) => {
+const changeEmployeeStatus = async (req, res) => {
   const { id } = req.params;
+  const isActive = req.query.active;
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
+  const user = await User.findById(id);
+  if (!user) return res.status(404).json({ success: false, error: "Not Found" });
+
   try {
+    // ?active=true
+    if (isActive == "true") {
+      if (user.active === true)
+        return res.status(400).json({ success: false, error: "Already Activated" });
+
+      user.active = true;
+      await user.save();
+      return res.json({ success: true, message: "Employee activated" });
+    }
     // Prioritize soft-delete. Allow hard delete when query ?hard=true is provided (HR only route already enforced in router).
     const hard = req.query.hard === "true";
     if (hard) {
       const deleted = await User.findByIdAndDelete(id);
-      if (!deleted)
-        return res.status(404).json({ success: false, error: "Not Found" });
+      if (!deleted) return res.status(404).json({ success: false, error: "Not Found" });
       return res.json({ success: true, message: "Employee hard-deleted" });
     }
 
-    const user = await User.findById(id);
-    if (!user)
-      return res.status(404).json({ success: false, error: "Not Found" });
     if (user.active === false)
-      return res
-        .status(400)
-        .json({ success: false, error: "Already Deactivated" });
+      return res.status(400).json({ success: false, error: "Already Deactivated" });
 
     user.active = false;
     await user.save();
@@ -419,10 +417,8 @@ const importEmployees = async (req, res) => {
       const skillsVal = row.skills || row.Skills || "";
 
       if (email) fileEmails.push(String(email).toLowerCase());
-      if (managerEmail)
-        managerEmailsSet.add(String(managerEmail).toLowerCase());
-      if (positionVal && typeof positionVal === "string")
-        positionNamesSet.add(positionVal);
+      if (managerEmail) managerEmailsSet.add(String(managerEmail).toLowerCase());
+      if (positionVal && typeof positionVal === "string") positionNamesSet.add(positionVal);
 
       // Handle skills (comma-separated string or array)
       if (skillsVal) {
@@ -443,9 +439,7 @@ const importEmployees = async (req, res) => {
     const existingUsers = await User.find({ email: { $in: fileEmails } })
       .select("email _id")
       .lean();
-    const existingEmailSet = new Set(
-      existingUsers.map((u) => String(u.email).toLowerCase())
-    );
+    const existingEmailSet = new Set(existingUsers.map((u) => String(u.email).toLowerCase()));
 
     // resolve managers
     const managers = await User.find({
@@ -453,13 +447,10 @@ const importEmployees = async (req, res) => {
     })
       .select("email _id")
       .lean();
-    const managerMap = new Map(
-      managers.map((m) => [String(m.email).toLowerCase(), m._id])
-    );
+    const managerMap = new Map(managers.map((m) => [String(m.email).toLowerCase(), m._id]));
 
     // helper to escape user input for RegExp
-    const escapeRegExp = (s) =>
-      String(s).replace(/[.*+?^${}()|[\[\]\\]/g, "\\$&");
+    const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\[\]\\]/g, "\\$&");
 
     // resolve positions by name (case-insensitive)
     const positions = await Position.find({
@@ -470,9 +461,7 @@ const importEmployees = async (req, res) => {
       .select("name _id")
       .lean();
     // map using lowercase key for case-insensitive lookup
-    const positionMap = new Map(
-      positions.map((p) => [String(p.name).toLowerCase(), p._id])
-    );
+    const positionMap = new Map(positions.map((p) => [String(p.name).toLowerCase(), p._id]));
 
     // resolve skills by name (case-insensitive)
     const skills = await Skill.find({
@@ -482,11 +471,9 @@ const importEmployees = async (req, res) => {
     })
       .select("name _id")
       .lean();
-    const skillMap = new Map(
-      skills.map((s) => [String(s.name).toLowerCase(), s._id])
-    );
+    const skillMap = new Map(skills.map((s) => [String(s.name).toLowerCase(), s._id]));
 
-    // Auto-create missing positions and skills so import doesn't fail on unknown names
+    // Auto-create missing positions and skills so import doesn"t fail on unknown names
     const missingPositionNames = Array.from(positionNamesSet).filter(
       (n) => !positionMap.has(String(n).toLowerCase())
     );
@@ -495,21 +482,15 @@ const importEmployees = async (req, res) => {
       const createdPositions = await Position.insertMany(
         missingPositionNames.map((name) => ({ name }))
       );
-      createdPositions.forEach((p) =>
-        positionMap.set(String(p.name).toLowerCase(), p._id)
-      );
+      createdPositions.forEach((p) => positionMap.set(String(p.name).toLowerCase(), p._id));
     }
 
     const missingSkillNames = Array.from(skillNamesSet).filter(
       (n) => !skillMap.has(String(n).toLowerCase())
     );
     if (missingSkillNames.length > 0) {
-      const createdSkills = await Skill.insertMany(
-        missingSkillNames.map((name) => ({ name }))
-      );
-      createdSkills.forEach((s) =>
-        skillMap.set(String(s.name).toLowerCase(), s._id)
-      );
+      const createdSkills = await Skill.insertMany(missingSkillNames.map((name) => ({ name })));
+      createdSkills.forEach((s) => skillMap.set(String(s.name).toLowerCase(), s._id));
     }
 
     // detect within-file duplicates
@@ -529,9 +510,7 @@ const importEmployees = async (req, res) => {
   const parsedDateOfBirth = parseExcelDate(rawDateOfBirth);
       const positionVal = row.position || row.Position || null; // can be id or name
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
-      const managerEmail = managerEmailRaw
-        ? String(managerEmailRaw).toLowerCase()
-        : null;
+      const managerEmail = managerEmailRaw ? String(managerEmailRaw).toLowerCase() : null;
       const role = row.role || row.Role || "staff";
       const skillsVal = row.skills || row.Skills || "";
 
@@ -608,7 +587,7 @@ const importEmployees = async (req, res) => {
         skills = skillNames
           .map((name) => {
             if (mongoose.Types.ObjectId.isValid(name)) {
-              return name; // If it's already an ID, use it directly
+              return name; // If it"s already an ID, use it directly
             }
             const key = String(name).toLowerCase();
             if (skillMap.has(key)) {
@@ -709,42 +688,24 @@ const importEmployees = async (req, res) => {
 const getImportTemplate = async (req, res) => {
   try {
     const format = (req.query.format || "xlsx").toLowerCase();
-    const xlsxPath = path.join(
-      __dirname,
-      "..",
-      "scripts",
-      "employee-import-template.xlsx"
-    );
-    const csvPath = path.join(
-      __dirname,
-      "..",
-      "scripts",
-      "employee-import-template.csv"
-    );
+    const xlsxPath = path.join(__dirname, "..", "scripts", "employee-import-template.xlsx");
+    const csvPath = path.join(__dirname, "..", "scripts", "employee-import-template.csv");
     const fs = require("fs");
     if (format === "xlsx" && fs.existsSync(xlsxPath)) {
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader(
-        "Content-Disposition",
-        "attachment; filename=employee-import-template.xlsx"
-      );
+      res.setHeader("Content-Disposition", "attachment; filename=employee-import-template.xlsx");
       return res.sendFile(xlsxPath);
     }
     if (format === "csv" && fs.existsSync(csvPath)) {
       res.setHeader("Content-Type", "text/csv");
-      res.setHeader(
-        "Content-Disposition",
-        "attachment; filename=employee-import-template.csv"
-      );
+      res.setHeader("Content-Disposition", "attachment; filename=employee-import-template.csv");
       return res.sendFile(csvPath);
     }
     // fallback: error if file not found
-    return res
-      .status(404)
-      .json({ success: false, error: "Template file not found" });
+    return res.status(404).json({ success: false, error: "Template file not found" });
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -761,17 +722,15 @@ const parseCv = async (req, res) => {
 
   const mime = req.file.mimetype || "";
   try {
-    if (
-      mime === "application/pdf" ||
-      req.file.originalname.toLowerCase().endsWith(".pdf")
-    ) {
+    if (mime === "application/pdf" || req.file.originalname.toLowerCase().endsWith(".pdf")) {
       const data = await pdfParse(req.file.buffer);
       const text = data.text || "";
 
       // extract emails and phones
-      const emails = (
-        text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []
-      ).slice(0, 10);
+      const emails = (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).slice(
+        0,
+        10
+      );
       const phones = (text.match(/\+?\d[\d \-()]{6,}\d/g) || []).slice(0, 10);
 
       return res.json({
@@ -784,15 +743,9 @@ const parseCv = async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      error:
-        "Unsupported file type for CV parsing. Only PDF supported for now.",
+      error: "Unsupported file type for CV parsing. Only PDF supported for now.",
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: "Failed to parse CV",
-      message: err.message,
-    });
     return res.status(500).json({
       success: false,
       error: "Failed to parse CV",
@@ -916,7 +869,7 @@ module.exports = {
   listEmployees,
   getEmployee,
   updateEmployee,
-  deleteEmployee,
+  changeEmployeeStatus,
   importEmployees,
   parseCv,
   getImportTemplate,

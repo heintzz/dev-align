@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
-import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // shadcn/ui components
 import {
@@ -43,6 +43,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
 //icon
@@ -56,20 +67,19 @@ import {
   Sheet,
   Download,
   CircleCheckBig,
-} from "lucide-react";
-import api from "@/api/axios";
-import { getDashboardStats } from "../../../services/dashboard.service";
-import UploadFile from "@/components/UploadFile";
-import AddEmployee from "./AddEmployee";
-import { toast } from "@/lib/toast";
+} from 'lucide-react';
+import api from '@/api/axios';
+import UploadFile from '@/components/UploadFile';
+import AddEmployee from './AddEmployee';
+import { toast } from '@/lib/toast';
 
 export default function ManageEmployee() {
   const [total, setTotal] = useState(0);
   const [pageIndex, setPageIndex] = useState(0); // 0-based
   const [pageSize, setPageSize] = useState(10);
   const [sorting, setSorting] = useState([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [positionFilter, setPositionFilter] = useState("all");
 
   const [employees, setEmployees] = useState([]);
@@ -85,11 +95,14 @@ export default function ManageEmployee() {
   const [positionsList, setPositionsList] = useState([]);
   const [currentMonth] = useState(new Date().getMonth());
 
+  const [openConfirmation, setOpenConfirmation] = useState(false);
+  const [userToUpdate, setUserToUpdate] = useState();
+
   const navigate = useNavigate();
 
   const columns = [
     {
-      accessorKey: "name",
+      accessorKey: 'name',
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
@@ -129,26 +142,39 @@ export default function ManageEmployee() {
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
-              <Ellipsis className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center">
-            <DropdownMenuItem
-              onClick={() => navigate(`detail/${row.original.id}`)}
-              className="cursor-pointer"
-            >
-              Details
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => deativate(row.original.id)} className="cursor-pointer">
-              Deactivate
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+      cell: ({ row }) => {
+        const isActive = row.original.active;
+        console.log('Aktif ga: ' + isActive);
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
+                <Ellipsis className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center">
+              <DropdownMenuItem
+                onClick={() => navigate(`detail/${row.original.id}`)}
+                className="cursor-pointer"
+              >
+                Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setOpenConfirmation(true);
+                  setUserToUpdate({
+                    active: isActive,
+                    id: row.original.id,
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                {isActive ? 'Deactivate' : 'Activate'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
     },
   ];
 
@@ -196,11 +222,11 @@ export default function ManageEmployee() {
         page: pageIndex + 1, // backend is 1-based
         limit: pageSize,
         search: globalFilter || undefined,
-        active: statusFilter === "all" ? undefined : statusFilter,
+        active: statusFilter === 'all' ? undefined : statusFilter,
         position: positionFilter && positionFilter !== "all" ? positionFilter : undefined,
       };
 
-      const { data } = await api.get("/hr/employees", { params });
+      const { data } = await api.get('/hr/employees', { params });
       setEmployees(data.data);
       setTotal(data.meta.total);
       
@@ -210,7 +236,7 @@ export default function ManageEmployee() {
       console.error(err);
     } finally {
       setLoading(false);
-      console.log("finish");
+      console.log('finish');
     }
   };
 
@@ -264,7 +290,7 @@ export default function ManageEmployee() {
 
     try {
       setLoadingState(true);
-      setLoadingState("Adding Employee...");
+      setLoadingState('Adding Employee...');
       const response = await api.post(
         '/hr/employees/import?dryRun=false&sendEmails=false',
         formData,
@@ -273,13 +299,13 @@ export default function ManageEmployee() {
         }
       );
 
-      console.log("Import result:", response);
+      console.log('Import result:', response);
       toast(
         `Import completed! Created: ${response.data.created}, Failed: ${response.data.failed}`,
         {
           icon: <CircleCheckBig className="w-5 h-5 text-white" />,
-          type: "success",
-          position: "top-center",
+          type: 'success',
+          position: 'top-center',
           duration: 5000,
         }
       );
@@ -290,13 +316,13 @@ export default function ManageEmployee() {
     } finally {
       getEmployees();
       setLoadingState(true);
-      setLoadingText("");
+      setLoadingText('');
     }
   };
 
-  const deativate = async (id) => {
+  const changeEmployeeStatus = async (id, isActive) => {
     console.log(id);
-    const { data } = await api.delete(`hr/employee/${id}`);
+    const { data } = await api.delete(`hr/employee/${id}?active=${isActive}`);
     console.log(data);
     getEmployees();
   };
@@ -346,6 +372,30 @@ export default function ManageEmployee() {
   return (
     <>
       <div>
+        {openConfirmation && (
+          <AlertDialog open={openConfirmation} onOpenChange={setOpenConfirmation}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {userToUpdate.active ? 'Deactivate Employee' : 'Activate Employee'}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {userToUpdate.active
+                    ? 'Are you sure you want to deactivate this employee?'
+                    : 'Are you sure you want to activate this employee?'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => changeEmployeeStatus(userToUpdate.id, !userToUpdate.active)}
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         <div>
           <div className="flex justify-between">
             <h1 className="scroll-m-20  text-3xl font-extrabold tracking-tight text-balance">
@@ -477,10 +527,7 @@ export default function ManageEmployee() {
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <TableHead key={header.id}>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        {flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -505,10 +552,7 @@ export default function ManageEmployee() {
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -536,9 +580,7 @@ export default function ManageEmployee() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setPageIndex((p) =>
-                      p + 1 < Math.ceil(total / pageSize) ? p + 1 : p
-                    )
+                    setPageIndex((p) => (p + 1 < Math.ceil(total / pageSize) ? p + 1 : p))
                   }
                   disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
                   className="cursor-pointer"
@@ -590,10 +632,7 @@ export default function ManageEmployee() {
                 Cancel
               </Button>
             </DialogClose>
-            <Button
-              onClick={AddEmployeeByExcel}
-              className="bg-primer cursor-pointer"
-            >
+            <Button onClick={AddEmployeeByExcel} className="bg-primer cursor-pointer">
               Add Employee
             </Button>
           </DialogFooter>
