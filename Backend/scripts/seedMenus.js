@@ -37,6 +37,13 @@ async function seed() {
       roles: ["manager", "staff"],
       order: 4,
     },
+    {
+      title: "Announcement",
+      path: "/announcement",
+      icon: "Megaphone",
+      roles: ["hr"],
+      order: 5,
+    },
   ];
 
   // Insert top-level first
@@ -49,14 +56,16 @@ async function seed() {
       {
         title: "Management",
         path: "/team/management",
-        roles: ["manager"],
+        icon: "ContactRound",
+        roles: ["manager", "staff"],
         parent: team._id,
         order: 1,
       },
       {
         title: "Request & Approval",
-        path: "/team/reqapprove",
-        roles: ["manager"],
+        path: "/announcement",
+        icon: "Megaphone",
+        roles: ["manager", "staff"],
         parent: team._id,
         order: 2,
       }
