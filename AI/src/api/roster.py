@@ -228,9 +228,8 @@ def get_recommendations(request: SkillRequest):
         elif project_count >= 5:
             project_count_score = 0.0
         else:
-        # menurun 0.2 tiap project
+            # menurun 0.2 tiap project
             project_count_score = 1.0 - (project_count * 0.2)
-        #project_count_score = 1.0 if project_count == 0 else 1.0 / project_count
         logs["workload_calculation_time"] += time.time() - start_time
 
         # 3. Embedding vector
