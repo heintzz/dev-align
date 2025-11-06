@@ -112,7 +112,7 @@ export default function AddEmployee() {
       setLoadingState(true);
       setLoadingText("Extract CV");
       const { data } = await axios.post(
-        "http://localhost:8000/cv/extract-data", // 🔥 change to your backend URL
+        `${import.meta.env.VITE_AI_URL || "http://localhost:8000"}/cv/extract-data`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
