@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import projectService from "../../services/project.service";
 
 export default function StaffDashboard() {
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortBy, setSortBy] = useState("Deadline");
 
-  // Projects loaded for the staff user
   // Tasks for the staff user (global)
   const [allTasks, setAllTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -13,28 +16,6 @@ export default function StaffDashboard() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showDebug, setShowDebug] = useState(false);
   const [selectedProjectDetail, setSelectedProjectDetail] = useState(null);
-  // Tasks grouped for board view
-  const [tasks, setTasks] = useState({ toDo: [], inProgress: [], done: [] });
-
-  const getStatusColor = (status) => {
-    const colors = {
-      "In Progress": "bg-blue-100 text-blue-700",
-      Completed: "bg-green-100 text-green-700",
-      Overdue: "bg-red-100 text-red-700",
-    };
-    return colors[status] || "bg-gray-100 text-gray-700";
-  };
-
-  const getProgressColor = (progress) => {
-    if (progress === 100) return "bg-green-500";
-    if (progress >= 80) return "bg-blue-500";
-    if (progress >= 50) return "bg-blue-400";
-    return "bg-blue-300";
-  };
-
-  const isDeadlinePassed = (deadline) => {
-    return new Date(deadline) < new Date();
-  };
 
   // Load all tasks for staff user
   useEffect(() => {
@@ -53,34 +34,10 @@ export default function StaffDashboard() {
     load();
   }, []);
 
-  // Recompute grouped tasks whenever allTasks or filters change
+  // Reset page when filters change
   useEffect(() => {
-    const toDo = [];
-    const inProgress = [];
-    const done = [];
-
-    const filtered = (allTasks || []).filter(t => {
-      if (filterProject !== 'all' && String(t.projectId) !== String(filterProject)) return false;
-      if (filterStatus !== 'all' && t.status !== filterStatus) return false;
-      return true;
-    });
-
-    filtered.forEach(t => {
-      const item = {
-        id: t.taskId || t.taskId,
-        title: t.title,
-        description: t.description,
-        color: t.status === 'done' ? 'border-l-4 border-green-500' : t.status === 'in_progress' ? 'border-l-4 border-yellow-500' : 'border-l-4 border-blue-500',
-        strikethrough: t.status === 'done',
-        projectName: t.projectName,
-      };
-      if (t.status === 'done') done.push(item);
-      else if (t.status === 'in_progress') inProgress.push(item);
-      else toDo.push(item);
-    });
-
-    setTasks({ toDo, inProgress, done });
-  }, [allTasks, filterProject, filterStatus]);
+    setPage(1);
+  }, [filterProject, filterStatus]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -138,7 +95,7 @@ export default function StaffDashboard() {
           
         </div>
 
-        {loadingTasks ? (
+  {loadingTasks ? (
           <div className="p-6 bg-white rounded shadow text-center">Loading tasks...</div>
         ) : (() => {
           // Filtering logic
@@ -152,6 +109,12 @@ export default function StaffDashboard() {
             }
             return true;
           });
+          // Reset page if filter changes and page is out of range
+          const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize));
+          const currentPage = Math.min(page, totalPages);
+          const pagedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+          // If filter changes and page is out of range, reset page
+          if (page !== currentPage) setPage(currentPage);
           if (filteredTasks.length === 0) {
             return (
               <div className="p-6 bg-white rounded shadow text-center">
@@ -160,58 +123,82 @@ export default function StaffDashboard() {
             );
           }
           return (
-            <div className="bg-white rounded shadow overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned By</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned At</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {filteredTasks.map((t, i) => {
-                    const normalizeStatus = (s) => {
-                      if (!s) return 'Unknown';
-                      const s2 = String(s).toLowerCase();
-                      if (s2.includes('todo')) return 'To Do';
-                      if (s2.includes('in_progress') || s2.includes('in progress') || s2.includes('inprogress')) return 'In Progress';
-                      if (s2.includes('done') || s2.includes('completed')) return 'Done';
-                      return t.status || 'Unknown';
-                    };
-                    const statusLabel = normalizeStatus(t.status);
-                    // Solid color badges
-                    const badgeClass = statusLabel === 'Done'
-                      ? 'bg-green-500 text-white'
-                      : statusLabel === 'In Progress'
-                        ? 'bg-blue-500 text-white'
-                        : statusLabel === 'To Do'
-                          ? 'bg-gray-500 text-white'
-                          : 'bg-gray-300 text-gray-800';
-                    return (
-                      <tr key={t.assignmentId || t.taskId || i}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{i + 1}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{t.title || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.projectName || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.createdBy && t.createdBy.name ? t.createdBy.name : '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.assignedAt ? new Date(t.assignedAt).toLocaleString() : '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="bg-white rounded shadow overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {pagedTasks.map((t, i) => {
+                      const normalizeStatus = (s) => {
+                        if (!s) return 'Unknown';
+                        const s2 = String(s).toLowerCase();
+                        if (s2.includes('todo')) return 'To Do';
+                        if (s2.includes('in_progress') || s2.includes('in progress') || s2.includes('inprogress')) return 'In Progress';
+                        if (s2.includes('done') || s2.includes('completed')) return 'Done';
+                        return t.status || 'Unknown';
+                      };
+                      const statusLabel = normalizeStatus(t.status);
+                      // Solid color badges
+                      const badgeClass = statusLabel === 'Done'
+                        ? 'bg-green-500 text-white'
+                        : statusLabel === 'In Progress'
+                          ? 'bg-blue-500 text-white'
+                          : statusLabel === 'To Do'
+                            ? 'bg-gray-500 text-white'
+                            : 'bg-gray-300 text-gray-800';
+                      return (
+                        <tr key={t.assignmentId || t.taskId || i}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{(currentPage - 1) * pageSize + i + 1}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{t.title || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.projectName || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.createdBy && t.createdBy.name ? t.createdBy.name : '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.assignedAt ? new Date(t.assignedAt).toLocaleString() : '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {/* Pagination controls */}
+              <div className="flex justify-end items-center mt-4 gap-2">
+                <button
+                  className="px-3 py-1 rounded border bg-white text-gray-700 disabled:opacity-50"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  className="px-3 py-1 rounded border bg-white text-gray-700 disabled:opacity-50"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </>
           );
         })()}
       </div>
     </div>
   );
 }
+
+
