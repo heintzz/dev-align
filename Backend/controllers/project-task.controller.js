@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 
 const getStaffProjects = async (req, res) => {
   try {
-    const userId = req.user.id; // Get from auth middleware
+    const userId = req.user && (req.user.id || req.user._id);
+    // Debug: log who is requesting staff projects
+    console.log('[getStaffProjects] requester token payload:', req.user);
+    console.log('[getStaffProjects] resolved userId:', userId);
 
     // Get all project assignments for this user
     const assignments = await ProjectAssignment.find({ userId })
@@ -15,6 +18,8 @@ const getStaffProjects = async (req, res) => {
           select: 'name email',
         },
       });
+
+    console.log('[getStaffProjects] assignments found:', assignments.length);
 
     // Map assignments to project details with role info
     const projects = assignments.map(assignment => ({
@@ -351,9 +356,56 @@ const updateTaskStatus = async (req, res) => {
   }
 };
 
+// exports moved to bottom so all handlers are defined before export
+
+const getStaffTasks = async (req, res) => {
+  try {
+    const userId = req.user && (req.user.id || req.user._id);
+    console.log('[getStaffTasks] requester token payload:', req.user);
+    console.log('[getStaffTasks] resolved userId:', userId);
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    // Find task assignments for this user and include task + project info
+    const assignments = await TaskAssignment.find({ userId })
+      .populate({
+        path: 'taskId',
+        populate: [
+          { path: 'projectId', select: 'name' },
+          { path: 'createdBy', select: 'name email' }
+        ]
+      })
+      .lean();
+
+    console.log('[getStaffTasks] assignments found:', assignments.length);
+
+    const tasks = assignments.map(a => {
+      const task = a.taskId || {};
+      const project = task.projectId || {};
+      return {
+        assignmentId: a._id,
+        taskId: task._id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        projectId: project._id,
+        projectName: project.name,
+        startDate: task.startDate,
+        endDate: task.endDate,
+        createdBy: task.createdBy ? { id: task.createdBy._id, name: task.createdBy.name } : null,
+        assignedAt: a.createdAt,
+      };
+    });
+
+    return res.json({ success: true, data: tasks });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+  }
+};
+
 module.exports = {
   getStaffProjects,         // DEV-61
   getStaffProjectDetail,    // DEV-62
   getProjectTasks,          // DEV-79
   updateTaskStatus,         // DEV-80
+  getStaffTasks,            // DEV-81
 };

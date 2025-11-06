@@ -14,6 +14,7 @@ const menuRoutes = require("./routes/menu.routes");
 const positionRoutes = require("./routes/position.routes");
 const projectRoutes = require("./routes/project.routes");
 const projectAssignmentRoutes = require("./routes/project-assignment.routes");
+const projectTaskRoutes = require("./routes/project-task.routes");
 const taskRoutes = require("./routes/task.routes");
 
 const notificationRoutes = require("./routes/notification.routes");
@@ -84,6 +85,7 @@ app.use("/position", positionRoutes);
 app.use("/menu", menuRoutes);
 app.use("/project", projectRoutes);
 app.use("/project-assignment", projectAssignmentRoutes);
+app.use("/project-tasks", projectTaskRoutes);
 app.use("/notification", notificationRoutes);
 app.use("/borrow-request", borrowRequestRoutes);
 app.use("/dashboard", dashboardRoutes);

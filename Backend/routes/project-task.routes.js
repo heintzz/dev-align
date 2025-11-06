@@ -4,6 +4,7 @@ const {
   getStaffProjects,
   getStaffProjectDetail,
   getProjectTasks,
+  getStaffTasks,
   updateTaskStatus,
 } = require('../controllers/project-task.controller');
 const verifyToken = require('../middlewares/token');
@@ -23,6 +24,7 @@ const verifyToken = require('../middlewares/token');
  *         description: Unauthorized
  */
 router.get('/staff/projects', verifyToken, getStaffProjects);
+router.get('/staff/tasks', verifyToken, getStaffTasks);
 
 /**
  * @swagger
