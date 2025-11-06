@@ -173,7 +173,6 @@ def get_recommendations(request: SkillRequest):
     # INIT: user request parameters
     project_description = request.description
     required_positions = request.positions
-    position_names = [p.name for p in required_positions]
     required_skills = request.skills
 
     # MAIN
@@ -189,67 +188,49 @@ def get_recommendations(request: SkillRequest):
         skill_ids = user.get("skills", [])
         skills = list(database.get_collection("skills").find({"_id": {"$in": skill_ids}}, {"name": 1}))
         user_skills = [clean_skills_name(skill["name"]) for skill in skills]
+        required_skills = [clean_skills_name(skill) for skill in required_skills]
 
         matched_count = len(set(required_skills) & set(user_skills))
         total = len(set(required_skills))
+        print("Yang cocok: ", matched_count)
+        print("Butuh brp: ", total)
         matched_count_score = matched_count / total
+        print("Required skills: ", required_skills)
+        print("User skills: ", user_skills)
         logs["skill_matching_time"] += time.time() - start_time
 
         # 2. workload counter
         start_time = time.time()
         project_pipeline = [
-            {"$match": {"userId": user_id}},  # filter by user
-            {
-                "$lookup": {
-                    "from": "projects",            # collection to join
-                    "localField": "projectId",     # field in projectassignments
-                    "foreignField": "_id",         # field in projects
-                    "as": "project"                # output array field name
-                }
-            },
-            {
-            "$lookup": {
-                "from": "positions",
-                "localField": "user.positionId",
+            {"$match": {"userId": user_id}},
+            {"$lookup": {
+                "from": "projects",
+                "localField": "projectId",
                 "foreignField": "_id",
-                "as": "position"
-            }
-            },
-            {"$unwind": "$position"},
-
-            # lookup the project
-            {
-                "$lookup": {
-                    "from": "projects",
-                    "localField": "projectId",
-                    "foreignField": "_id",
-                    "as": "project"
-                }
-            },
+                "as": "project"
+            }},
             {"$unwind": "$project"},
-
-            # project active + position name in required list
-            {
-                "$match": {
-                    "project.status": "active",
-                    "position.name": {"$in": position_names}
-                }
-            },
-
-            {
-                "$project": {
-                    "_id": 0,
-                    "project": 1,
-                    "user._id": 1,
-                    "user.name": 1,
-                    "position.name": 1
-                }
-            }
+            {"$match": {"project.status": "active"}},
+            {"$group": {"_id": "$project._id"}},
+            {"$count": "total"}
         ]
 
-        project_assignments = list(database.get_collection("projectassignments").aggregate(project_pipeline))
-        project_count = len(project_assignments)
-        project_count_score = 1.0 if project_count == 0 else 1.0 / project_count
+        result = list(database.get_collection("projectassignments").aggregate(project_pipeline))
+        project_count = result[0]["total"] if result else 0
+
+        # project_assignments = list(database.get_collection("projectassignments").aggregate(project_pipeline))
+        print(result)
+        # project_count = len(project_assignments)
+        print("Proyek gweh: ", project_count)
+
+        if project_count == 0:
+            project_count_score = 1.0
+        elif project_count >= 5:
+            project_count_score = 0.0
+        else:
+        # menurun 0.2 tiap project
+            project_count_score = 1.0 - (project_count * 0.2)
+        #project_count_score = 1.0 if project_count == 0 else 1.0 / project_count
         logs["workload_calculation_time"] += time.time() - start_time
 
         # 3. Embedding vector
