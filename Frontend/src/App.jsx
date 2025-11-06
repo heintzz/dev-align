@@ -170,7 +170,7 @@ function App() {
           />
 
           <Route
-            path="/team/reqapprove"
+            path="/announcement"
             element={
               <ProtectedRoute>
                 <AppLayout>
@@ -180,7 +180,7 @@ function App() {
             }
           />
 
-          <Route
+          {/* <Route
             path="/team"
             element={
               <ProtectedRoute>
@@ -191,16 +191,14 @@ function App() {
                 </AppLayout>
               </ProtectedRoute>
             }
-          />
+          /> */}
 
           <Route
             path="/team/management"
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <SpecificRoleRoute requiredRole="manager">
-                    <ManagerTeam />
-                  </SpecificRoleRoute>
+                  {role == "manager" ? <ManagerTeam /> : <StaffTeam />}
                 </AppLayout>
               </ProtectedRoute>
             }
