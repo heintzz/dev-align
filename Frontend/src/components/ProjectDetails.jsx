@@ -17,10 +17,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import projectService from "../../services/project.service";
+import projectService from "../services/project.service";
 import { Button } from "@/components/ui/button";
 import { CircleCheckBig, Trash } from "lucide-react";
 import { toast } from "@/lib/toast";
+import Loading from "@/components/Loading";
 
 // ─── Utility Helpers ──────────────────────────────────────────────
 const getStatusColor = (status) => {
@@ -52,15 +53,19 @@ export default function ProjectDetailsDialog({
   onClose,
   onProjectUpdated,
 }) {
-  const { role } = useAuthStore();
-  const isHR = role === "hr";
   const [project, setProject] = useState(null);
   const [manager, setManager] = useState(null);
   const [staff, setStaff] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+
+  const { role } = useAuthStore();
+  const isHR = role === "hr";
+  const isManager = role === "manager";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -79,14 +84,13 @@ export default function ProjectDetailsDialog({
     if (!isOpen || !projectId) {
       if (!isOpen) {
         setProject(null);
-        setIsLoading(true);
       }
       return;
     }
 
     const loadData = async () => {
-      setIsLoading(true);
-
+      setLoadingState(true);
+      setLoadingText("Getting data...");
       try {
         const [projectRes, tasksRes, skillsRes, employeesRes] =
           await Promise.allSettled([
@@ -145,7 +149,8 @@ export default function ProjectDetailsDialog({
           type: "error",
         });
       } finally {
-        setIsLoading(false);
+        setLoadingState(false);
+        setLoadingText("");
       }
     };
 
@@ -160,6 +165,8 @@ export default function ProjectDetailsDialog({
 
   const handleSave = async () => {
     setIsSaving(true);
+    setLoadingState(true);
+    setLoadingText("Updating the task...");
     try {
       await projectService.updateProject(projectId, {
         name: formData.name,
@@ -201,11 +208,14 @@ export default function ProjectDetailsDialog({
     } finally {
       setIsSaving(false);
       setIsEditing(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const handleDelete = async () => {
-    setIsLoading(true);
+    setLoadingState(true);
+    setLoadingText("Delete projects...");
     try {
       await projectService.deleteProject(projectId);
       toast("Project deleted successfully", {
@@ -222,13 +232,15 @@ export default function ProjectDetailsDialog({
         type: "error",
       });
     } finally {
-      setIsLoading(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   const handleComplete = async () => {
     if (!confirm("Mark this project as completed?")) return;
-    setIsLoading(true);
+    setLoadingState(true);
+    setLoadingText("Mark project as completed...");
     try {
       const res = await projectService.updateProjectStatus(
         projectId,
@@ -251,20 +263,38 @@ export default function ProjectDetailsDialog({
         type: "error",
       });
     } finally {
-      setIsLoading(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
   // ─── Render ──────────────────────────────────────────────
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Loading status={loadingState} fullscreen text={loadingText} />
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            // Dialog is closing — reset your edit mode and form
+            setIsEditing(false);
+            setFormData(
+              project
+                ? {
+                    name: project.name,
+                    description: project.description,
+                    startDate: project.startDate?.slice(0, 10) || "",
+                    deadline: project.deadline?.slice(0, 10) || "",
+                  }
+                : {}
+            );
+          }
+
+          onClose?.(open); // Call parent handler if you have one
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          {isLoading || isSaving ? (
-            <div className="py-12 text-center">
-              <p className="text-gray-500">Loading project details...</p>
-            </div>
-          ) : project ? (
+          {project ? (
             <>
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold mr-10">
@@ -279,7 +309,7 @@ export default function ProjectDetailsDialog({
                   ) : (
                     <>
                       {project.name}
-                      {!isHR && (
+                      {isManager && (
                         <Button
                           variant="ghost"
                           size="icon-sm"
@@ -323,6 +353,7 @@ export default function ProjectDetailsDialog({
                         name="startDate"
                         value={formData.startDate}
                         onChange={handleInputChange}
+                        min={new Date().toISOString().split("T")[0]}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
@@ -342,6 +373,11 @@ export default function ProjectDetailsDialog({
                         name="deadline"
                         value={formData.deadline}
                         onChange={handleInputChange}
+                        min={
+                          formData.startDate
+                            ? formData.startDate
+                            : new Date().toISOString().split("T")[0]
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
@@ -426,11 +462,19 @@ export default function ProjectDetailsDialog({
 
               {/* Buttons */}
               <div className="flex gap-3 pt-4 border-t">
-                {!isHR &&
+                {isManager &&
                   (isEditing ? (
                     <>
                       <button
-                        onClick={() => setIsEditing(false)}
+                        onClick={() => {
+                          setIsEditing(false);
+                          setFormData({
+                            name: project?.name || "",
+                            description: project?.description || "",
+                            startDate: project?.startDate?.slice(0, 10) || "",
+                            deadline: project?.deadline?.slice(0, 10) || "",
+                          });
+                        }}
                         className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium cursor-pointer"
                       >
                         Cancel

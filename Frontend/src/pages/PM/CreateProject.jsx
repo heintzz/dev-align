@@ -21,8 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Loading from "@/components/Loading";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CircleCheckBig, X } from "lucide-react";
+import { Bot, CircleCheckBig, X } from "lucide-react";
 import { toast } from "@/lib/toast";
+import apiAI from "@/api/ai";
 import api from "@/api/axios";
 
 export default function CreateProject() {
@@ -57,33 +58,26 @@ export default function CreateProject() {
 
   const [manualMeta, setManualMeta] = useState({
     page: 1,
-    total: 0,
+    total: 1,
     limit: 10,
   });
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Fetch positions from database
-  useEffect(() => {
-    fetchPositions();
-  }, []);
-
-  // API - Fetch all positions from database
   const fetchPositions = async () => {
     try {
       const response = await projectService.getAllPositions();
-      // Sesuaikan dengan struktur response dari controller: response.positions
       setPositions(response.positions || []);
     } catch (error) {
       console.error("Error fetching positions:", error);
     }
   };
 
+  useEffect(() => {
+    fetchPositions();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAddPosition = () => {
@@ -91,7 +85,7 @@ export default function CreateProject() {
       const position = positions.find((p) => p._id === positionInput);
       if (quantityInput > position.userCount) {
         toast("Quantity can't exceed the available position", {
-          type: "error",
+          type: "warning",
           position: "top-center",
         });
         return;
@@ -128,6 +122,9 @@ export default function CreateProject() {
     setLoadingText("Getting The Best Staff...");
     setIsGenerating(true);
     try {
+      if (skills.length < 1) {
+        throw new Error("At least one skill must be specified");
+      }
       if (!formData.projectDescription.trim()) {
         throw new Error(
           "Project description is required for AI recommendations"
@@ -137,10 +134,10 @@ export default function CreateProject() {
       if (teamPositions.length === 0) {
         throw new Error("At least one position must be specified");
       }
-      console.log("Starting team recommendation generation...");
-      setEmployees([]); // Clear previous results
 
-      // ✅ Prepare the data for backend AI
+      console.log("Starting team recommendation generation...");
+      setEmployees([]);
+
       const requestData = {
         description: formData.projectDescription,
         positions: teamPositions.map((p) => ({
@@ -152,16 +149,14 @@ export default function CreateProject() {
 
       console.log("Request data:", requestData);
 
-      // ✅ Call AI service
-      const response = await projectService.getTeamRecommendations(requestData);
-      console.log("AI Response:", response);
+      const { data } = await apiAI.post("/roster-recommendations", requestData);
+      console.log("AI Response:", data);
 
-      if (!response?.data) {
+      if (!data?.data) {
         throw new Error("Invalid response from AI service");
       }
 
-      // ✅ Directly transform AI data (no need to fetch backend employees)
-      const transformedEmployees = Object.entries(response.data).flatMap(
+      const transformedEmployees = Object.entries(data.data).flatMap(
         ([positionName, candidates]) =>
           candidates.map((candidate, index) => ({
             _id: candidate._id,
@@ -182,7 +177,7 @@ export default function CreateProject() {
             ),
             aiRank: candidate.rank ?? index + 1,
             aiReason: candidate.reason,
-            isResolved: true, // we trust AI data as source of truth now
+            isResolved: true,
           }))
       );
 
@@ -258,7 +253,6 @@ export default function CreateProject() {
       });
     } finally {
       setLoadingState(false);
-      setIsLoadingMore(false);
       setLoadingText("");
     }
   };
@@ -280,19 +274,60 @@ export default function CreateProject() {
   };
 
   const handleSubmit = async () => {
+    const today = new Date().toISOString().split("T")[0];
+
     // Validation
     if (!formData.projectName.trim()) {
-      alert("Project name is required");
+      toast("Project name is required", {
+        type: "warning",
+        position: "top-center",
+      });
       return;
     }
 
     if (!formData.projectDescription.trim()) {
-      alert("Project description is required");
+      toast("Project description is required", {
+        type: "warning",
+        position: "top-center",
+      });
+      return;
+    }
+
+    if (!formData.startDate) {
+      toast("Start date is required", {
+        type: "warning",
+        position: "top-center",
+      });
+      return;
+    }
+    if (formData.startDate < today) {
+      toast("Start date cannot be before today", {
+        type: "warning",
+        position: "top-center",
+      });
+      return;
+    }
+
+    if (!formData.deadline) {
+      toast("Project deadline is required", {
+        type: "warning",
+        position: "top-center",
+      });
+      return;
+    }
+    if (formData.deadline < formData.startDate) {
+      toast("Deadline cannot be before start date", {
+        type: "warning",
+        position: "top-center",
+      });
       return;
     }
 
     if (selectedEmployees.length === 0) {
-      alert("At least one staff member must be assigned to the project");
+      toast("At least one staff member must be assigned to the project", {
+        type: "warning",
+        position: "top-center",
+      });
       return;
     }
 
@@ -433,6 +468,7 @@ export default function CreateProject() {
                         name="startDate"
                         value={formData.startDate}
                         onChange={handleInputChange}
+                        min={new Date().toISOString().split("T")[0]}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -445,6 +481,11 @@ export default function CreateProject() {
                         name="deadline"
                         value={formData.deadline}
                         onChange={handleInputChange}
+                        min={
+                          formData.startDate
+                            ? formData.startDate
+                            : new Date().toISOString().split("T")[0]
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -513,7 +554,7 @@ export default function CreateProject() {
                         {/* Add Button */}
                         <Button
                           onClick={handleAddPosition}
-                          className="w-full sm:col-span-2 bg-[#2C3F48] hover:bg-[#1F2E35]"
+                          className="w-full sm:col-span-2 bg-[#2C3F48] hover:bg-[#1F2E35] cursor-pointer"
                         >
                           Add
                         </Button>
@@ -573,6 +614,7 @@ export default function CreateProject() {
                     onClick={handleGenerateRecommendations}
                     className="w-full sm:w-auto bg-primer  text-white font-medium cursor-pointer"
                   >
+                    <Bot />
                     {isGenerating
                       ? "Generating..."
                       : "Generate Team Recommendations"}
@@ -812,49 +854,6 @@ export default function CreateProject() {
                                   </div>
                                 </div>
                               )}
-
-                              {/* Workload Bar */}
-                              <div className="mb-2">
-                                <div className="flex items-center justify-between text-xs mb-1">
-                                  <span className="text-gray-600">
-                                    Current Workload ({employee.currentWorkload}
-                                    %)
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div
-                                    className={cn(
-                                      "h-2 rounded-full transition-all",
-                                      getWorkloadColor(employee.currentWorkload)
-                                    )}
-                                    style={{
-                                      width: `${employee.currentWorkload}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Availability */}
-                              <p
-                                className={cn(
-                                  "text-xs font-medium mt-1",
-                                  getAvailabilityColor(employee.availability)
-                                )}
-                              >
-                                ● {employee.availability}
-                              </p>
-
-                              {/* AI Reason */}
-                              {employee.aiReason && (
-                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                  <p className="text-xs font-medium text-gray-500 mb-1">
-                                    AI Reasoning
-                                  </p>
-                                  <p className="text-sm text-gray-700 leading-snug max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
-                                    {employee.aiReason}
-                                  </p>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -867,6 +866,7 @@ export default function CreateProject() {
                 <Button
                   disabled={manualMeta.page === 1}
                   onClick={() => getManualTeams(manualMeta.page - 1)}
+                  className="cursor-pointer"
                 >
                   Previous
                 </Button>
@@ -877,10 +877,16 @@ export default function CreateProject() {
                 </p>
 
                 <Button
-                  disabled={manualEmployees.length >= manualMeta.total}
+                  disabled={
+                    !(
+                      manualMeta.page <
+                      Math.ceil(manualMeta.total / manualMeta.limit)
+                    )
+                  }
                   onClick={() => getManualTeams(manualMeta.page + 1)}
+                  className="cursor-pointer"
                 >
-                  Next {manualEmployees.length} - {manualMeta.total}
+                  Next
                 </Button>
               </CardFooter>
             </Card>

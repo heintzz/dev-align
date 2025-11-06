@@ -198,7 +198,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  {role == "manager" ? <ManagerTeam /> : <StaffTeam />}
+                  <ManagerTeam />
                 </AppLayout>
               </ProtectedRoute>
             }

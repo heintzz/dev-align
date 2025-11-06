@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 // shadcn/ui components
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -15,13 +15,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+} from "@/components/ui/table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
 //icon
-import api from '@/api/axios';
-import { DropdownMenuLabel } from '@radix-ui/react-dropdown-menu';
-import { ChevronDown } from 'lucide-react';
+import api from "@/api/axios";
+import { DropdownMenuLabel } from "@radix-ui/react-dropdown-menu";
+import { ChevronDown } from "lucide-react";
 
 export default function StaffTeam() {
   const [team, setTeam] = useState([]);
@@ -29,28 +33,32 @@ export default function StaffTeam() {
 
   const managerColumns = [
     {
-      accessorKey: 'name',
+      accessorKey: "name",
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Name
           <span className="ml-1 text-xs">
-            {column.getIsSorted() === 'asc' ? '▲' : column.getIsSorted() === 'desc' ? '▼' : ''}
+            {column.getIsSorted() === "asc"
+              ? "▲"
+              : column.getIsSorted() === "desc"
+              ? "▼"
+              : ""}
           </span>
         </button>
       ),
     },
     {
-      accessorKey: 'email',
-      header: 'Email',
+      accessorKey: "email",
+      header: "Email",
     },
     {
-      accessorKey: 'position.name',
-      header: 'Position',
+      accessorKey: "position.name",
+      header: "Position",
       cell: ({ row }) => {
-        const positionName = row.original.position?.name || '-';
+        const positionName = row.original.position?.name || "-";
         return <span>{positionName}</span>;
       },
     },
@@ -58,36 +66,40 @@ export default function StaffTeam() {
 
   const columns = [
     {
-      accessorKey: 'name',
+      accessorKey: "name",
       header: ({ column }) => (
         <button
           className="flex items-center font-semibold"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Name
           <span className="ml-1 text-xs">
-            {column.getIsSorted() === 'asc' ? '▲' : column.getIsSorted() === 'desc' ? '▼' : ''}
+            {column.getIsSorted() === "asc"
+              ? "▲"
+              : column.getIsSorted() === "desc"
+              ? "▼"
+              : ""}
           </span>
         </button>
       ),
     },
     {
-      accessorKey: 'email',
-      header: 'Email',
+      accessorKey: "email",
+      header: "Email",
     },
     {
-      accessorKey: 'position.name',
-      header: 'Position',
+      accessorKey: "position.name",
+      header: "Position",
       cell: ({ row }) => {
-        const positionName = row.original.position?.name || '-';
+        const positionName = row.original.position?.name || "-";
         return <span>{positionName}</span>;
       },
     },
     {
-      accessorKey: 'skills',
-      header: 'Skills',
+      accessorKey: "skills",
+      header: "Skills",
       cell: ({ row }) => {
-        const employeeSkills = row.getValue('skills');
+        const employeeSkills = row.getValue("skills");
         if (employeeSkills.length == 0) return <span>-</span>;
         return (
           <>
@@ -97,9 +109,11 @@ export default function StaffTeam() {
                   variant="outline"
                   className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700"
                 >
-                  <span>{employeeSkills[0]?.name || 'No skill'}</span>
+                  <span>{employeeSkills[0]?.name || "No skill"}</span>
                   {employeeSkills.length > 1 && (
-                    <span className="text-xs text-gray-500">+{employeeSkills.length - 1}</span>
+                    <span className="text-xs text-gray-500">
+                      +{employeeSkills.length - 1}
+                    </span>
                   )}
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 </Button>
@@ -127,7 +141,7 @@ export default function StaffTeam() {
   ];
 
   const getTeam = async () => {
-    const { data } = await api.get('/hr/colleagues');
+    const { data } = await api.get("/hr/colleagues");
     setManager([data.data.directManager]);
     setTeam(data.data.colleagues);
   };
@@ -151,7 +165,9 @@ export default function StaffTeam() {
   return (
     <>
       <div>
-        <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight text-balance">My Team</h1>
+        <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight text-balance">
+          My Team
+        </h1>
         <div className="space-y-4 mt-10">
           <h2 className="text-2xl font-semibold">Manager</h2>
           <div className="flex flex-col justify-between rounded-md border">
@@ -163,7 +179,10 @@ export default function StaffTeam() {
                       <TableHead key={header.id}>
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -175,15 +194,20 @@ export default function StaffTeam() {
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext()) ||
-                            cell.getValue()}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          ) || cell.getValue()}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       No manager found.
                     </TableCell>
                   </TableRow>
@@ -202,7 +226,10 @@ export default function StaffTeam() {
                       <TableHead key={header.id}>
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -214,15 +241,20 @@ export default function StaffTeam() {
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext()) ||
-                            cell.getValue()}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          ) || cell.getValue()}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       No team members found.
                     </TableCell>
                   </TableRow>

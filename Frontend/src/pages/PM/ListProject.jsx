@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import projectService from "../../services/project.service";
-import ProjectDetailsDialog from "./ProjectDetails";
+import ProjectDetailsDialog from "@/components/ProjectDetails";
 import { useAuthStore } from "@/store/useAuthStore";
 
 import {
