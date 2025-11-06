@@ -107,6 +107,23 @@ const projectService = {
     const response = await api.get(`${API_URL}/project/${projectId}/tasks`);
     return response.data.data || response.data;
   },
+
+  // Get projects assigned to the authenticated staff user
+  getStaffProjects: async () => {
+    const response = await api.get(`${API_URL}/project-tasks/staff/projects`);
+    return response.data.data || response.data;
+  },
+
+  // Get detailed project (including tasks) for a staff user
+  getStaffProjectDetail: async (projectId) => {
+    const response = await api.get(`${API_URL}/project-tasks/staff/projects/${projectId}`);
+    return response.data.data || response.data;
+  },
+  // Get all tasks assigned to the authenticated staff user
+  getStaffTasks: async () => {
+    const response = await api.get(`${API_URL}/project-tasks/staff/tasks`);
+    return response.data.data || response.data;
+  },
 };
 
 export default projectService;

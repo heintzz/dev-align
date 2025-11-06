@@ -1,79 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import projectService from "../../services/project.service";
 
 export default function StaffDashboard() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortBy, setSortBy] = useState("Deadline");
 
-  // Data projects
-  const projects = [
-    {
-      name: "Project Phoenix",
-      description:
-        "A complete redesign of the company's public-facing website and branding.",
-      pm: "Sarah Chen",
-      deadline: "2024-08-15",
-      progress: 60,
-      status: "In Progress",
-      myTasks: 5,
-    },
-    {
-      name: "Mobile App V2",
-      description:
-        "Development and launch of the second version of our flagship mobile application.",
-      pm: "Alex Rodriguez",
-      deadline: "2024-05-20",
-      progress: 100,
-      status: "Completed",
-      myTasks: 8,
-    },
-    {
-      name: "Q3 Marketing Campaign",
-      description:
-        "Launch a multi-channel marketing campaign for the new product features.",
-      pm: "Emily White",
-      deadline: "2024-06-01",
-      progress: 90,
-      status: "Overdue",
-      myTasks: 2,
-    },
-  ];
-
-  // Data tasks untuk project yang dipilih (Project Phoenix)
-  const tasks = {
-    toDo: [
-      {
-        title: "Design new homepage mockups",
-        description: "Create three variations for review.",
-        color: "border-l-4 border-blue-500",
-      },
-      {
-        title: 'Write copy for "About Us" page',
-        description: "Draft content and send for approval.",
-        color: "border-l-4 border-blue-500",
-      },
-    ],
-    inProgress: [
-      {
-        title: "Develop pricing page component",
-        description: "Build the interactive pricing table.",
-        color: "border-l-4 border-yellow-500",
-      },
-    ],
-    done: [
-      {
-        title: "Setup project repository",
-        description: "GitHub repo created and configured.",
-        strikethrough: true,
-        color: "border-l-4 border-green-500",
-      },
-      {
-        title: "User research interviews",
-        description: "Conducted 5 user interviews.",
-        strikethrough: true,
-        color: "border-l-4 border-green-500",
-      },
-    ],
-  };
+  // Projects loaded for the staff user
+  // Tasks for the staff user (global)
+  const [allTasks, setAllTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [filterProject, setFilterProject] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showDebug, setShowDebug] = useState(false);
+  const [selectedProjectDetail, setSelectedProjectDetail] = useState(null);
+  // Tasks grouped for board view
+  const [tasks, setTasks] = useState({ toDo: [], inProgress: [], done: [] });
 
   const getStatusColor = (status) => {
     const colors = {
@@ -95,205 +36,181 @@ export default function StaffDashboard() {
     return new Date(deadline) < new Date();
   };
 
-  const filteredProjects = projects.filter((project) => {
-    if (activeFilter === "All") return true;
-    return project.status === activeFilter;
-  });
+  // Load all tasks for staff user
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingTasks(true);
+        const res = await projectService.getStaffTasks();
+        // res expected: array of tasks with projectName and status
+        setAllTasks(res || []);
+      } catch (err) {
+        console.error('Failed to load staff tasks', err);
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Recompute grouped tasks whenever allTasks or filters change
+  useEffect(() => {
+    const toDo = [];
+    const inProgress = [];
+    const done = [];
+
+    const filtered = (allTasks || []).filter(t => {
+      if (filterProject !== 'all' && String(t.projectId) !== String(filterProject)) return false;
+      if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+      return true;
+    });
+
+    filtered.forEach(t => {
+      const item = {
+        id: t.taskId || t.taskId,
+        title: t.title,
+        description: t.description,
+        color: t.status === 'done' ? 'border-l-4 border-green-500' : t.status === 'in_progress' ? 'border-l-4 border-yellow-500' : 'border-l-4 border-blue-500',
+        strikethrough: t.status === 'done',
+        projectName: t.projectName,
+      };
+      if (t.status === 'done') done.push(item);
+      else if (t.status === 'in_progress') inProgress.push(item);
+      else toDo.push(item);
+    });
+
+    setTasks({ toDo, inProgress, done });
+  }, [allTasks, filterProject, filterStatus]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">My Projects</h1>
+  <h1 className="text-3xl font-bold text-gray-900 mb-6">My Tasks ({(allTasks || []).length})</h1>
 
         {/* Filter Tabs & Sort */}
         <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            {["All", "In Progress", "Completed", "Overdue"].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setActiveFilter(filter)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeFilter === filter
-                    ? "bg-gray-700 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Project:</label>
+              <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)} className="px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="all">All Projects</option>
+                {(Array.from(new Map(allTasks.map(t => [String(t.projectId), t.projectName]))).map(([id, name]) => ({ id, name }))).map(p => (
+                  <option key={p.id} value={p.id}>{p.name || 'Unnamed'}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-            >
-              <option>Deadline</option>
-              <option>Progress</option>
-              <option>Name</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Status:</label>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="all">All</option>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+          
+          {/* <button
+            className="ml-4 px-3 py-2 border rounded text-sm bg-gray-100"
+            onClick={() => setShowDebug((s) => !s)}
+          >
+            {showDebug ? 'Hide debug' : 'Show debug'}
+          </button> */}
           </div>
         </div>
+
+      {showDebug && (
+        <div className="bg-white p-4 rounded shadow mb-6">
+          <h4 className="font-semibold mb-2">Debug — raw responses</h4>
+          <div className="text-xs text-gray-600 mb-2">All Tasks (raw):</div>
+          <pre className="text-xs bg-gray-100 p-2 rounded max-h-40 overflow-auto">{JSON.stringify(allTasks, null, 2)}</pre>
+          <div className="text-xs text-gray-600 mt-2 mb-2">Selected Project Detail (raw):</div>
+          <pre className="text-xs bg-gray-100 p-2 rounded max-h-40 overflow-auto">{JSON.stringify(selectedProjectDetail, null, 2)}</pre>
+        </div>
+      )}
       </div>
+      
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {filteredProjects.map((project, index) => (
-          <div key={index} className="bg-white rounded-lg shadow p-6">
-            {/* Project Header */}
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-lg font-bold text-gray-900">
-                {project.name}
-              </h3>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                  project.status
-                )}`}
-              >
-                {project.status}
-              </span>
-            </div>
-
-            {/* Description */}
-            <p className="text-sm text-gray-600 mb-4">{project.description}</p>
-
-            {/* PM & Deadline */}
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">PM:</span>
-                <span className="font-semibold text-gray-900">
-                  {project.pm}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Deadline:</span>
-                <span
-                  className={`font-semibold ${
-                    isDeadlinePassed(project.deadline) &&
-                    project.status !== "Completed"
-                      ? "text-red-600"
-                      : "text-gray-900"
-                  }`}
-                >
-                  {project.deadline}
-                </span>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-600">Progress</span>
-                <span className="text-xs font-semibold text-gray-900">
-                  {project.progress}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${getProgressColor(
-                    project.progress
-                  )}`}
-                  style={{ width: `${project.progress}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-4 border-t">
-              <span className="text-sm text-gray-600">
-                My Tasks:{" "}
-                <span className="font-semibold text-gray-900">
-                  {project.myTasks}
-                </span>
-              </span>
-              <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                View Project
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Task Board */}
+      {/* Task List (table-style) */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Project Phoenix - My Tasks
-        </h2>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* To Do Column */}
-          <div className="bg-gray-100 rounded-lg p-4">
-            <h3 className="font-bold text-gray-900 mb-4 pb-3 border-b-2 border-gray-300">
-              To Do ({tasks.toDo.length})
-            </h3>
-            <div className="space-y-3">
-              {tasks.toDo.map((task, index) => (
-                <div
-                  key={index}
-                  className={`bg-white rounded-lg p-4 shadow-sm ${task.color}`}
-                >
-                  <h4 className="font-semibold text-gray-900 mb-1">
-                    {task.title}
-                  </h4>
-                  <p className="text-sm text-gray-600">{task.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* In Progress Column */}
-          <div className="bg-gray-100 rounded-lg p-4">
-            <h3 className="font-bold text-gray-900 mb-4 pb-3 border-b-2 border-gray-300">
-              In Progress ({tasks.inProgress.length})
-            </h3>
-            <div className="space-y-3">
-              {tasks.inProgress.map((task, index) => (
-                <div
-                  key={index}
-                  className={`bg-white rounded-lg p-4 shadow-sm ${task.color}`}
-                >
-                  <h4 className="font-semibold text-gray-900 mb-1">
-                    {task.title}
-                  </h4>
-                  <p className="text-sm text-gray-600">{task.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Done Column */}
-          <div className="bg-gray-100 rounded-lg p-4">
-            <h3 className="font-bold text-gray-900 mb-4 pb-3 border-b-2 border-gray-300">
-              Done ({tasks.done.length})
-            </h3>
-            <div className="space-y-3">
-              {tasks.done.map((task, index) => (
-                <div
-                  key={index}
-                  className={`bg-white rounded-lg p-4 shadow-sm ${task.color}`}
-                >
-                  <h4
-                    className={`font-semibold text-gray-900 mb-1 ${
-                      task.strikethrough ? "line-through text-gray-500" : ""
-                    }`}
-                  >
-                    {task.title}
-                  </h4>
-                  <p
-                    className={`text-sm text-gray-600 ${
-                      task.strikethrough ? "line-through text-gray-400" : ""
-                    }`}
-                  >
-                    {task.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          
         </div>
+
+        {loadingTasks ? (
+          <div className="p-6 bg-white rounded shadow text-center">Loading tasks...</div>
+        ) : (() => {
+          // Filtering logic
+          const filteredTasks = (allTasks || []).filter(t => {
+            if (filterProject !== 'all' && String(t.projectId) !== String(filterProject)) return false;
+            if (filterStatus !== 'all') {
+              const s2 = String(t.status).toLowerCase();
+              if (filterStatus === 'todo' && !s2.includes('todo')) return false;
+              if (filterStatus === 'in_progress' && !(s2.includes('in_progress') || s2.includes('in progress') || s2.includes('inprogress'))) return false;
+              if (filterStatus === 'done' && !(s2.includes('done') || s2.includes('completed'))) return false;
+            }
+            return true;
+          });
+          if (filteredTasks.length === 0) {
+            return (
+              <div className="p-6 bg-white rounded shadow text-center">
+                <p className="text-gray-700 mb-2">No tasks match the selected filter.</p>
+              </div>
+            );
+          }
+          return (
+            <div className="bg-white rounded shadow overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned By</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned At</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {filteredTasks.map((t, i) => {
+                    const normalizeStatus = (s) => {
+                      if (!s) return 'Unknown';
+                      const s2 = String(s).toLowerCase();
+                      if (s2.includes('todo')) return 'To Do';
+                      if (s2.includes('in_progress') || s2.includes('in progress') || s2.includes('inprogress')) return 'In Progress';
+                      if (s2.includes('done') || s2.includes('completed')) return 'Done';
+                      return t.status || 'Unknown';
+                    };
+                    const statusLabel = normalizeStatus(t.status);
+                    // Solid color badges
+                    const badgeClass = statusLabel === 'Done'
+                      ? 'bg-green-500 text-white'
+                      : statusLabel === 'In Progress'
+                        ? 'bg-blue-500 text-white'
+                        : statusLabel === 'To Do'
+                          ? 'bg-gray-500 text-white'
+                          : 'bg-gray-300 text-gray-800';
+                    return (
+                      <tr key={t.assignmentId || t.taskId || i}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{i + 1}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{t.title || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.projectName || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.createdBy && t.createdBy.name ? t.createdBy.name : '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{t.assignedAt ? new Date(t.assignedAt).toLocaleString() : '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
