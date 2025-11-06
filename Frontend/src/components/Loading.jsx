@@ -1,22 +1,30 @@
-// components/Loading.tsx
+// components/Loading.jsx
 
-import { Sun } from "lucide-react"; // optional: nice spinner icon
+import { FolderKanban } from "lucide-react";
 
 export default function Loading({
   status,
   text = "Loading...",
   fullscreen = false,
 }) {
-  if (!status) return null; // if false, don't render anything
+  if (!status) return null;
 
   return (
     <div
-      className={`flex flex-col items-center justify-center ${
-        fullscreen ? "fixed inset-0 bg-black/40 z-9999" : ""
-      }`}
+      className={`${
+        fullscreen ? "fixed inset-0 z-9999" : "min-h-screen"
+      } bg-black/40 p-4 md:p-6 lg:p-8`}
     >
-      <Sun className="animate-spin h-10 w-10 text-primer z-9999" />
-      <p className="mt-2 text-white">{text}</p>
+      <div className="flex flex-col justify-center items-center h-full">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FolderKanban className="w-6 h-6 text-blue-600" />
+          </div>
+        </div>
+        <p className="mt-4 text-white font-medium">{text}</p>
+      </div>
     </div>
   );
 }
