@@ -1,14 +1,14 @@
-const userDto = require('../dto/user.dto');
-const { User, Position, Skill, ProjectAssignment } = require('../models');
-const { sendEmail } = require('../utils/email');
-const { hashPassword, generatePassword } = require('../utils/password');
-const mongoose = require('mongoose');
-const XLSX = require('xlsx');
-const pdfParse = require('pdf-parse');
-const path = require('path');
+const userDto = require("../dto/user.dto");
+const { User, Position, Skill, ProjectAssignment } = require("../models");
+const { sendEmail } = require("../utils/email");
+const { hashPassword, generatePassword } = require("../utils/password");
+const mongoose = require("mongoose");
+const XLSX = require("xlsx");
+const pdfParse = require("pdf-parse");
+const path = require("path");
 
 // Helper to safely escape user input when building RegExp
-const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Parse various date representations coming from XLSX: number (Excel serial), Date object, or string
 const parseExcelDate = (val) => {
@@ -17,7 +17,7 @@ const parseExcelDate = (val) => {
   if (val instanceof Date) return val;
 
   // Excel stores dates as numbers (serial). Try parse via XLSX.SSF if available
-  if (typeof val === 'number') {
+  if (typeof val === "number") {
     try {
       const d = XLSX.SSF.parse_date_code(val);
       if (!d) return null;
@@ -30,21 +30,29 @@ const parseExcelDate = (val) => {
     }
   }
 
-  if (typeof val === 'string') {
+  if (typeof val === "string") {
     const s = val.trim();
     // ISO-like yyyy-mm-dd
     if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) return new Date(s);
     // try yyyy/mm/dd or yyyy.mm.dd
-    if (/^\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}$/.test(s)) return new Date(s.replace(/[/.]/g, '-'));
+    if (/^\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}$/.test(s))
+      return new Date(s.replace(/[/.]/g, "-"));
     // try dd/mm/yyyy or dd-mm-yyyy (common Excel locales)
     const parts = s.split(/[\/\.\-]/).map((p) => p.trim());
     if (parts.length === 3) {
       // if first part is year -> year-first
       if (parts[0].length === 4) {
-        return new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
+        return new Date(
+          `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(
+            2,
+            "0"
+          )}`
+        );
       }
       // assume dd-mm-yyyy
-      return new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+      return new Date(
+        `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`
+      );
     }
 
     // final fallback
@@ -60,7 +68,7 @@ const skillMatching = (skills, existingSkills) => {
     arr.map((skill) =>
       skill
         .toLowerCase()
-        .replace(/[^\w\s]/g, '')
+        .replace(/[^\w\s]/g, "")
         .trim()
     );
   console.log({ existingSkills });
@@ -96,8 +104,8 @@ const createEmployee = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        error: 'Duplicate Email',
-        message: 'User with this email already exists',
+        error: "Duplicate Email",
+        message: "User with this email already exists",
       });
     }
 
@@ -107,7 +115,10 @@ const createEmployee = async (req, res) => {
     const existingSkills = await Skill.find({});
     const existingSkillNames = existingSkills.map((skill) => skill.name);
 
-    const { matchedSkills, newSkills } = skillMatching(req.body.skills, existingSkillNames);
+    const { matchedSkills, newSkills } = skillMatching(
+      req.body.skills,
+      existingSkillNames
+    );
 
     let insertedIds = [];
     if (newSkills.length > 0) {
@@ -139,13 +150,13 @@ const createEmployee = async (req, res) => {
     try {
       await sendEmail({
         to: email,
-        subject: 'Account Created - DevAlign HRIS',
+        subject: "Account Created - DevAlign HRIS",
         text: message,
       });
     } catch (e) {
       // Log and continue — don"t fail creation if email sending fails
       // eslint-disable-next-line no-console
-      console.warn('Failed to send welcome email:', e.message || e);
+      console.warn("Failed to send welcome email:", e.message || e);
     }
 
     return res.status(201).json({
@@ -155,7 +166,7 @@ const createEmployee = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -164,28 +175,29 @@ const createEmployee = async (req, res) => {
 const listEmployees = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.max(parseInt(req.query.limit, 10) || 20, 1);
-  const search = req.query.search || '';
+  const search = req.query.search || "";
   const { role, position } = req.query;
 
   const filter = {};
   if (search) {
-    const regex = new RegExp(escapeRegExp(search), 'i');
+    const regex = new RegExp(escapeRegExp(search), "i");
     filter.$or = [{ name: regex }, { email: regex }];
   }
   if (role) filter.role = role;
-  if (position && mongoose.Types.ObjectId.isValid(position)) filter.position = position;
+  if (position && mongoose.Types.ObjectId.isValid(position))
+    filter.position = position;
 
   // Default: tampilkan semua (active & inactive). Jika query active diberikan, filter sesuai.
-  if (typeof req.query.active !== 'undefined') {
-    filter.active = req.query.active === 'true';
+  if (typeof req.query.active !== "undefined") {
+    filter.active = req.query.active === "true";
   }
 
   try {
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
-      .populate('position')
-      .populate('skills', 'name')
-      .populate('managerId', 'name email phoneNumber position')
+      .populate("position")
+      .populate("skills", "name")
+      .populate("managerId", "name email phoneNumber position")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -197,7 +209,7 @@ const listEmployees = async (req, res) => {
     if (userIds.length > 0) {
       const counts = await ProjectAssignment.aggregate([
         { $match: { userId: { $in: userIds } } },
-        { $group: { _id: '$userId', count: { $sum: 1 } } },
+        { $group: { _id: "$userId", count: { $sum: 1 } } },
       ]).exec();
       counts.forEach((c) => projectCountsMap.set(String(c._id), c.count));
     }
@@ -216,7 +228,7 @@ const listEmployees = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -226,32 +238,33 @@ const getEmployee = async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, error: 'Invalid ID' });
+    return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
   try {
     // populate manager info to include name & email for frontend
     const user = await User.findById(id)
-      .populate('position')
-      .populate('skills', 'name')
-      .populate('managerId', 'name email phoneNumber position')
+      .populate("position")
+      .populate("skills", "name")
+      .populate("managerId", "name email phoneNumber position")
       .lean();
 
-    if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
+    if (!user)
+      return res.status(404).json({ success: false, error: "Not Found" });
 
     // Authorization: hr and manager can view any; others can view only their own record
     const requester = req.user || {};
     if (
-      !['hr', 'manager'].includes(requester.role) &&
+      !["hr", "manager"].includes(requester.role) &&
       requester._id !== String(id) &&
       requester.id !== String(id)
     ) {
-      return res.status(403).json({ success: false, error: 'Forbidden' });
+      return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
     // If the user is inactive, only HR can view details
-    if (user.active === false && requester.role !== 'hr') {
-      return res.status(404).json({ success: false, error: 'Not Found' });
+    if (user.active === false && requester.role !== "hr") {
+      return res.status(404).json({ success: false, error: "Not Found" });
     }
 
     // map and return — DTO will include manager object when populated
@@ -271,7 +284,7 @@ const getEmployee = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -280,31 +293,36 @@ const getEmployee = async (req, res) => {
 const updateEmployee = async (req, res) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, error: 'Invalid ID' });
+    return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
   // Only HR can update via middleware in routes; still check existence
   try {
     const user = await User.findById(id);
-    if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
+    if (!user)
+      return res.status(404).json({ success: false, error: "Not Found" });
 
     if (req.body.email && req.body.email !== user.email) {
       const exists = await User.findOne({ email: req.body.email });
-      if (exists) return res.status(400).json({ success: false, error: 'Duplicate Email' });
+      if (exists)
+        return res
+          .status(400)
+          .json({ success: false, error: "Duplicate Email" });
     }
 
     const updatable = [
-      'name',
-      'email',
-      'phoneNumber',
-      'placeOfBirth',
-      'dateOfBirth',
-      'position',
-      'managerId',
-      'role',
+      "name",
+      "email",
+      "phoneNumber",
+      "placeOfBirth",
+      "dateOfBirth",
+      "position",
+      "managerId",
+      "role",
     ];
     updatable.forEach((k) => {
-      if (Object.prototype.hasOwnProperty.call(req.body, k)) user[k] = req.body[k];
+      if (Object.prototype.hasOwnProperty.call(req.body, k))
+        user[k] = req.body[k];
     });
 
     // Handle skills update if skills array is provided
@@ -313,7 +331,7 @@ const updateEmployee = async (req, res) => {
       const skillIds = await Promise.all(
         req.body.skills.map(async (skillName) => {
           let skill = await Skill.findOne({
-            name: new RegExp('^' + escapeRegExp(skillName) + '$', 'i'),
+            name: new RegExp("^" + escapeRegExp(skillName) + "$", "i"),
           });
           if (!skill) {
             // Create new skill if it doesn"t exist
@@ -331,9 +349,9 @@ const updateEmployee = async (req, res) => {
 
     // Fetch complete user data with populated fields
     const populatedUser = await User.findById(updated._id)
-      .populate('skills', 'name')
-      .populate('position')
-      .populate('managerId', 'name email phoneNumber position');
+      .populate("skills", "name")
+      .populate("position")
+      .populate("managerId", "name email phoneNumber position");
     return res.json({
       success: true,
       data: userDto.mapUserToUserResponse(populatedUser),
@@ -341,7 +359,7 @@ const updateEmployee = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -352,41 +370,47 @@ const changeEmployeeStatus = async (req, res) => {
   const isActive = req.query.active;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, error: 'Invalid ID' });
+    return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
   const user = await User.findById(id);
-  if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
+  if (!user)
+    return res.status(404).json({ success: false, error: "Not Found" });
 
   try {
     // ?active=true
     // Prioritize soft-delete. Allow hard delete when query ?hard=true is provided (HR only route already enforced in router).
-    const hard = req.query.hard === 'true';
+    const hard = req.query.hard === "true";
     if (hard) {
       const deleted = await User.findByIdAndDelete(id);
-      if (!deleted) return res.status(404).json({ success: false, error: 'Not Found' });
-      return res.json({ success: true, message: 'Employee hard-deleted' });
+      if (!deleted)
+        return res.status(404).json({ success: false, error: "Not Found" });
+      return res.json({ success: true, message: "Employee hard-deleted" });
     }
 
-    if (isActive == 'true') {
+    if (isActive == "true") {
       if (user.active === true)
-        return res.status(400).json({ success: false, error: 'Already Activated' });
+        return res
+          .status(400)
+          .json({ success: false, error: "Already Activated" });
 
       user.active = true;
       await user.save();
-      return res.json({ success: true, message: 'Employee activated' });
+      return res.json({ success: true, message: "Employee activated" });
     } else {
       if (user.active === false)
-        return res.status(400).json({ success: false, error: 'Already Deactivated' });
+        return res
+          .status(400)
+          .json({ success: false, error: "Already Deactivated" });
 
       user.active = false;
       await user.save();
-      return res.json({ success: true, message: 'Employee deactivated' });
+      return res.json({ success: true, message: "Employee deactivated" });
     }
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -394,7 +418,7 @@ const changeEmployeeStatus = async (req, res) => {
 
 const importEmployees = async (req, res) => {
   if (!req.file || !req.file.buffer) {
-    return res.status(400).json({ success: false, error: 'No file uploaded' });
+    return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
   // Always proceed with import and send emails
@@ -402,7 +426,7 @@ const importEmployees = async (req, res) => {
   const sendEmails = true;
 
   try {
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
@@ -415,18 +439,20 @@ const importEmployees = async (req, res) => {
       const email = row.email || row.Email || null;
       const managerEmail = row.managerEmail || row.ManagerEmail || null;
       const positionVal = row.position || row.Position || null;
-      const skillsVal = row.skills || row.Skills || '';
+      const skillsVal = row.skills || row.Skills || "";
 
       if (email) fileEmails.push(String(email).toLowerCase());
-      if (managerEmail) managerEmailsSet.add(String(managerEmail).toLowerCase());
-      if (positionVal && typeof positionVal === 'string') positionNamesSet.add(positionVal);
+      if (managerEmail)
+        managerEmailsSet.add(String(managerEmail).toLowerCase());
+      if (positionVal && typeof positionVal === "string")
+        positionNamesSet.add(positionVal);
 
       // Handle skills (comma-separated string or array)
       if (skillsVal) {
         const skillNames =
-          typeof skillsVal === 'string'
+          typeof skillsVal === "string"
             ? skillsVal
-                .split(',')
+                .split(",")
                 .map((s) => s.trim())
                 .filter(Boolean)
             : Array.isArray(skillsVal)
@@ -438,41 +464,50 @@ const importEmployees = async (req, res) => {
 
     // find existing users with those emails
     const existingUsers = await User.find({ email: { $in: fileEmails } })
-      .select('email _id')
+      .select("email _id")
       .lean();
-    const existingEmailSet = new Set(existingUsers.map((u) => String(u.email).toLowerCase()));
+    const existingEmailSet = new Set(
+      existingUsers.map((u) => String(u.email).toLowerCase())
+    );
 
     // resolve managers
     const managers = await User.find({
       email: { $in: Array.from(managerEmailsSet) },
     })
-      .select('email _id')
+      .select("email _id")
       .lean();
-    const managerMap = new Map(managers.map((m) => [String(m.email).toLowerCase(), m._id]));
+    const managerMap = new Map(
+      managers.map((m) => [String(m.email).toLowerCase(), m._id])
+    );
 
     // helper to escape user input for RegExp
-    const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\[\]\\]/g, '\\$&');
+    const escapeRegExp = (s) =>
+      String(s).replace(/[.*+?^${}()|[\[\]\\]/g, "\\$&");
 
     // resolve positions by name (case-insensitive)
     const positions = await Position.find({
       $or: Array.from(positionNamesSet).map((n) => ({
-        name: new RegExp('^' + escapeRegExp(n) + '$', 'i'),
+        name: new RegExp("^" + escapeRegExp(n) + "$", "i"),
       })),
     })
-      .select('name _id')
+      .select("name _id")
       .lean();
     // map using lowercase key for case-insensitive lookup
-    const positionMap = new Map(positions.map((p) => [String(p.name).toLowerCase(), p._id]));
+    const positionMap = new Map(
+      positions.map((p) => [String(p.name).toLowerCase(), p._id])
+    );
 
     // resolve skills by name (case-insensitive)
     const skills = await Skill.find({
       $or: Array.from(skillNamesSet).map((n) => ({
-        name: new RegExp('^' + escapeRegExp(n) + '$', 'i'),
+        name: new RegExp("^" + escapeRegExp(n) + "$", "i"),
       })),
     })
-      .select('name _id')
+      .select("name _id")
       .lean();
-    const skillMap = new Map(skills.map((s) => [String(s.name).toLowerCase(), s._id]));
+    const skillMap = new Map(
+      skills.map((s) => [String(s.name).toLowerCase(), s._id])
+    );
 
     // Auto-create missing positions and skills so import doesn"t fail on unknown names
     const missingPositionNames = Array.from(positionNamesSet).filter(
@@ -483,15 +518,21 @@ const importEmployees = async (req, res) => {
       const createdPositions = await Position.insertMany(
         missingPositionNames.map((name) => ({ name }))
       );
-      createdPositions.forEach((p) => positionMap.set(String(p.name).toLowerCase(), p._id));
+      createdPositions.forEach((p) =>
+        positionMap.set(String(p.name).toLowerCase(), p._id)
+      );
     }
 
     const missingSkillNames = Array.from(skillNamesSet).filter(
       (n) => !skillMap.has(String(n).toLowerCase())
     );
     if (missingSkillNames.length > 0) {
-      const createdSkills = await Skill.insertMany(missingSkillNames.map((name) => ({ name })));
-      createdSkills.forEach((s) => skillMap.set(String(s.name).toLowerCase(), s._id));
+      const createdSkills = await Skill.insertMany(
+        missingSkillNames.map((name) => ({ name }))
+      );
+      createdSkills.forEach((s) =>
+        skillMap.set(String(s.name).toLowerCase(), s._id)
+      );
     }
 
     // detect within-file duplicates
@@ -511,9 +552,11 @@ const importEmployees = async (req, res) => {
       const parsedDateOfBirth = parseExcelDate(rawDateOfBirth);
       const positionVal = row.position || row.Position || null; // can be id or name
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
-      const managerEmail = managerEmailRaw ? String(managerEmailRaw).toLowerCase() : null;
-      const role = row.role || row.Role || 'staff';
-      const skillsVal = row.skills || row.Skills || '';
+      const managerEmail = managerEmailRaw
+        ? String(managerEmailRaw).toLowerCase()
+        : null;
+      const role = row.role || row.Role || "staff";
+      const skillsVal = row.skills || row.Skills || "";
 
       const rowResult = {
         row: rowIndex,
@@ -523,7 +566,7 @@ const importEmployees = async (req, res) => {
       };
 
       if (!email || !name) {
-        rowResult.errors.push('Missing name or email');
+        rowResult.errors.push("Missing name or email");
         results.push({ ...rowResult, success: false });
         continue;
       }
@@ -531,33 +574,42 @@ const importEmployees = async (req, res) => {
       // simple email regex
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        rowResult.errors.push('Invalid email format');
+        rowResult.errors.push("Invalid email format");
       }
 
       // within-file duplicate
       if (seenInFile.has(email)) {
-        rowResult.errors.push('Duplicate email in file');
+        rowResult.errors.push("Duplicate email in file");
       } else {
         seenInFile.add(email);
       }
 
       // existing DB duplicate
       if (existingEmailSet.has(email)) {
-        rowResult.errors.push('Email already exists in system');
+        rowResult.errors.push("Email already exists in system");
       }
 
       // resolve position
       let position = null;
-      if (positionVal) {
-        if (mongoose.Types.ObjectId.isValid(positionVal)) {
-          position = positionVal;
-          rowResult.resolved.position = position;
-        } else if (positionMap.has(String(positionVal).toLowerCase())) {
-          position = positionMap.get(String(positionVal).toLowerCase());
-          rowResult.resolved.position = position;
-        } else {
-          // should not happen because we auto-create missing positions earlier, but keep warning as fallback
-          rowResult.warnings.push('Position not found');
+      console.log("role: ");
+      console.log(role);
+      if (role.toLowerCase() === "staff") {
+        if (positionVal) {
+          if (mongoose.Types.ObjectId.isValid(positionVal)) {
+            position = positionVal;
+            rowResult.resolved.position = position;
+          } else if (positionMap.has(String(positionVal).toLowerCase())) {
+            position = positionMap.get(String(positionVal).toLowerCase());
+            rowResult.resolved.position = position;
+          } else {
+            rowResult.warnings.push("Position not found");
+          }
+        }
+      } else {
+        if (positionVal) {
+          rowResult.warnings.push(
+            `Position ignored for role '${role}' (only staff have positions)`
+          );
         }
       }
 
@@ -568,7 +620,7 @@ const importEmployees = async (req, res) => {
           managerId = managerMap.get(managerEmail);
           rowResult.resolved.managerId = managerId;
         } else {
-          rowResult.warnings.push('Manager email not found');
+          rowResult.warnings.push("Manager email not found");
         }
       }
 
@@ -576,9 +628,9 @@ const importEmployees = async (req, res) => {
       let skills = [];
       if (skillsVal) {
         const skillNames =
-          typeof skillsVal === 'string'
+          typeof skillsVal === "string"
             ? skillsVal
-                .split(',')
+                .split(",")
                 .map((s) => s.trim())
                 .filter(Boolean)
             : Array.isArray(skillsVal)
@@ -608,7 +660,7 @@ const importEmployees = async (req, res) => {
       // date parsing check
       if (rawDateOfBirth) {
         if (!parsedDateOfBirth) {
-          rowResult.warnings.push('Invalid dateOfBirth format');
+          rowResult.warnings.push("Invalid dateOfBirth format");
         } else {
           // store resolved parsed date for later creation
           rowResult.resolved.dateOfBirth = parsedDateOfBirth;
@@ -652,12 +704,12 @@ const importEmployees = async (req, res) => {
           try {
             await sendEmail({
               to: email,
-              subject: 'Account Created - DevAlign HRIS',
+              subject: "Account Created - DevAlign HRIS",
               text: `Hello ${name},\nYour account has been created.\nEmail: ${email}\nPassword: ${password}`,
             });
           } catch (e) {
             // email send failure should not roll back creation
-            rowResult.warnings.push('Failed to send welcome email');
+            rowResult.warnings.push("Failed to send welcome email");
           }
         }
 
@@ -680,7 +732,7 @@ const importEmployees = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to parse file',
+      error: "Failed to parse file",
       message: err.message,
     });
   }
@@ -688,29 +740,47 @@ const importEmployees = async (req, res) => {
 
 const getImportTemplate = async (req, res) => {
   try {
-    const format = (req.query.format || 'xlsx').toLowerCase();
-    const xlsxPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.xlsx');
-    const csvPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.csv');
-    const fs = require('fs');
-    if (format === 'xlsx' && fs.existsSync(xlsxPath)) {
+    const format = (req.query.format || "xlsx").toLowerCase();
+    const xlsxPath = path.join(
+      __dirname,
+      "..",
+      "scripts",
+      "employee-import-template.xlsx"
+    );
+    const csvPath = path.join(
+      __dirname,
+      "..",
+      "scripts",
+      "employee-import-template.csv"
+    );
+    const fs = require("fs");
+    if (format === "xlsx" && fs.existsSync(xlsxPath)) {
       res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.xlsx');
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=employee-import-template.xlsx"
+      );
       return res.sendFile(xlsxPath);
     }
-    if (format === 'csv' && fs.existsSync(csvPath)) {
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename=employee-import-template.csv');
+    if (format === "csv" && fs.existsSync(csvPath)) {
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=employee-import-template.csv"
+      );
       return res.sendFile(csvPath);
     }
     // fallback: error if file not found
-    return res.status(404).json({ success: false, error: 'Template file not found' });
+    return res
+      .status(404)
+      .json({ success: false, error: "Template file not found" });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to get template',
+      error: "Failed to get template",
       message: err.message,
     });
   }
@@ -718,20 +788,22 @@ const getImportTemplate = async (req, res) => {
 
 const parseCv = async (req, res) => {
   if (!req.file || !req.file.buffer) {
-    return res.status(400).json({ success: false, error: 'No file uploaded' });
+    return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
-  const mime = req.file.mimetype || '';
+  const mime = req.file.mimetype || "";
   try {
-    if (mime === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf')) {
+    if (
+      mime === "application/pdf" ||
+      req.file.originalname.toLowerCase().endsWith(".pdf")
+    ) {
       const data = await pdfParse(req.file.buffer);
-      const text = data.text || '';
+      const text = data.text || "";
 
       // extract emails and phones
-      const emails = (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).slice(
-        0,
-        10
-      );
+      const emails = (
+        text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []
+      ).slice(0, 10);
       const phones = (text.match(/\+?\d[\d \-()]{6,}\d/g) || []).slice(0, 10);
 
       return res.json({
@@ -744,12 +816,13 @@ const parseCv = async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      error: 'Unsupported file type for CV parsing. Only PDF supported for now.',
+      error:
+        "Unsupported file type for CV parsing. Only PDF supported for now.",
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to parse CV',
+      error: "Failed to parse CV",
       message: err.message,
     });
   }
@@ -758,29 +831,31 @@ const parseCv = async (req, res) => {
 const getColleagues = async (req, res) => {
   try {
     const currentUserId = req.user.id || req.user._id;
-    const currentUser = await User.findById(currentUserId).select('role managerId').lean();
+    const currentUser = await User.findById(currentUserId)
+      .select("role managerId")
+      .lean();
 
     if (!currentUser) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Current user not found',
+        error: "Not Found",
+        message: "Current user not found",
       });
     }
 
     let colleagues = [];
     let directManager = null;
 
-    if (currentUser.role === 'manager') {
+    if (currentUser.role === "manager") {
       // If user is manager, get all direct subordinates (members with managerId = currentUser._id)
       colleagues = await User.find({
         managerId: currentUserId,
         active: true,
         _id: { $ne: currentUserId }, // Exclude self
       })
-        .populate('position', 'name')
-        .populate('skills', 'name')
-        .select('_id name email role position skills')
+        .populate("position", "name")
+        .populate("skills", "name")
+        .select("_id name email role position skills")
         .sort({ name: 1 })
         .lean();
     } else {
@@ -788,8 +863,8 @@ const getColleagues = async (req, res) => {
       if (currentUser.managerId) {
         // Get direct manager details
         directManager = await User.findById(currentUser.managerId)
-          .populate('position', 'name')
-          .select('_id name email role position')
+          .populate("position", "name")
+          .select("_id name email role position")
           .lean();
 
         // Get all teammates with the same manager (excluding self)
@@ -798,9 +873,9 @@ const getColleagues = async (req, res) => {
           active: true,
           _id: { $ne: currentUserId }, // Exclude self
         })
-          .populate('position', 'name')
-          .populate('skills', 'name')
-          .select('_id name email role position skills')
+          .populate("position", "name")
+          .populate("skills", "name")
+          .select("_id name email role position skills")
           .sort({ name: 1 })
           .lean();
 
@@ -857,7 +932,7 @@ const getColleagues = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }

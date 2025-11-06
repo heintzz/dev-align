@@ -112,7 +112,9 @@ export default function AddEmployee() {
       setLoadingState(true);
       setLoadingText("Extract CV");
       const { data } = await axios.post(
-        `${import.meta.env.VITE_AI_URL || "http://localhost:8000"}/cv/extract-data`,
+        `${
+          import.meta.env.VITE_AI_URL || "http://localhost:8000"
+        }/cv/extract-data`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -362,13 +364,13 @@ export default function AddEmployee() {
                                   className="w-full justify-between font-normal cursor-pointer"
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <CalendarIcon className="flex-shrink-0" />
+                                    <CalendarIcon className="shrink-0" />
                                     <p className="text-left truncate flex-1 min-w-0">
                                       {selectedDate
                                         ? format(selectedDate, "PPP")
                                         : "Select Birthdate"}
                                     </p>
-                                    <ChevronDown className="flex-shrink-0" />
+                                    <ChevronDown className="shrink-0" />
                                   </div>
                                 </Button>
                               </PopoverTrigger>
@@ -387,22 +389,6 @@ export default function AddEmployee() {
                           </Field>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                          <Field>
-                            <FieldLabel htmlFor="checkout-7j9-position-uw1">
-                              Position
-                            </FieldLabel>
-                            <PositionSelector
-                              selectedPosition={employeeForm.position}
-                              onChange={(pos) =>
-                                setEmployeeForm((prev) => ({
-                                  ...prev,
-                                  position: pos,
-                                }))
-                              }
-                              isEditing={true}
-                              allowCustomAdd
-                            />
-                          </Field>
                           <Field>
                             <FieldLabel htmlFor="checkout-7j9-role-f59">
                               Role
@@ -426,8 +412,26 @@ export default function AddEmployee() {
                               </SelectContent>
                             </Select>
                           </Field>
+                          {employeeForm.role == "staff" && (
+                            <Field>
+                              <FieldLabel htmlFor="checkout-7j9-position-uw1">
+                                Position
+                              </FieldLabel>
+                              <PositionSelector
+                                selectedPosition={employeeForm.position}
+                                onChange={(pos) =>
+                                  setEmployeeForm((prev) => ({
+                                    ...prev,
+                                    position: pos,
+                                  }))
+                                }
+                                isEditing={true}
+                                allowCustomAdd
+                              />
+                            </Field>
+                          )}
                         </div>
-                        {employeeForm.role !== "manager" && (
+                        {employeeForm.role == "staff" && (
                           <Field>
                             <FieldLabel htmlFor="checkout-7j9-manager-43j">
                               Manager
