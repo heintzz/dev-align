@@ -60,13 +60,13 @@ jobs:
             # Navigate to Frontend directory
             cd Frontend
 
-            # Copy production environment file
-            echo "⚙️ Setting up production environment..."
-            if [ -f "/var/www/frontend/.env.production" ]; then
-              cp /var/www/frontend/.env.production .env.production
-              echo "✅ Production environment file copied"
+            # Use .env.production from repository (it's already in the code)
+            echo "⚙️ Using production environment from repository..."
+            if [ -f ".env.production" ]; then
+              echo "✅ Production environment file found in repository"
+              cat .env.production
             else
-              echo "⚠️ Warning: .env.production not found, using default"
+              echo "⚠️ Warning: .env.production not found in repository"
             fi
             echo ""
 
