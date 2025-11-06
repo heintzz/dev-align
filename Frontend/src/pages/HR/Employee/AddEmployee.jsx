@@ -112,7 +112,9 @@ export default function AddEmployee() {
       setLoadingState(true);
       setLoadingText("Extract CV");
       const { data } = await axios.post(
-        "http://localhost:8000/cv/extract-data", // 🔥 change to your backend URL
+        `${
+          import.meta.env.VITE_AI_URL || "http://localhost:8000"
+        }/cv/extract-data`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -362,13 +364,13 @@ export default function AddEmployee() {
                                   className="w-full justify-between font-normal cursor-pointer"
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <CalendarIcon className="flex-shrink-0" />
+                                    <CalendarIcon className="shrink-0" />
                                     <p className="text-left truncate flex-1 min-w-0">
                                       {selectedDate
                                         ? format(selectedDate, "PPP")
                                         : "Select Birthdate"}
                                     </p>
-                                    <ChevronDown className="flex-shrink-0" />
+                                    <ChevronDown className="shrink-0" />
                                   </div>
                                 </Button>
                               </PopoverTrigger>

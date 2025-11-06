@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useMemo } from "react";
 import {
   BarChart,
@@ -37,10 +39,11 @@ export default function HRDashboard() {
   useEffect(() => {
     (async () => {
       try {
+        const queryString = `?period=${timeFilter}`;
         setLoadingState(true);
         setLoadingText("Fetch initial data...");
         const [dashboardRes, positionsRes] = await Promise.all([
-          getDashboardStats(),
+          getDashboardStats(queryString),
           projectService.getAllPositions(),
         ]);
 
@@ -55,7 +58,7 @@ export default function HRDashboard() {
         setLoadingText("");
       }
     })();
-  }, []);
+  }, [timeFilter]);
 
   // 👥 Fetch employees
   const fetchEmployees = async () => {
@@ -129,11 +132,13 @@ export default function HRDashboard() {
     projectStats["In Progress"] ??
     projectStats.ongoing ??
     0;
+  const overdue = projectStats.overdue || 0;
   const totalProjects = completed + inProgress;
 
   const projectData = [
     { status: "Completed", count: completed, color: "#10b981" },
     { status: "In Progress", count: inProgress, color: "#3b82f6" },
+    { status: "Overdue", count: overdue, color: "#ef4444" },
   ];
 
   const topContributors =
@@ -219,23 +224,25 @@ export default function HRDashboard() {
             </p>
           ) : (
             topContributors.map((c, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between mb-3 last:mb-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
-                    {c.avatar}
+              <>
+                <div
+                  key={i}
+                  className="flex items-center justify-between mb-3 last:mb-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
+                      {c.avatar}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">{c.name}</div>
+                      <div className="text-xs text-gray-500">{c.position}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium">{c.name}</div>
-                    <div className="text-xs text-gray-500">{c.position}</div>
-                  </div>
+                  <span className="text-sm text-gray-600">
+                    {c.projects} Tasks
+                  </span>
                 </div>
-                <span className="text-sm text-gray-600">
-                  {c.projects} Tasks
-                </span>
-              </div>
+              </>
             ))
           )}
         </div>
