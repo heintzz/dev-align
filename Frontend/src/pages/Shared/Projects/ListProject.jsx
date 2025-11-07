@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import projectService from "../../services/project.service";
+import projectService from "../../../services/project.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
 import {

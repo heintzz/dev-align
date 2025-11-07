@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SkillSelector } from "@/components/SkillSelector";
-import projectService from "../../services/project.service";
+import projectService from "../../../services/project.service";
 import { cn } from "@/lib/utils";
 
 import {
