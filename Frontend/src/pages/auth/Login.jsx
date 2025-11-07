@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import logoKiri from "@/assets/img/logokiribaru.png";
 import logoKecil from "@/assets/img/loginkanan.png";
+import { toast } from "@/lib/toast";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -44,12 +45,26 @@ export default function Login() {
       );
 
       if (response.success) {
+        toast("Login successfully", {
+          type: "success",
+          position: "top-center",
+          duration: 5000,
+        });
         const { token, role, id, name, email } = response.data;
         login(token, role, id, name, email);
         navigate("/dashboard", { replace: true });
       }
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.");
+      toast(
+        error.response?.data?.message ||
+          "Login failed. Please check your credentials.",
+        {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        }
+      );
     } finally {
       setLoadingState(false);
       setLoadingText("");

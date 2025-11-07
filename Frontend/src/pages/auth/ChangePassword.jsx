@@ -37,11 +37,21 @@ export default function ChangePasswordPage() {
 
     if (newPassword !== confirmPassword) {
       setError("New passwords do not match.");
+      toast("New passwords do not match.", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
       return;
     }
 
     if (newPassword.length < 8) {
       setError("Password must be at least 8 characters long.");
+      toast("Password must be at least 8 characters long.", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
       return;
     }
 
@@ -68,13 +78,15 @@ export default function ChangePasswordPage() {
         });
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || "Failed to change password";
-      setError(errorMsg);
+      const errorMsg =
+        error.response?.data?.message || "Failed to change password";
+      console.log("asdasd");
       toast(errorMsg, {
         type: "error",
         position: "top-center",
         duration: 4000,
       });
+      setError(errorMsg);
     } finally {
       setLoading(false);
       setLoadingState(false);
@@ -99,7 +111,7 @@ export default function ChangePasswordPage() {
 
         <div className="max-w-2xl mx-auto">
           <Card className="border-gray-200 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
+            <CardHeader className="border-b border-blue-100">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <ShieldCheck className="w-6 h-6 text-blue-600" />
@@ -113,7 +125,7 @@ export default function ChangePasswordPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="pt-8">
+            <CardContent>
               {/* Success Message */}
               {success && (
                 <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5 mb-6 flex items-start gap-3">
@@ -250,7 +262,7 @@ export default function ChangePasswordPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+                    className="w-full h-12 bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
                   >
                     {loading ? (
                       <>
@@ -275,19 +287,28 @@ export default function ChangePasswordPage() {
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Use a unique password that you don't use elsewhere</span>
+                    <span>
+                      Use a unique password that you don't use elsewhere
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Include a mix of uppercase, lowercase, numbers, and symbols</span>
+                    <span>
+                      Include a mix of uppercase, lowercase, numbers, and
+                      symbols
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Avoid using personal information or common words</span>
+                    <span>
+                      Avoid using personal information or common words
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Change your password regularly for better security</span>
+                    <span>
+                      Change your password regularly for better security
+                    </span>
                   </li>
                 </ul>
               </div>

@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "@/lib/toast";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -32,9 +33,18 @@ export default function ForgotPassword() {
     try {
       await authService.forgotPassword(email);
       setIsSubmitted(true);
-    } catch (err) {
-      setError(err.message || "Failed to send reset link. Please try again.");
-      console.error("Forgot password error:", err);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      setError(error.message || "Failed to send reset link. Please try again.");
+      toast(
+        error.response?.data?.message ||
+          "Failed to send reset link. Please try again.",
+        {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        }
+      );
     } finally {
       setIsLoading(false);
       setLoadingText("");
@@ -110,9 +120,8 @@ export default function ForgotPassword() {
                 </h3>
                 <p className="text-green-700 text-sm mb-4 leading-relaxed">
                   We've sent password reset instructions to{" "}
-                  <span className="font-semibold">{email}</span>
-                  . Please check your inbox and follow the link to reset your
-                  password.
+                  <span className="font-semibold">{email}</span>. Please check
+                  your inbox and follow the link to reset your password.
                 </p>
                 <Link to="/login">
                   <Button

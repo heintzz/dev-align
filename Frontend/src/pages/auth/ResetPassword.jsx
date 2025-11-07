@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Eye, EyeOff, Lock, CheckCircle2, ArrowLeft, KeyRound } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  CheckCircle2,
+  ArrowLeft,
+  KeyRound,
+} from "lucide-react";
 import logoKiri from "../../assets/img/logokiribaru.png";
 import logoKecil from "../../assets/img/loginkanan.png";
 import authService from "../../services/auth.service";
@@ -15,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "@/lib/toast";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -71,8 +79,13 @@ export default function ResetPassword() {
       );
       setIsSubmitted(true);
       setTimeout(() => navigate("/login"), 3000);
-    } catch (err) {
-      setError(err.message || "Failed to reset password. Please try again.");
+    } catch (error) {
+      setError(error.message || "Failed to reset password. Please try again.");
+      toast(error.message || "Failed to reset password. Please try again.", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setIsLoading(false);
       setLoadingText("");
