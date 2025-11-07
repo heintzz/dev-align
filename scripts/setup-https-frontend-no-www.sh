@@ -175,8 +175,7 @@ certbot --nginx \
     --email ${EMAIL} \
     --redirect \
     --hsts \
-    --staple-ocsp \
-    --must-staple
+    --staple-ocsp
 
 if [ $? -eq 0 ]; then
     echo ""
