@@ -11,6 +11,7 @@ body {
 
 @theme inline {
   --color-primer: #2c3f48;
+  --color-primerh: #23323a;
   --color-sekunder: #557584;
   --color-tersier: #d7e8f0;
   --radius-sm: calc(var(--radius) - 4px);

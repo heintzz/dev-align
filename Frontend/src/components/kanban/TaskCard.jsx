@@ -51,6 +51,7 @@ import { useAssigneeStore } from "@/store/useAssigneeStore";
 import api from "@/api/axios";
 import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const TaskCard = ({ task, projectId }) => {
   const [openCalendar, setOpenCalendar] = useState(false);
@@ -68,8 +69,9 @@ const TaskCard = ({ task, projectId }) => {
 
   const { listAssigneeProject, fetchAssigneeProject } = useAssigneeStore();
 
-  // console.log("task in TaskCard:", editedTask);
-  // Handle field changes
+  const { role } = useAuthStore();
+  const isManager = role === "manager";
+
   const handleChange = (field, value) => {
     setEditedTask((prev) => ({ ...prev, [field]: value }));
   };
@@ -352,6 +354,7 @@ const TaskCard = ({ task, projectId }) => {
                     value={editedTask.title}
                     onChange={(e) => handleChange("title", e.target.value)}
                     className="focus-visible:ring-primer"
+                    disabled={!isManager}
                   />
                 </div>
 
@@ -384,6 +387,7 @@ const TaskCard = ({ task, projectId }) => {
                   placeholder="Describe the task..."
                   value={editedTask.description}
                   onChange={(e) => handleChange("description", e.target.value)}
+                  disabled={!isManager}
                   className="min-h-[100px] resize-y focus-visible:ring-primer"
                 />
               </div>
@@ -402,6 +406,7 @@ const TaskCard = ({ task, projectId }) => {
                     isEditing={isEditing}
                     className="max-h-12"
                     allowCustomAdd
+                    canEdit={isManager}
                   />
                 </div>
 
@@ -420,7 +425,10 @@ const TaskCard = ({ task, projectId }) => {
                       handleChange("assignedUsers", [{ _id: v }])
                     }
                   >
-                    <SelectTrigger className="w-full cursor-pointer">
+                    <SelectTrigger
+                      className="w-full cursor-pointer"
+                      disabled={!isManager}
+                    >
                       <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
@@ -446,6 +454,7 @@ const TaskCard = ({ task, projectId }) => {
                     <Button
                       variant="outline"
                       className="w-full justify-between cursor-pointer"
+                      disabled={!isManager}
                     >
                       <div className="flex items-center space-x-2">
                         <CalendarIcon />
@@ -463,6 +472,9 @@ const TaskCard = ({ task, projectId }) => {
                       mode="single"
                       selected={selectedDate}
                       onSelect={handleDateChange}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
                     />
                   </PopoverContent>
                 </Popover>

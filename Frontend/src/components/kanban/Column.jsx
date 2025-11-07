@@ -3,8 +3,6 @@ import { Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   CirclePlus,
   Pencil,
-  PlusCircle,
-  Check,
   X,
   Save,
   Calendar as CalendarIcon,
@@ -15,13 +13,11 @@ import { format, set } from "date-fns";
 
 import TaskCard from "@/components/kanban/TaskCard";
 
-// shadcn/ui components
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -33,7 +29,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -50,14 +45,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -69,6 +56,7 @@ import { useAssigneeStore } from "@/store/useAssigneeStore";
 import { SkillSelector } from "../SkillSelector";
 import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const Column = ({
   projectId,
@@ -103,6 +91,9 @@ const Column = ({
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
 
+  const { role } = useAuthStore();
+  const isManager = role === "manager";
+
   const handleSelectChange = (field, value) => {
     setNewTask((prev) => ({
       ...prev,
@@ -128,7 +119,6 @@ const Column = ({
   };
 
   const addTask = async () => {
-    // if (!newTask.trim()) return;
     setLoadingState(true);
     setLoadingText("Creating new task...");
     const columnDetail = listColumns.filter((col) => col._id === column._id);
@@ -195,7 +185,6 @@ const Column = ({
 
       await api.delete(url);
       setShowDeleteDialog(false);
-      // UI updates via socket
     } catch (error) {
       console.error("Failed to delete column:", error);
       toast(error.response?.data?.message || "Failed to delete column", {
@@ -212,6 +201,14 @@ const Column = ({
   useEffect(() => {
     fetchAssigneeProject(projectId);
   }, [projectId]);
+
+  useEffect(() => {
+    if (!openAddTask) {
+      setNewTask(defaultTask);
+      setSkills([]);
+      setSelectedDate(null);
+    }
+  }, [openAddTask]);
 
   return (
     <div className={`w-72 ${className}`}>
@@ -248,24 +245,26 @@ const Column = ({
               <h3 className="text-lg font-semibold text-gray-800">
                 {column.name}
               </h3>
-              <div className="space-x-2">
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => setIsEdited(!isEdited)}
-                  className="p-1 rounded hover:bg-gray-100 cursor-pointer"
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="p-1 rounded text-red-500 hover:text-red-700  cursor-pointer"
-                >
-                  <Trash />
-                </Button>
-              </div>
+              {isManager && (
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setIsEdited(!isEdited)}
+                    className="p-1 rounded hover:bg-gray-100 cursor-pointer"
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="p-1 rounded text-red-500 hover:text-red-700  cursor-pointer"
+                  >
+                    <Trash />
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -309,132 +308,131 @@ const Column = ({
         </Droppable>
 
         {/* Add task input */}
-        <div className="mt-3">
-          <Dialog
-            open={openAddTask}
-            onOpenChange={(isOpen) => {
-              setOpenAddTask(isOpen);
-
-              if (!isOpen) {
-                setNewTask(defaultTask);
-                setSkills([]);
-                setSelectedDate(null);
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button className="w-full flex items-center justify-center gap-2 bg-primer cursor-pointer">
-                <CirclePlus size={18} />
-                Add Task
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              {/* <form onSubmit={addTask}> */}
-              <DialogHeader>
-                <DialogTitle>Add New Task</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <div className="grid gap-3">
-                  <Label htmlFor="title-1">Task Name</Label>
-                  <Input
-                    id="title-1"
-                    name="title"
-                    placeholder="Add JWT Authorization"
-                    value={newTask.title}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="description-1">Description</Label>
-                  <Textarea
-                    id="description-1"
-                    name="description"
-                    placeholder="Type the description of the task."
-                    value={newTask.description}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="deadline-1">Deadline</Label>
-                  <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <CalendarIcon />
-                          <span>
-                            {selectedDate
-                              ? format(selectedDate, "PPP")
-                              : "Select Deadline"}
-                          </span>
-                        </div>
-                        <ChevronDown />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateChange}
-                        id="deadline-1"
-                        value={newTask.deadline}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="assignee-1">Assignee</Label>
-                  <Select
-                    value={newTask.position}
-                    onValueChange={(value) =>
-                      handleSelectChange("assignedTo", value)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue
-                        placeholder="Select Employee"
-                        value={newTask.assignedTo}
-                        required
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {listAssigneeProject.map((employee) => (
-                        <SelectItem key={employee._id} value={employee._id}>
-                          {employee.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="name-1">Skills</Label>
-                  <SkillSelector
-                    selectedSkills={skills}
-                    onChange={setSkills}
-                    isEditing={true}
-                    className="max-h-12"
-                    allowCustomAdd
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline" className="cursor-pointer">
-                    Cancel
-                  </Button>
-                </DialogClose>
-                <Button onClick={addTask} className="bg-primer cursor-pointer">
+        {isManager && (
+          <div className="mt-3">
+            <Dialog open={openAddTask} onOpenChange={setOpenAddTask}>
+              <DialogTrigger asChild>
+                <Button className="w-full flex items-center justify-center gap-2 bg-primer cursor-pointer">
+                  <CirclePlus size={18} />
                   Add Task
                 </Button>
-              </DialogFooter>
-              {/* </form> */}
-            </DialogContent>
-          </Dialog>
-        </div>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Task</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4">
+                  <div className="grid gap-3">
+                    <Label htmlFor="title-1">Task Name</Label>
+                    <Input
+                      id="title-1"
+                      name="title"
+                      placeholder="Add JWT Authorization"
+                      value={newTask.title}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="description-1">Description</Label>
+                    <Textarea
+                      id="description-1"
+                      name="description"
+                      placeholder="Type the description of the task."
+                      value={newTask.description}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="deadline-1">Deadline</Label>
+                    <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-between cursor-pointer"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <CalendarIcon />
+                            <span>
+                              {selectedDate
+                                ? format(selectedDate, "PPP")
+                                : "Select Deadline"}
+                            </span>
+                          </div>
+                          <ChevronDown />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={handleDateChange}
+                          id="deadline-1"
+                          value={newTask.deadline}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="assignee-1">Assignee</Label>
+                    <Select
+                      value={newTask.position}
+                      onValueChange={(value) =>
+                        handleSelectChange("assignedTo", value)
+                      }
+                    >
+                      <SelectTrigger className="w-full cursor-pointer">
+                        <SelectValue
+                          placeholder="Select Employee"
+                          value={newTask.assignedTo}
+                          required
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {listAssigneeProject.map((employee) => (
+                          <SelectItem
+                            key={employee._id}
+                            value={employee._id}
+                            className="cursor-pointer"
+                          >
+                            {employee.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="name-1">Skills</Label>
+                    <SkillSelector
+                      selectedSkills={skills}
+                      onChange={setSkills}
+                      isEditing={true}
+                      className="max-h-12"
+                      allowCustomAdd
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline" className="cursor-pointer">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    onClick={addTask}
+                    className="bg-primer cursor-pointer"
+                  >
+                    Add Task
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </Card>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
