@@ -222,7 +222,7 @@ export default function ListProjects() {
             {isManager && (
               <Button
                 onClick={handleCreateProject}
-                className="bg-linear-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-slate-950 text-white shadow-lg hover:shadow-xl transition-all duration-200 group"
+                className="bg-linear-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-slate-950 text-white shadow-lg hover:shadow-xl transition-all duration-200 group cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
                 Create New Project

@@ -413,7 +413,7 @@ export default function CreateProject() {
           </h1>
           <button
             onClick={() => navigate("/projects")}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900"
+            className="px-4 py-2 text-gray-600 hover:text-gray-900 cursor-pointer"
           >
             Cancel
           </button>

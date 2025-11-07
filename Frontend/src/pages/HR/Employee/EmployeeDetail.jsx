@@ -174,7 +174,7 @@ export default function EmployeeDetail() {
 
   // 🖼 UI
   return (
-    <div className="p-6">
+    <div className="min-h-screen lg:p-5">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       <Link
