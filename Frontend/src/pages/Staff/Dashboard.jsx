@@ -1,38 +1,100 @@
-import { useState, useEffect } from "react";
-import projectService from "../../services/project.service";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import {
+  ListTodo,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Filter,
+  Calendar,
+  User,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import projectService from "@/services/project.service";
 
+// ─── Utility Functions ──────────────────────────────────────────────
+const normalizeStatus = (status) => {
+  if (!status) return "Unknown";
+  const statusLower = String(status).toLowerCase();
+  if (statusLower.includes("todo")) return "To Do";
+  if (
+    statusLower.includes("in_progress") ||
+    statusLower.includes("in progress") ||
+    statusLower.includes("inprogress")
+  ) {
+    return "In Progress";
+  }
+  if (statusLower.includes("done") || statusLower.includes("completed")) {
+    return "Done";
+  }
+  return status;
+};
+
+const getStatusConfig = (status) => {
+  const configs = {
+    "To Do": {
+      className: "bg-slate-50 text-slate-700 border border-slate-200",
+      dotColor: "bg-slate-500",
+    },
+    "In Progress": {
+      className: "bg-blue-50 text-blue-700 border border-blue-200",
+      dotColor: "bg-blue-500",
+    },
+    Done: {
+      className: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+      dotColor: "bg-emerald-500",
+    },
+  };
+  return (
+    configs[status] || {
+      className: "bg-slate-50 text-slate-700 border border-slate-200",
+      dotColor: "bg-slate-500",
+    }
+  );
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+// ─── Main Component ──────────────────────────────────────────────
 export default function StaffDashboard() {
-  // Pagination state
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  const [activeFilter, setActiveFilter] = useState("All");
-  const [sortBy, setSortBy] = useState("Deadline");
-
-  // Tasks for the staff user (global)
+  // State
   const [allTasks, setAllTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [filterProject, setFilterProject] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [showDebug, setShowDebug] = useState(false);
-  const [selectedProjectDetail, setSelectedProjectDetail] = useState(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  // Load all tasks for staff user
+  // Load tasks
   useEffect(() => {
-    const load = async () => {
+    const loadTasks = async () => {
       try {
         setLoadingTasks(true);
-        const res = await projectService.getStaffTasks();
-        // res expected: array of tasks with projectName and status
-        setAllTasks(res || []);
+        const response = await projectService.getStaffTasks();
+        setAllTasks(response || []);
       } catch (err) {
-        console.error("Failed to load staff tasks", err);
+        console.error("Failed to load staff tasks:", err);
       } finally {
         setLoadingTasks(false);
       }
     };
-    load();
+    loadTasks();
   }, []);
 
   // Reset page when filters change
@@ -40,255 +102,433 @@ export default function StaffDashboard() {
     setPage(1);
   }, [filterProject, filterStatus]);
 
+  // Get unique projects for filter
+  const projects = useMemo(() => {
+    const projectMap = new Map(
+      allTasks.map((task) => [String(task.projectId), task.projectName])
+    );
+    return Array.from(projectMap).map(([id, name]) => ({ id, name }));
+  }, [allTasks]);
+
+  // Filter and paginate tasks
+  const { filteredTasks, pagedTasks, totalPages, currentPage } = useMemo(() => {
+    const filtered = allTasks.filter((task) => {
+      // Project filter
+      if (
+        filterProject !== "all" &&
+        String(task.projectId) !== String(filterProject)
+      ) {
+        return false;
+      }
+
+      // Status filter
+      if (filterStatus !== "all") {
+        const statusLower = String(task.status).toLowerCase();
+        if (filterStatus === "todo" && !statusLower.includes("todo")) {
+          return false;
+        }
+        if (
+          filterStatus === "in_progress" &&
+          !(
+            statusLower.includes("in_progress") ||
+            statusLower.includes("in progress") ||
+            statusLower.includes("inprogress")
+          )
+        ) {
+          return false;
+        }
+        if (
+          filterStatus === "done" &&
+          !(statusLower.includes("done") || statusLower.includes("completed"))
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    const total = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const current = Math.min(page, total);
+    const paged = filtered.slice((current - 1) * pageSize, current * pageSize);
+
+    return {
+      filteredTasks: filtered,
+      pagedTasks: paged,
+      totalPages: total,
+      currentPage: current,
+    };
+  }, [allTasks, filterProject, filterStatus, page]);
+
+  // Status counts
+  const statusCounts = useMemo(() => {
+    const counts = { todo: 0, in_progress: 0, done: 0 };
+    allTasks.forEach((task) => {
+      const status = normalizeStatus(task.status);
+      if (status === "To Do") counts.todo++;
+      else if (status === "In Progress") counts.in_progress++;
+      else if (status === "Done") counts.done++;
+    });
+    return counts;
+  }, [allTasks]);
+
+  // Render helpers
+  const renderLoading = () => (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4" />
+      <p className="text-slate-600 font-medium">Loading tasks...</p>
+    </div>
+  );
+
+  const renderEmpty = () => (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+        <ListTodo className="w-10 h-10 text-slate-400" />
+      </div>
+      <h3 className="text-xl font-semibold text-slate-900 mb-2">
+        No tasks found
+      </h3>
+      <p className="text-slate-600 text-center max-w-md">
+        {filteredTasks.length === 0 && allTasks.length > 0
+          ? "Try adjusting your filters to see more tasks"
+          : "You don't have any tasks assigned yet"}
+      </p>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          My Tasks ({(allTasks || []).length})
-        </h1>
-
-        {/* Filter Tabs & Sort */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Project:</label>
-              <select
-                value={filterProject}
-                onChange={(e) => setFilterProject(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm bg-white"
-              >
-                <option value="all">All Projects</option>
-                {Array.from(
-                  new Map(
-                    allTasks.map((t) => [String(t.projectId), t.projectName])
-                  )
-                )
-                  .map(([id, name]) => ({ id, name }))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name || "Unnamed"}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Status:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm bg-white"
-              >
-                <option value="all">All</option>
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
-              </select>
-            </div>
-
-            {/* <button
-            className="ml-4 px-3 py-2 border rounded text-sm bg-gray-100"
-            onClick={() => setShowDebug((s) => !s)}
-          >
-            {showDebug ? 'Hide debug' : 'Show debug'}
-          </button> */}
+    <div className="min-h-screen p-5">
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">My Tasks</h1>
+            <p className="text-slate-600">
+              {allTasks.length} total tasks assigned to you
+            </p>
           </div>
         </div>
 
-        {showDebug && (
-          <div className="bg-white p-4 rounded shadow mb-6">
-            <h4 className="font-semibold mb-2">Debug — raw responses</h4>
-            <div className="text-xs text-gray-600 mb-2">All Tasks (raw):</div>
-            <pre className="text-xs bg-gray-100 p-2 rounded max-h-40 overflow-auto">
-              {JSON.stringify(allTasks, null, 2)}
-            </pre>
-            <div className="text-xs text-gray-600 mt-2 mb-2">
-              Selected Project Detail (raw):
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200/50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">Total</p>
+                <p className="text-3xl font-bold text-slate-900">
+                  {allTasks.length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+              </div>
             </div>
-            <pre className="text-xs bg-gray-100 p-2 rounded max-h-40 overflow-auto">
-              {JSON.stringify(selectedProjectDetail, null, 2)}
-            </pre>
           </div>
-        )}
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200/50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">To Do</p>
+                <p className="text-3xl font-bold text-slate-900">
+                  {statusCounts.todo}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-slate-500 rounded-full" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200/50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">
+                  In Progress
+                </p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {statusCounts.in_progress}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200/50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">
+                  Completed
+                </p>
+                <p className="text-3xl font-bold text-emerald-600">
+                  {statusCounts.done}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Section */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <Filter className="w-4 h-4 inline mr-2" />
+                Filter by Project
+              </label>
+              <Select value={filterProject} onValueChange={setFilterProject}>
+                <SelectTrigger className="w-full bg-white cursor-pointer">
+                  <SelectValue placeholder="All Projects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="cursor-pointer">
+                    All Projects
+                  </SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem
+                      key={project.id}
+                      value={project.id}
+                      className="cursor-pointer"
+                    >
+                      {project.name || "Unnamed"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <Filter className="w-4 h-4 inline mr-2" />
+                Filter by Status
+              </label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full bg-white cursor-pointer">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="cursor-pointer">
+                    All Statuses
+                  </SelectItem>
+                  <SelectItem value="todo" className="cursor-pointer">
+                    To Do
+                  </SelectItem>
+                  <SelectItem value="in_progress" className="cursor-pointer">
+                    In Progress
+                  </SelectItem>
+                  <SelectItem value="done" className="cursor-pointer">
+                    Done
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Task List (table-style) */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4"></div>
+      {loadingTasks ? (
+        renderLoading()
+      ) : filteredTasks.length === 0 ? (
+        renderEmpty()
+      ) : (
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden mb-6">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      #
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Task Title
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Assigned By
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Assigned At
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {pagedTasks.map((task, index) => {
+                    const status = normalizeStatus(task.status);
+                    const statusConfig = getStatusConfig(status);
+                    const rowNumber = (currentPage - 1) * pageSize + index + 1;
 
-        {loadingTasks ? (
-          <div className="p-6 bg-white rounded shadow text-center">
-            Loading tasks...
+                    return (
+                      <tr
+                        key={task.assignmentId || task.taskId || index}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-500">
+                          {rowNumber}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                          {task.title || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <Link
+                            to={`/kanban/${task.projectId}`}
+                            className="text-slate-700 hover:text-slate-900 font-medium hover:underline"
+                          >
+                            {task.projectName || "-"}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full ${statusConfig.className}`}
+                          >
+                            <div
+                              className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotColor}`}
+                            />
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                          {task.createdBy?.name || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {formatDateTime(task.assignedAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link
+                            to={`/kanban/${task.projectId}`}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
+                          >
+                            View Kanban
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        ) : (
-          (() => {
-            // Filtering logic
-            const filteredTasks = (allTasks || []).filter((t) => {
-              if (
-                filterProject !== "all" &&
-                String(t.projectId) !== String(filterProject)
-              )
-                return false;
-              if (filterStatus !== "all") {
-                const s2 = String(t.status).toLowerCase();
-                if (filterStatus === "todo" && !s2.includes("todo"))
-                  return false;
-                if (
-                  filterStatus === "in_progress" &&
-                  !(
-                    s2.includes("in_progress") ||
-                    s2.includes("in progress") ||
-                    s2.includes("inprogress")
-                  )
-                )
-                  return false;
-                if (
-                  filterStatus === "done" &&
-                  !(s2.includes("done") || s2.includes("completed"))
-                )
-                  return false;
-              }
-              return true;
-            });
-            // Reset page if filter changes and page is out of range
-            const totalPages = Math.max(
-              1,
-              Math.ceil(filteredTasks.length / pageSize)
-            );
-            const currentPage = Math.min(page, totalPages);
-            const pagedTasks = filteredTasks.slice(
-              (currentPage - 1) * pageSize,
-              currentPage * pageSize
-            );
-            // If filter changes and page is out of range, reset page
-            if (page !== currentPage) setPage(currentPage);
-            if (filteredTasks.length === 0) {
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4 mb-6">
+            {pagedTasks.map((task, index) => {
+              const status = normalizeStatus(task.status);
+              const statusConfig = getStatusConfig(status);
+              const rowNumber = (currentPage - 1) * pageSize + index + 1;
+
               return (
-                <div className="p-6 bg-white rounded shadow text-center">
-                  <p className="text-gray-700 mb-2">
-                    No tasks match the selected filter.
-                  </p>
+                <div
+                  key={task.assignmentId || task.taskId || index}
+                  className="bg-white rounded-xl shadow-sm border border-slate-200/50 p-4 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-bold text-slate-500">
+                          #{rowNumber}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${statusConfig.className}`}
+                        >
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotColor}`}
+                          />
+                          {status}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-slate-900 mb-1">
+                        {task.title || "-"}
+                      </h3>
+                      <Link
+                        to={`/kanban/${task.projectId}`}
+                        className="text-sm text-slate-600 hover:text-slate-900 hover:underline"
+                      >
+                        {task.projectName || "-"}
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4 text-sm">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <User className="w-4 h-4" />
+                      <span className="text-xs font-medium">Assigned by:</span>
+                      <span className="font-semibold">
+                        {task.createdBy?.name || "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-xs font-medium">Assigned:</span>
+                      <span className="font-semibold">
+                        {formatDateTime(task.assignedAt)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Link
+                    to={`/kanban/${task.projectId}`}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors text-sm font-medium"
+                  >
+                    View in Kanban
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
                 </div>
               );
-            }
-            return (
-              <>
-                <div className="bg-white rounded shadow overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          #
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Title
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Project
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Assigned By
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Assigned At
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {pagedTasks.map((t, i) => {
-                        const normalizeStatus = (s) => {
-                          if (!s) return "Unknown";
-                          const s2 = String(s).toLowerCase();
-                          if (s2.includes("todo")) return "To Do";
-                          if (
-                            s2.includes("in_progress") ||
-                            s2.includes("in progress") ||
-                            s2.includes("inprogress")
-                          )
-                            return "In Progress";
-                          if (s2.includes("done") || s2.includes("completed"))
-                            return "Done";
-                          return t.status || "Unknown";
-                        };
-                        const statusLabel = normalizeStatus(t.status);
-                        // Solid color badges
-                        const badgeClass =
-                          statusLabel === "Done"
-                            ? "bg-green-500 text-white"
-                            : statusLabel === "In Progress"
-                            ? "bg-blue-500 text-white"
-                            : statusLabel === "To Do"
-                            ? "bg-gray-500 text-white"
-                            : "bg-gray-300 text-gray-800";
-                        return (
-                          <tr key={t.assignmentId || t.taskId || i}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                              {(currentPage - 1) * pageSize + i + 1}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {t.title || "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                              <Link
-                                to={`/kanban/${t.projectId}`}
-                                className="text-sm hover:underline"
-                                style={{ color: "#2C3F48" }}
-                              >
-                                {t.projectName || "-"}
-                              </Link>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span
-                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}
-                              >
-                                {statusLabel}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                              {t.createdBy && t.createdBy.name
-                                ? t.createdBy.name
-                                : "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                              {t.assignedAt
-                                ? new Date(t.assignedAt).toLocaleString()
-                                : "-"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Pagination controls */}
-                <div className="flex justify-end items-center mt-4 gap-2">
-                  <button
-                    className="px-3 py-1 rounded border bg-white text-gray-700 disabled:opacity-50"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm text-gray-700">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    className="px-3 py-1 rounded border bg-white text-gray-700 disabled:opacity-50"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              </>
-            );
-          })()
-        )}
-      </div>
+            })}
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl shadow-sm border border-slate-200/50 p-4">
+            <p className="text-sm text-slate-600">
+              Showing {(currentPage - 1) * pageSize + 1} to{" "}
+              {Math.min(currentPage * pageSize, filteredTasks.length)} of{" "}
+              {filteredTasks.length} tasks
+            </p>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+
+              <span className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 rounded-lg">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 cursor-pointer"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

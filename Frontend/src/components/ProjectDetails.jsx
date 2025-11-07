@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,21 +7,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/store/useAuthStore";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import projectService from "../services/project.service";
 import { Button } from "@/components/ui/button";
 import { CircleCheckBig, Trash } from "lucide-react";
 import { toast } from "@/lib/toast";
 import Loading from "@/components/Loading";
+import ConfirmDialog from "./ConfirmDialog";
 
 // ─── Utility Helpers ──────────────────────────────────────────────
 const getStatusColor = (status) => {
@@ -59,6 +50,8 @@ export default function ProjectDetailsDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCompleteProjectDialog, setShowCompleteProjectDialog] =
+    useState(false);
 
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
@@ -77,7 +70,6 @@ export default function ProjectDetailsDialog({
   const [allSkills, setAllSkills] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
-  const [addEmployeeId, setAddEmployeeId] = useState("");
 
   // ─── Initial Load Effect ──────────────────────────────────────────────
   useEffect(() => {
@@ -238,7 +230,6 @@ export default function ProjectDetailsDialog({
   };
 
   const handleComplete = async () => {
-    if (!confirm("Mark this project as completed?")) return;
     setLoadingState(true);
     setLoadingText("Mark project as completed...");
     try {
@@ -247,7 +238,6 @@ export default function ProjectDetailsDialog({
         "completed"
       );
 
-      // Update local state directly
       setProject((prev) => ({ ...prev, status: "completed" }));
 
       onProjectUpdated?.(res?.data);
@@ -276,7 +266,6 @@ export default function ProjectDetailsDialog({
         open={isOpen}
         onOpenChange={(open) => {
           if (!open) {
-            // Dialog is closing — reset your edit mode and form
             setIsEditing(false);
             setFormData(
               project
@@ -290,10 +279,14 @@ export default function ProjectDetailsDialog({
             );
           }
 
-          onClose?.(open); // Call parent handler if you have one
+          onClose?.(open);
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           {project ? (
             <>
               <DialogHeader>
@@ -443,7 +436,12 @@ export default function ProjectDetailsDialog({
                     {staff && staff.length > 0 ? (
                       staff.map((member) => (
                         <p key={member._id} className="text-sm text-gray-700">
-                          {member.name} - {member.position?.name || "N/A"}{" "}
+                          {member.name} -{" "}
+                          {member.position?.name
+                            ? member.position.name
+                            : member.role === "manager"
+                            ? "Manager"
+                            : "N/A"}{" "}
                           {member.isTechLead && (
                             <span className="text-xs text-blue-600">
                               (Tech Lead)
@@ -498,7 +496,7 @@ export default function ProjectDetailsDialog({
                         Edit
                       </Button>
                       <Button
-                        onClick={handleComplete}
+                        onClick={() => setShowCompleteProjectDialog(true)}
                         disabled={project.status === "completed"}
                         className="flex-1 px-6 py-2 bg-primer cursor-pointer"
                       >
@@ -518,29 +516,27 @@ export default function ProjectDetailsDialog({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Are you sure to delete this project?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This project will be permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 cursor-pointer"
-            >
-              Delete Project
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Are you sure to delete this project?"
+        description="This project and all its data will be permanently removed."
+        confirmText="Delete Project"
+        cancelText="Cancel"
+        onConfirm={handleDelete}
+        confirmClassName="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+      />
+
+      <ConfirmDialog
+        open={showCompleteProjectDialog}
+        onOpenChange={setShowCompleteProjectDialog}
+        title="Are you sure to complete this project?"
+        description="This action can't be undo."
+        confirmText="Complete Project"
+        cancelText="Cancel"
+        onConfirm={handleComplete}
+        confirmClassName="bg-primer hover:bg-primerh text-white cursor-pointer"
+      />
     </>
   );
 }

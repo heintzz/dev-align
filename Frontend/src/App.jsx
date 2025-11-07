@@ -13,27 +13,25 @@ import Login from "@/pages/auth/Login"; // pastikan path-nya sesuai
 import ResetPassword from "@/pages/auth/ResetPassword";
 import HRDashboard from "@/pages/HR/Dashboard";
 import ManageEmployee from "@/pages/HR/Employee/ManageEmployee";
-import Kanban from "@/pages/Kanban";
+import Kanban from "@/pages/Shared/Kanban";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import AddEmployee from "./pages/HR/Employee/AddEmployee";
 import EmployeeDetail from "./pages/HR/Employee/EmployeeDetail";
-import CreateProject from "./pages/PM/CreateProject";
+import CreateProject from "./pages/Shared/Projects/CreateProject";
 import PMDashboard from "./pages/PM/Dashboard";
-import ListProjects from "./pages/PM/ListProject";
+import ListProjects from "./pages/Shared/Projects/ListProject";
 import StaffDashboard from "./pages/Staff/Dashboard";
-import ProfilePage from "./pages/Profile";
-import ChangePasswordPage from "./pages/ChangePassword";
+import ProfilePage from "./pages/Shared/Profile";
+import ChangePasswordPage from "./pages/auth/ChangePassword";
 
 // Layout
 import AppLayout from "@/components/layouts/AppLayout";
 
-import GuestRoute from "@/components/GuestRoute";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import GuestRoute from "@/components/auth/GuestRoute";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
-import ManagerTeam from "./pages/PM/ManagerTeam";
-import StaffTeam from "./pages/Staff/StaffTeam";
-import Inbox from "@/pages/Inbox";
-import SpecificRoleRoute from "./components/SpecificRoleRoute";
+import ManagerTeam from "./pages/Shared/TeamManagement";
+import Inbox from "@/pages/Shared/Inbox";
 
 function App() {
   const { token, role } = useAuthStore();
@@ -179,20 +177,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          {/* <Route
-            path="/team"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <SpecificRoleRoute requiredRole="staff">
-                    <StaffTeam />
-                  </SpecificRoleRoute>
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          /> */}
-
           <Route
             path="/team/management"
             element={

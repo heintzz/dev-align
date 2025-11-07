@@ -17,6 +17,7 @@ export function SkillSelector({
   isEditing = true,
   className = "h-max-20",
   allowCustomAdd = false,
+  canEdit = true,
 }) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -79,7 +80,7 @@ export function SkillSelector({
           <Button
             variant="outline"
             className="w-full justify-between cursor-pointer"
-            disabled={!isEditing}
+            disabled={!isEditing || !canEdit} // ✅ combined logic
           >
             Add skill
             <PlusCircle className="ml-2 h-4 w-4 opacity-60" />
@@ -91,14 +92,16 @@ export function SkillSelector({
           className="w-[90vw] max-w-sm max-h-[60vh] overflow-y-auto p-3 space-y-2"
           onWheel={(e) => e.stopPropagation()}
         >
+          {/* Prevent typing or adding when can't edit */}
           <Input
             placeholder="Search skills..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => canEdit && setSearchTerm(e.target.value)}
             autoFocus
+            disabled={!canEdit}
           />
 
-          {allowCustomAdd && searchTerm.trim() && (
+          {allowCustomAdd && searchTerm.trim() && canEdit && (
             <Button
               variant="ghost"
               className="w-full justify-start text-primary"
@@ -118,10 +121,12 @@ export function SkillSelector({
                 return (
                   <div
                     key={skill._id}
-                    onClick={() => handleAddSkill(skill)}
-                    className={`flex justify-between items-center p-2 rounded-md cursor-pointer hover:bg-muted ${
-                      isSelected ? "bg-primary/10 text-primary" : ""
-                    }`}
+                    onClick={() => canEdit && handleAddSkill(skill)} // ✅ guard
+                    className={`flex justify-between items-center p-2 rounded-md ${
+                      canEdit
+                        ? "cursor-pointer hover:bg-muted"
+                        : "cursor-not-allowed opacity-60"
+                    } ${isSelected ? "bg-primary/10 text-primary" : ""}`}
                   >
                     <span>{skill.name}</span>
                     {isSelected && <Check className="h-4 w-4 text-primary" />}
@@ -148,7 +153,7 @@ export function SkillSelector({
               className="flex items-center gap-1"
             >
               {skill.name}
-              {isEditing && (
+              {isEditing && canEdit && (
                 <button
                   type="button"
                   onClick={() => handleRemoveSkill(skill)}

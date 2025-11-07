@@ -16,6 +16,8 @@ import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
 import { CirclePlus, CircleCheckBig, MoveLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function Kanban() {
   const [socket, setSocket] = useState(null);
@@ -24,9 +26,36 @@ export default function Kanban() {
   const [listColumns, setListColumns] = useState([]);
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
+  const [projectInfo, setProjectInfo] = useState("");
   const { projectId } = useParams();
 
+  const [showCompleteProjectDialog, setShowCompleteProjectDialog] =
+    useState(false);
+
+  const { role } = useAuthStore();
+  const isManager = role === "manager";
+
   const token = localStorage.getItem("token");
+
+  const getProjectInfo = async () => {
+    setLoadingState(true);
+    setLoadingText("Getting project info");
+    try {
+      const { data } = await api.get(`/project/${projectId}/details`);
+      console.log(data);
+      setProjectInfo(data.data.project);
+    } catch (error) {
+      console.error(error);
+      toast(error.response?.data?.message || "Failed to get project info", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
+    }
+  };
 
   const getColumns = async () => {
     setLoadingState(true);
@@ -134,15 +163,49 @@ export default function Kanban() {
     }
   };
 
+  const handleComplete = async () => {
+    // if (!confirm("Mark this project as completed?")) return;
+    setLoadingState(true);
+    setLoadingText("Mark project as completed...");
+    try {
+      const { data } = await api.put(`/project/${projectId}`, {
+        status: "completed",
+      });
+
+      console.log(data);
+
+      setProjectInfo((prev) => ({ ...prev, status: "completed" }));
+
+      toast("Project completed successfully", {
+        icon: <CircleCheckBig className="w-5 h-5 text-white" />,
+        type: "success",
+        position: "top-center",
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error("Error completing project:", err);
+      toast(err.response.data.message || "Failed to complete project", {
+        type: "error",
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
+    }
+  };
+
   useEffect(() => {
+    getProjectInfo();
     getTasks();
     getColumns();
   }, [projectId]);
 
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
-      auth: { token },
-    });
+    const newSocket = io(
+      import.meta.env.VITE_API_URL || "http://localhost:5000",
+      {
+        auth: { token },
+      }
+    );
 
     newSocket.emit("join:project", projectId);
 
@@ -366,56 +429,94 @@ export default function Kanban() {
   return (
     <div className="p-4">
       <Loading status={loadingState} fullscreen text={loadingText} />
-      <Link
-        to="/projects"
-        className={cn(
-          "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <Link
+          to="/projects"
+          className={cn(
+            "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
+          )}
+        >
+          <MoveLeft
+            className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
+            aria-hidden="true"
+          />
+          <span className="whitespace-nowrap group-hover:underline">
+            Back to Projects
+          </span>
+        </Link>
+
+        {isManager ? (
+          <Button
+            onClick={() => setShowCompleteProjectDialog(true)}
+            disabled={projectInfo.status === "completed"}
+            className="px-6 py-2 bg-primer hover:bg-[#1f2e35] cursor-pointer disabled:opacity-70"
+          >
+            {projectInfo.status === "completed"
+              ? "Completed"
+              : "Complete the Project"}
+          </Button>
+        ) : (
+          projectInfo.status === "completed" && (
+            <span className="inline-flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-700 text-sm font-medium">
+              ✅ Project Completed
+            </span>
+          )
         )}
-      >
-        <MoveLeft
-          className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
-          aria-hidden="true"
-        />
-        <span className="whitespace-nowrap group-hover:underline">
-          Back to Projects
-        </span>
-      </Link>
+      </div>
+
       <div className="overflow-x-auto">
         <div className="flex gap-6 items-start px-2 py-4 min-w-max">
           <DragDropContext onDragEnd={onDragEnd}>
-            {Object.entries(columns).map(([key, column]) => (
-              <>
-                <Column
-                  key={key}
-                  projectId={projectId}
-                  droppableId={key}
-                  column={column}
-                  listColumns={listColumns}
-                  className="shrink-0"
-                />
-              </>
-            ))}
+            {Object.entries(columns).length > 0
+              ? Object.entries(columns).map(([key, column]) => (
+                  <Column
+                    key={key}
+                    projectId={projectId}
+                    droppableId={key}
+                    column={column}
+                    listColumns={listColumns}
+                    className="shrink-0"
+                  />
+                ))
+              : !isManager && (
+                  <div className="flex items-center justify-center w-full h-64 text-gray-500 text-lg">
+                    No task yet.
+                  </div>
+                )}
           </DragDropContext>
 
-          <Card className="w-72 shrink-0 p-4">
-            <div className="flex flex-col gap-2">
-              <Input
-                placeholder="New list name..."
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-              />
-              <Button
-                onClick={addNewList}
-                className="w-full flex items-center justify-center gap-2 bg-primer"
-              >
-                <CirclePlus size={18} />
-                Add list
-              </Button>
-            </div>
-          </Card>
+          {isManager && (
+            <Card className="w-72 shrink-0 p-4">
+              <div className="flex flex-col gap-2">
+                <Input
+                  placeholder="New list name..."
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                />
+                <Button
+                  onClick={addNewList}
+                  className="w-full flex items-center justify-center gap-2 bg-primer cursor-pointer"
+                >
+                  <CirclePlus size={18} />
+                  Add list
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showCompleteProjectDialog}
+        onOpenChange={setShowCompleteProjectDialog}
+        title="Are you sure to complete this project?"
+        description="This action can't be undo."
+        confirmText="Complete Project"
+        cancelText="Cancel"
+        onConfirm={handleComplete}
+        confirmClassName="bg-primer hover:bg-primerh text-white cursor-pointer"
+      />
     </div>
   );
 }

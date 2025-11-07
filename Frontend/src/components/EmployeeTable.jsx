@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function EmployeeTable({
+  title = "Employees",
   employees,
   positionsList,
   sortOrder,
@@ -56,7 +57,7 @@ export default function EmployeeTable({
     <div className="bg-white rounded-lg shadow p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Employee Status</h3>
+        <h3 className="text-lg font-semibold">{title}</h3>
         <div className="flex gap-3">
           {/* Sort Select */}
           <Select value={sortOrder} onValueChange={setSortOrder}>
@@ -163,6 +164,7 @@ export default function EmployeeTable({
               size="sm"
               onClick={() => setPageIndex((p) => Math.max(p - 1, 0))}
               disabled={pageIndex === 0}
+              className="cursor-pointer"
             >
               Previous
             </Button>
@@ -175,6 +177,7 @@ export default function EmployeeTable({
                 )
               }
               disabled={pageIndex + 1 >= Math.ceil(total / pageSize)}
+              className="cursor-pointer"
             >
               Next
             </Button>
