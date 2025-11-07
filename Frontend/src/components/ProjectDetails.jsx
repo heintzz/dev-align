@@ -230,7 +230,6 @@ export default function ProjectDetailsDialog({
   };
 
   const handleComplete = async () => {
-    // if (!confirm("Mark this project as completed?")) return;
     setLoadingState(true);
     setLoadingText("Mark project as completed...");
     try {
@@ -239,7 +238,6 @@ export default function ProjectDetailsDialog({
         "completed"
       );
 
-      // Update local state directly
       setProject((prev) => ({ ...prev, status: "completed" }));
 
       onProjectUpdated?.(res?.data);
@@ -268,7 +266,6 @@ export default function ProjectDetailsDialog({
         open={isOpen}
         onOpenChange={(open) => {
           if (!open) {
-            // Dialog is closing — reset your edit mode and form
             setIsEditing(false);
             setFormData(
               project
@@ -282,7 +279,7 @@ export default function ProjectDetailsDialog({
             );
           }
 
-          onClose?.(open); // Call parent handler if you have one
+          onClose?.(open);
         }}
       >
         <DialogContent

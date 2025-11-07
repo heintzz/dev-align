@@ -213,7 +213,7 @@ export default function HRDashboard() {
               className="border-gray-200 shadow-lg hover:shadow-xl transition-all overflow-hidden"
             >
               <div className={cn("h-2 bg-gradient-to-r", stat.gradient)} />
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -225,7 +225,9 @@ export default function HRDashboard() {
                       </h2>
                       <span className="text-sm text-gray-500">employees</span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-2">{stat.subtitle}</p>
+                    <p className="text-xs text-gray-600 mt-2">
+                      {stat.subtitle}
+                    </p>
                   </div>
                   <div
                     className={cn(
@@ -260,7 +262,7 @@ export default function HRDashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={projectData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -312,7 +314,7 @@ export default function HRDashboard() {
 
         {/* Top Contributors */}
         <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+          <CardHeader className="border-b border-purple-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 rounded-lg">
@@ -327,7 +329,7 @@ export default function HRDashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent>
             <div className="mb-4">
               <Select value={timeFilter} onValueChange={setTimeFilter}>
                 <SelectTrigger className="w-full">
@@ -351,7 +353,7 @@ export default function HRDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-80 overflow-auto">
                 {topContributors.map((c, i) => (
                   <div
                     key={i}
@@ -394,7 +396,7 @@ export default function HRDashboard() {
 
       {/* Employee Table */}
       <Card className="border-gray-200 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+        <CardHeader className="bg-linear-to-r from-gray-50 to-white border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gray-100 rounded-lg">
               <Users className="w-5 h-5 text-gray-600" />
@@ -407,8 +409,9 @@ export default function HRDashboard() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent>
           <EmployeeTable
+            title="All Employees"
             employees={employees}
             positionsList={positionsList}
             sortOrder={sortOrder}

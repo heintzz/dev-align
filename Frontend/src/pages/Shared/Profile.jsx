@@ -121,7 +121,9 @@ export default function ProfilePage() {
       pm: "bg-blue-100 text-blue-700 border-blue-200",
       staff: "bg-green-100 text-green-700 border-green-200",
     };
-    return colors[role?.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200";
+    return (
+      colors[role?.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200"
+    );
   };
 
   return (
@@ -138,13 +140,6 @@ export default function ProfilePage() {
                 Manage your personal information and work details
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="hidden md:flex items-center gap-2 cursor-pointer hover:bg-gray-50"
-            >
-              <Edit className="w-4 h-4" />
-              Edit Profile
-            </Button>
           </div>
         </div>
 
@@ -213,13 +208,6 @@ export default function ProfilePage() {
                       </Badge>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="md:hidden cursor-pointer hover:bg-gray-50"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit Profile
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -227,13 +215,15 @@ export default function ProfilePage() {
             <div className="grid gap-6 md:grid-cols-2">
               {/* Personal Information */}
               <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
+                <CardHeader className=" border-b border-blue-100">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 rounded-lg">
                       <UserCircle2 className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Personal Information</CardTitle>
+                      <CardTitle className="text-lg">
+                        Personal Information
+                      </CardTitle>
                       <CardDescription className="text-sm">
                         Your personal details and contact info
                       </CardDescription>
@@ -279,7 +269,9 @@ export default function ProfilePage() {
                       </span>
                       <span className="block text-base font-semibold text-gray-900">
                         {profile.phoneNumber || (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     </div>
@@ -295,7 +287,9 @@ export default function ProfilePage() {
                       </span>
                       <span className="block text-base font-semibold text-gray-900">
                         {profile.placeOfBirth || (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     </div>
@@ -313,7 +307,9 @@ export default function ProfilePage() {
                         {profile.dateOfBirth ? (
                           formatDate(profile.dateOfBirth)
                         ) : (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     </div>
@@ -323,13 +319,15 @@ export default function ProfilePage() {
 
               {/* Work Information */}
               <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+                <CardHeader className="border-b border-purple-100">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <Briefcase className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Work Information</CardTitle>
+                      <CardTitle className="text-lg">
+                        Work Information
+                      </CardTitle>
                       <CardDescription className="text-sm">
                         Your role, position, and professional details
                       </CardDescription>
@@ -366,7 +364,9 @@ export default function ProfilePage() {
                       </span>
                       <span className="block text-base font-semibold text-gray-900">
                         {profile.position?.name || (
-                          <span className="text-gray-400 font-normal">No position assigned</span>
+                          <span className="text-gray-400 font-normal">
+                            No position assigned
+                          </span>
                         )}
                       </span>
                     </div>
@@ -392,7 +392,9 @@ export default function ProfilePage() {
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-gray-400 text-sm">No skills added</span>
+                          <span className="text-gray-400 text-sm">
+                            No skills added
+                          </span>
                         )}
                       </div>
                     </div>
@@ -441,7 +443,9 @@ export default function ProfilePage() {
                         {profile.createdAt ? (
                           formatDate(profile.createdAt)
                         ) : (
-                          <span className="text-gray-400 font-normal">Unknown</span>
+                          <span className="text-gray-400 font-normal">
+                            Unknown
+                          </span>
                         )}
                       </span>
                     </div>

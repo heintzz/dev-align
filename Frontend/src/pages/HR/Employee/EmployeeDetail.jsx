@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import api from "@/api/axios";
 
-// shadcn/ui components
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,7 +31,6 @@ import { cn } from "@/lib/utils";
 
 import { SkillSelector } from "@/components/SkillSelector";
 
-// icons
 import {
   X,
   Calendar as CalendarIcon,
@@ -50,11 +48,11 @@ import {
   Loader2,
 } from "lucide-react";
 import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 export default function EmployeeDetail() {
   const { id } = useParams();
 
-  // States
   const [employeeForm, setEmployeeForm] = useState({
     name: "",
     email: "",
@@ -76,11 +74,9 @@ export default function EmployeeDetail() {
   const [loadingText, setLoadingText] = useState("");
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // UI Controls
   const [isEditing, setIsEditing] = useState(false);
   const [openCalendar, setOpenCalendar] = useState(false);
 
-  // Fetch employee detail
   const getEmployee = async () => {
     try {
       const { data } = await api.get(`/hr/employee/${id}`);
@@ -102,12 +98,16 @@ export default function EmployeeDetail() {
       if (emp.dateOfBirth) setSelectedDate(new Date(emp.dateOfBirth));
     } catch (error) {
       console.error("Error fetching employee:", error);
+      toast(error.response?.data?.message || "Error fetching employee", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setInitialLoading(false);
     }
   };
 
-  // Fetch dropdown data
   const getPositions = async () => {
     const { data } = await api.get("/position");
     setPositions(data.data.positions || []);
@@ -120,18 +120,16 @@ export default function EmployeeDetail() {
     setManagers(data.data || []);
   };
 
-  // On mount
   useEffect(() => {
     getEmployee();
     getPositions();
     getManagers();
   }, []);
 
-  // Handlers
   const handleEditToggle = () => setIsEditing((prev) => !prev);
   const handleCancel = () => {
     setIsEditing(false);
-    getEmployee(); // reset form to original data
+    getEmployee();
   };
   const handleSave = async () => {
     if (employeeForm.role == "manager") {
@@ -146,10 +144,20 @@ export default function EmployeeDetail() {
         skills: skillName,
       };
       await api.put(`/hr/employee/${id}`, updatedEmployee);
+      toast("Staff updated successfully", {
+        type: "success",
+        position: "top-center",
+        duration: 5000,
+      });
       setIsEditing(false);
       await getEmployee();
     } catch (error) {
       console.error("Error updating employee:", error);
+      toast(error.response?.data?.message || "Error updating employee", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setLoadingState(false);
       setLoadingText("");
@@ -174,7 +182,6 @@ export default function EmployeeDetail() {
     setOpenCalendar(false);
   };
 
-  // Get user initials for avatar
   const getInitials = (name) => {
     if (!name) return "U";
     return name
@@ -185,7 +192,6 @@ export default function EmployeeDetail() {
       .slice(0, 2);
   };
 
-  // Role color mapping
   const getRoleColor = (role) => {
     const colors = {
       hr: "bg-red-100 text-red-700 border-red-200",
@@ -217,7 +223,9 @@ export default function EmployeeDetail() {
               Employee Details
             </h1>
             <p className="text-gray-600 mt-1">
-              {isEditing ? "Edit employee information" : "View employee profile and work details"}
+              {isEditing
+                ? "Edit employee information"
+                : "View employee profile and work details"}
             </p>
           </div>
           {!isEditing && (
@@ -244,7 +252,7 @@ export default function EmployeeDetail() {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Profile Header Card */}
           <Card className="border-gray-200 shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-32 relative">
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-20 relative">
               <div className="absolute -bottom-16 left-8">
                 <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-3xl shadow-xl border-4 border-white">
                   {getInitials(employeeForm.name)}
@@ -256,7 +264,10 @@ export default function EmployeeDetail() {
                 <div className="mb-4 md:mb-0 flex-1">
                   {isEditing ? (
                     <div className="max-w-md">
-                      <Label htmlFor="name" className="text-sm text-gray-500 mb-2">
+                      <Label
+                        htmlFor="name"
+                        className="text-sm text-gray-500 mb-2"
+                      >
                         Employee Name
                       </Label>
                       <Input
@@ -275,8 +286,8 @@ export default function EmployeeDetail() {
                         {employeeForm.name}
                       </h2>
                       <p className="text-lg text-gray-600 mb-3">
-                        {positions.find((p) => p._id === employeeForm.position)?.name ||
-                          "No Position"}
+                        {positions.find((p) => p._id === employeeForm.position)
+                          ?.name || "No Position"}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <Badge
@@ -308,20 +319,22 @@ export default function EmployeeDetail() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Personal Information */}
             <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
+              <CardHeader className="border-b border-blue-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <UserCircle2 className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Personal Information</CardTitle>
+                    <CardTitle className="text-lg">
+                      Personal Information
+                    </CardTitle>
                     <CardDescription className="text-sm">
                       Contact details and personal data
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pt-6 space-y-5">
+              <CardContent className="space-y-5">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-gray-100 rounded-lg mt-0.5">
                     <Mail className="w-4 h-4 text-gray-600" />
@@ -343,7 +356,9 @@ export default function EmployeeDetail() {
                     ) : (
                       <span className="block text-base font-semibold text-gray-900 break-all">
                         {employeeForm.email || (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     )}
@@ -370,7 +385,9 @@ export default function EmployeeDetail() {
                     ) : (
                       <span className="block text-base font-semibold text-gray-900">
                         {employeeForm.phoneNumber || (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     )}
@@ -397,7 +414,9 @@ export default function EmployeeDetail() {
                     ) : (
                       <span className="block text-base font-semibold text-gray-900">
                         {employeeForm.placeOfBirth || (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     )}
@@ -413,7 +432,10 @@ export default function EmployeeDetail() {
                       Date of Birth
                     </Label>
                     {isEditing ? (
-                      <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
+                      <Popover
+                        open={openCalendar}
+                        onOpenChange={setOpenCalendar}
+                      >
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
@@ -443,7 +465,9 @@ export default function EmployeeDetail() {
                         {employeeForm.dateOfBirth ? (
                           format(new Date(employeeForm.dateOfBirth), "PPP")
                         ) : (
-                          <span className="text-gray-400 font-normal">Not provided</span>
+                          <span className="text-gray-400 font-normal">
+                            Not provided
+                          </span>
                         )}
                       </span>
                     )}
@@ -454,7 +478,7 @@ export default function EmployeeDetail() {
 
             {/* Work Information */}
             <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+              <CardHeader className="border-b border-purple-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Briefcase className="w-5 h-5 text-purple-600" />
@@ -467,7 +491,7 @@ export default function EmployeeDetail() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pt-6 space-y-5">
+              <CardContent className="space-y-5">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-gray-100 rounded-lg mt-0.5">
                     <Award className="w-4 h-4 text-gray-600" />
@@ -479,7 +503,9 @@ export default function EmployeeDetail() {
                     {isEditing ? (
                       <Select
                         value={employeeForm.position}
-                        onValueChange={(value) => handleSelectChange("position", value)}
+                        onValueChange={(value) =>
+                          handleSelectChange("position", value)
+                        }
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select position" />
@@ -494,8 +520,11 @@ export default function EmployeeDetail() {
                       </Select>
                     ) : (
                       <span className="block text-base font-semibold text-gray-900">
-                        {positions.find((p) => p._id === employeeForm.position)?.name || (
-                          <span className="text-gray-400 font-normal">No position assigned</span>
+                        {positions.find((p) => p._id === employeeForm.position)
+                          ?.name || (
+                          <span className="text-gray-400 font-normal">
+                            No position assigned
+                          </span>
                         )}
                       </span>
                     )}
@@ -513,7 +542,9 @@ export default function EmployeeDetail() {
                     {isEditing ? (
                       <Select
                         value={employeeForm.role}
-                        onValueChange={(value) => handleSelectChange("role", value)}
+                        onValueChange={(value) =>
+                          handleSelectChange("role", value)
+                        }
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select role" />
@@ -549,7 +580,9 @@ export default function EmployeeDetail() {
                       {isEditing ? (
                         <Select
                           value={employeeForm.managerId}
-                          onValueChange={(value) => handleSelectChange("managerId", value)}
+                          onValueChange={(value) =>
+                            handleSelectChange("managerId", value)
+                          }
                         >
                           <SelectTrigger className="mt-1">
                             <SelectValue placeholder="Select manager" />
@@ -564,8 +597,11 @@ export default function EmployeeDetail() {
                         </Select>
                       ) : (
                         <span className="block text-base font-semibold text-gray-900">
-                          {managers.find((m) => m.id === employeeForm.managerId)?.name || (
-                            <span className="text-gray-400 font-normal">No manager assigned</span>
+                          {managers.find((m) => m.id === employeeForm.managerId)
+                            ?.name || (
+                            <span className="text-gray-400 font-normal">
+                              No manager assigned
+                            </span>
                           )}
                         </span>
                       )}
@@ -601,7 +637,9 @@ export default function EmployeeDetail() {
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-gray-400 text-sm">No skills added</span>
+                          <span className="text-gray-400 text-sm">
+                            No skills added
+                          </span>
                         )}
                       </div>
                     )}

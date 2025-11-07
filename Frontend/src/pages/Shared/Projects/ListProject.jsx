@@ -13,14 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import ProjectDetailsDialog from "@/components/ProjectDetails";
 
-import {
-  Calendar,
-  Users,
-  Plus,
-  LayoutGrid,
-  Eye,
-  ChevronDown,
-} from "lucide-react";
+import { Calendar, Users, Plus, LayoutGrid, Eye } from "lucide-react";
 
 const getStatusColor = (status) => {
   const statusMap = {
@@ -33,7 +26,6 @@ const getStatusColor = (status) => {
   );
 };
 
-// Format date utility
 const formatDate = (dateString) => {
   if (!dateString) return "Not set";
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -56,26 +48,20 @@ export default function ListProjects() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Fetch projects from API on component mount
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  // API - Fetch all projects
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
       const response = await projectService.getAllProjects();
-      // Response: { success: true, data: { page, perPage, total, projects: [...] } }
       const projectsList = response.data.projects || [];
       console.log("test");
 
-      // Transform projects to add computed fields
       const transformedProjects = projectsList.map((project) => ({
         ...project,
-        // Map status to display status
         displayStatus: getDisplayStatus(project.status, project.deadline),
-        // Ensure teamMembers exists (may need separate API call for full details)
         teamMembers: project.teamMembers || [],
       }));
 
@@ -89,12 +75,9 @@ export default function ListProjects() {
     }
   };
 
-  // Convert backend status to display status
   const getDisplayStatus = (status, deadline) => {
-    // Backend only has: 'active', 'completed'
     if (status === "completed") return "Completed";
     if (status === "active") {
-      // Check if overdue
       if (deadline && new Date(deadline) < new Date()) {
         return "Overdue";
       }
@@ -103,16 +86,13 @@ export default function ListProjects() {
     return "In Progress";
   };
 
-  // Filter projects based on active filter
   const filterProjects = useCallback(() => {
     let filtered = [...projects];
 
-    // Filter by status tab
     if (activeFilter !== "All") {
       filtered = filtered.filter((p) => p.displayStatus === activeFilter);
     }
 
-    // Filter by deadline sort
     if (filters.deadline) {
       filtered = filtered.sort((a, b) => {
         if (filters.deadline === "Earliest") {
@@ -150,7 +130,6 @@ export default function ListProjects() {
     }));
   };
 
-  // Navigate to project details
   const handleViewDetails = (projectId) => {
     setSelectedProjectId(projectId);
     setIsDialogOpen(true);
@@ -162,8 +141,6 @@ export default function ListProjects() {
   };
 
   const handleProjectUpdated = async (updatedProject) => {
-    // Refresh projects list when project is updated/deleted
-    // If caller passes updated project payload, update locally to avoid full refetch
     if (updatedProject && updatedProject._id) {
       const updatedId = updatedProject._id.toString();
       const transformedProjects = projects.map((project) => {
@@ -190,12 +167,10 @@ export default function ListProjects() {
     }
   };
 
-  // Navigate to project kanban board
   const handleViewKanban = (projectId) => {
     navigate(`/kanban/${projectId}`);
   };
 
-  // Navigate to create project page
   const handleCreateProject = () => {
     navigate("/create-project");
   };

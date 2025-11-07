@@ -6,8 +6,6 @@ import { useNavigate } from "react-router-dom";
 import {
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
-  getFilteredRowModel,
   getSortedRowModel,
   flexRender,
 } from "@tanstack/react-table";
@@ -102,7 +100,6 @@ export default function ManageEmployee() {
   const [openAddExcel, setOpenAddExcel] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
 
-  const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [totalCount, setTotalCount] = useState(0);
@@ -167,9 +164,7 @@ export default function ManageEmployee() {
           return colors[role?.toLowerCase()] || "bg-gray-100 text-gray-700";
         };
         return (
-          <Badge className={cn("capitalize", getRoleColor(role))}>
-            {role}
-          </Badge>
+          <Badge className={cn("capitalize", getRoleColor(role))}>{role}</Badge>
         );
       },
     },
@@ -293,11 +288,14 @@ export default function ManageEmployee() {
       setLeavingCount(leavingEmployees.length);
     } catch (error) {
       console.warn("Error calculating employee stats:", error);
-      toast(error.response?.data?.message || "Failed to get employee statistics", {
-        type: "error",
-        position: "top-center",
-        duration: 4000,
-      });
+      toast(
+        error.response?.data?.message || "Failed to get employee statistics",
+        {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        }
+      );
     } finally {
       setLoadingState(false);
       setLoadingText("");
@@ -308,7 +306,6 @@ export default function ManageEmployee() {
     setLoadingState(true);
     setLoadingText("Loading employees...");
     try {
-      setLoading(true);
       const params = {
         page: pageIndex + 1,
         limit: pageSize,
@@ -441,15 +438,19 @@ export default function ManageEmployee() {
           duration: 3000,
         }
       );
+      console.log(data);
       getEmployees();
       getEmployeeStats();
       setOpenConfirmation(false);
     } catch (error) {
-      toast(error.response?.data?.message || "Failed to update employee status", {
-        type: "error",
-        position: "top-center",
-        duration: 4000,
-      });
+      toast(
+        error.response?.data?.message || "Failed to update employee status",
+        {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        }
+      );
     } finally {
       setLoadingState(false);
       setLoadingText("");
@@ -581,7 +582,7 @@ export default function ManageEmployee() {
           {/* Total Employees */}
           <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
             <div className="h-2 bg-gradient-to-r from-blue-500 to-cyan-500" />
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -590,9 +591,7 @@ export default function ManageEmployee() {
                   <p className="text-4xl font-bold text-gray-900">
                     {totalCount}
                   </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Active workforce
-                  </p>
+                  <p className="text-xs text-gray-500 mt-2">Active workforce</p>
                 </div>
                 <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
                   <Users className="w-6 h-6 text-white" />
@@ -604,7 +603,7 @@ export default function ManageEmployee() {
           {/* New Employees */}
           <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
             <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-500" />
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -625,7 +624,7 @@ export default function ManageEmployee() {
           {/* Leaving Employees */}
           <Card className="border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
             <div className="h-2 bg-gradient-to-r from-red-500 to-pink-500" />
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -660,7 +659,7 @@ export default function ManageEmployee() {
             </div>
           </CardHeader>
 
-          <CardContent className="pt-6 space-y-4">
+          <CardContent className="space-y-4">
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -761,7 +760,9 @@ export default function ManageEmployee() {
                           <div className="flex flex-col items-center gap-2 text-gray-500">
                             <Users className="w-12 h-12 text-gray-400" />
                             <p className="font-medium">No employees found</p>
-                            <p className="text-sm">Try adjusting your filters</p>
+                            <p className="text-sm">
+                              Try adjusting your filters
+                            </p>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -789,7 +790,11 @@ export default function ManageEmployee() {
               {/* Pagination */}
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
                 <div className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{pageIndex * pageSize + 1}</span> to{" "}
+                  Showing{" "}
+                  <span className="font-medium">
+                    {pageIndex * pageSize + 1}
+                  </span>{" "}
+                  to{" "}
                   <span className="font-medium">
                     {Math.min((pageIndex + 1) * pageSize, total)}
                   </span>{" "}
@@ -842,8 +847,8 @@ export default function ManageEmployee() {
               Import Multiple Employees
             </DialogTitle>
             <DialogDescription className="pt-2">
-              Upload an Excel file to add multiple employees at once. Please ensure
-              all employees in the file have the same role.
+              Upload an Excel file to add multiple employees at once. Please
+              ensure all employees in the file have the same role.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

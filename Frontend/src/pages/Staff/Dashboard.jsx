@@ -281,13 +281,19 @@ export default function StaffDashboard() {
                 Filter by Project
               </label>
               <Select value={filterProject} onValueChange={setFilterProject}>
-                <SelectTrigger className="w-full bg-white">
+                <SelectTrigger className="w-full bg-white cursor-pointer">
                   <SelectValue placeholder="All Projects" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer">
+                    All Projects
+                  </SelectItem>
                   {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
+                    <SelectItem
+                      key={project.id}
+                      value={project.id}
+                      className="cursor-pointer"
+                    >
                       {project.name || "Unnamed"}
                     </SelectItem>
                   ))}
@@ -301,14 +307,22 @@ export default function StaffDashboard() {
                 Filter by Status
               </label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full bg-white">
+                <SelectTrigger className="w-full bg-white cursor-pointer">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer">
+                    All Statuses
+                  </SelectItem>
+                  <SelectItem value="todo" className="cursor-pointer">
+                    To Do
+                  </SelectItem>
+                  <SelectItem value="in_progress" className="cursor-pointer">
+                    In Progress
+                  </SelectItem>
+                  <SelectItem value="done" className="cursor-pointer">
+                    Done
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -491,7 +505,7 @@ export default function StaffDashboard() {
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3"
+                className="px-3 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Previous
@@ -506,7 +520,7 @@ export default function StaffDashboard() {
                 size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3"
+                className="px-3 cursor-pointer"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
