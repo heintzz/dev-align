@@ -3,7 +3,7 @@ import { Bell, Search, User, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotifCountStore } from "@/store/useNotifCountStore";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function AppNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -53,18 +53,18 @@ export default function AppNavbar() {
 
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
-              <a
-                href="/profile"
+              <Link
+                to="/profile"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
                 Profile
-              </a>
-              <a
-                href="/change-password"
+              </Link>
+              <Link
+                to="/change-password"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
                 Change Password
-              </a>
+              </Link>
               <hr className="my-1" />
               <div
                 onClick={handleLogout}

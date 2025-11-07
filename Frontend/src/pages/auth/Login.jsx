@@ -61,7 +61,7 @@ export default function Login() {
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       {/* Left Illustration Section */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 text-white flex-col items-center justify-center px-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-blue-600 via-blue-700 to-cyan-600 text-white flex-col items-center justify-center px-12 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]" />
         <div className="absolute top-0 left-0 w-96 h-96 bg-cyan-500/30 rounded-full blur-3xl" />
@@ -75,7 +75,7 @@ export default function Login() {
               className="w-[500px] h-[500px] object-contain drop-shadow-2xl"
             />
           </div>
-          <h2 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-cyan-100">
+          <h2 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-white to-cyan-100">
             Empower Your Team with AI
           </h2>
           <p className="text-lg text-blue-100 max-w-md leading-relaxed">
@@ -86,15 +86,15 @@ export default function Login() {
       </div>
 
       {/* Right Login Section */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-gray-50 to-gray-100">
         <Card className="w-full max-w-md shadow-2xl border-0">
           <CardHeader className="space-y-4 pb-8">
             {/* Logo */}
             <div className="flex items-center justify-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+              <div className="p-2 bg-linear-to-br from-blue-500 to-cyan-500 rounded-xl">
                 <img src={logoKecil} alt="DevAlign" className="w-8 h-8" />
               </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-linear-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                 DevAlign
               </h1>
             </div>
@@ -124,7 +124,10 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email Input */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-semibold text-gray-700"
+                >
                   Email Address
                 </Label>
                 <div className="relative">
@@ -145,7 +148,10 @@ export default function Login() {
 
               {/* Password Input */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-semibold text-gray-700"
+                >
                   Password
                 </Label>
                 <div className="relative">
@@ -167,7 +173,11 @@ export default function Login() {
                     tabIndex={-1}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -186,7 +196,7 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={loadingState}
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+                className="w-full h-12 bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
               >
                 {loadingState ? (
                   <>

@@ -237,432 +237,424 @@ export default function Inbox() {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
-    <div className="min-h-screen lg:p-5">
-      <div className="h-screen flex flex-col">
-        <Loading status={loadingState} fullscreen text={loadingText} />
+    <div className="h-screen flex flex-col">
+      <Loading status={loadingState} fullscreen text={loadingText} />
 
-        {/* Header */}
-        <div className="px-4 sm:px-6 lg:px-8 py-6 border-b">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-linear-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
-                <InboxIcon className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Inbox</h1>
-                <p className="text-sm text-slate-600">
-                  Manage your notifications and messages
-                </p>
-              </div>
+      {/* Header */}
+      <div className="px-4 sm:px-6 lg:px-8 py-6 border-b">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-linear-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
+              <InboxIcon className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Inbox</h1>
+              <p className="text-sm text-slate-600">
+                Manage your notifications and messages
+              </p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-full">
-            <div className="flex flex-col lg:flex-row gap-6 h-full">
-              {/* Left Section: Message List - Hidden on mobile when message is selected */}
-              <div
-                className={`lg:w-2/5 xl:w-1/3 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden h-[600px] lg:h-full ${
-                  selected ? "hidden lg:flex" : "flex"
-                }`}
-              >
-                {/* Filters */}
-                <div className="p-4 border-b border-slate-200 bg-slate-50/50">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Select
-                      value={filter.status}
-                      onValueChange={(value) =>
-                        handleSelectChange("status", value)
-                      }
-                    >
-                      <SelectTrigger className="flex-1 bg-white">
-                        <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Message Status</SelectLabel>
-                          <SelectItem value={null}>All</SelectItem>
-                          <SelectItem value="true">Read</SelectItem>
-                          <SelectItem value="false">Unread</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-full">
+          <div className="flex flex-col lg:flex-row gap-6 h-full">
+            {/* Left Section: Message List - Hidden on mobile when message is selected */}
+            <div
+              className={`lg:w-2/5 xl:w-1/3 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden h-[600px] lg:h-full ${
+                selected ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              {/* Filters */}
+              <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Select
+                    value={filter.status}
+                    onValueChange={(value) =>
+                      handleSelectChange("status", value)
+                    }
+                  >
+                    <SelectTrigger className="flex-1 bg-white">
+                      <Filter className="w-4 h-4 mr-2 text-slate-500" />
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Message Status</SelectLabel>
+                        <SelectItem value={null}>All</SelectItem>
+                        <SelectItem value="true">Read</SelectItem>
+                        <SelectItem value="false">Unread</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
 
-                    <Select
-                      value={filter.type}
-                      onValueChange={(value) =>
-                        handleSelectChange("type", value)
-                      }
-                    >
-                      <SelectTrigger className="flex-1 bg-white">
-                        <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                        <SelectValue placeholder="Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Message Type</SelectLabel>
-                          <SelectItem value={null}>All</SelectItem>
-                          <SelectItem value="announcement">
-                            Announcement
-                          </SelectItem>
-                          <SelectItem value="project_approval">
-                            Approval
-                          </SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Message List */}
-                <div className="flex-1 overflow-y-auto">
-                  {loadingMessage ? (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-3" />
-                      <p className="text-sm text-slate-600">
-                        Loading messages...
-                      </p>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-                      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                        <Mail className="w-8 h-8 text-slate-400" />
-                      </div>
-                      <p className="font-semibold text-slate-900 mb-1">
-                        No notifications
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        You're all caught up!
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-slate-100">
-                      {notifications.map((notif) => {
-                        const typeBadge = getTypeBadgeConfig(notif.type);
-                        const isSelected = selected?._id === notif._id;
-
-                        return (
-                          <div
-                            key={notif._id}
-                            onClick={() => fetchDetail(notif._id)}
-                            className={`p-4 cursor-pointer transition-all hover:bg-slate-50 ${
-                              isSelected
-                                ? "bg-blue-50 border-l-4 border-l-blue-500"
-                                : notif.isRead
-                                ? "bg-white"
-                                : "bg-slate-50"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`mt-1 flex-shrink-0 ${
-                                  notif.isRead
-                                    ? "text-slate-400"
-                                    : "text-blue-500"
-                                }`}
-                              >
-                                {notif.isRead ? (
-                                  <MailOpen className="w-5 h-5" />
-                                ) : (
-                                  <Mail className="w-5 h-5" />
-                                )}
-                              </div>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2 mb-1">
-                                  <h3
-                                    className={`font-semibold text-sm line-clamp-1 ${
-                                      notif.isRead
-                                        ? "text-slate-700"
-                                        : "text-slate-900"
-                                    }`}
-                                  >
-                                    {notif.title}
-                                  </h3>
-                                  <Badge
-                                    className={`text-xs font-bold whitespace-nowrap flex-shrink-0 ${typeBadge.className}`}
-                                  >
-                                    {typeBadge.label}
-                                  </Badge>
-                                </div>
-
-                                <p className="text-sm text-slate-600 line-clamp-2 mb-2">
-                                  {notif.message}
-                                </p>
-
-                                <div className="flex items-center gap-1 text-xs text-slate-500">
-                                  <Calendar className="w-3 h-3" />
-                                  {formatDateTime(notif.createdAt)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Pagination */}
-                <div className="border-t border-slate-200 bg-slate-50/50 p-4">
-                  <div className="flex items-center justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === 1}
-                      onClick={() => setPage((p) => p - 1)}
-                      className="px-3"
-                    >
-                      <ChevronLeft className="w-4 h-4 mr-1" />
-                      Prev
-                    </Button>
-                    <span className="text-sm font-semibold text-slate-700">
-                      Page {page} / {totalPages || 1}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                      className="px-3"
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
+                  <Select
+                    value={filter.type}
+                    onValueChange={(value) => handleSelectChange("type", value)}
+                  >
+                    <SelectTrigger className="flex-1 bg-white">
+                      <Filter className="w-4 h-4 mr-2 text-slate-500" />
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Message Type</SelectLabel>
+                        <SelectItem value={null}>All</SelectItem>
+                        <SelectItem value="announcement">
+                          Announcement
+                        </SelectItem>
+                        <SelectItem value="project_approval">
+                          Approval
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              {/* Right Section: Message Detail - Hidden on mobile when no message is selected */}
-              <div
-                className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden flex flex-col h-[600px] lg:h-full ${
-                  selected ? "flex" : "hidden lg:flex"
-                }`}
-              >
-                <div className="flex-1 overflow-y-auto p-6">
-                  {!selected ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                        <Mail className="w-10 h-10 text-slate-400" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                        Select a message
-                      </h3>
-                      <p className="text-slate-600 max-w-sm">
-                        Choose a notification from the list to view its details
-                      </p>
+              {/* Message List */}
+              <div className="flex-1 overflow-y-auto">
+                {loadingMessage ? (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-3" />
+                    <p className="text-sm text-slate-600">
+                      Loading messages...
+                    </p>
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full px-4 text-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <Mail className="w-8 h-8 text-slate-400" />
                     </div>
-                  ) : loadingDetail ? (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-3" />
-                      <p className="text-sm text-slate-600">
-                        Loading details...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="max-w-3xl">
-                      {/* Header */}
-                      <div className="mb-6">
-                        {/* Back button on mobile when message is selected */}
-                        {selected && (
-                          <div className="block lg:hidden">
-                            <button
-                              onClick={() => setSelected(null)}
-                              className={cn(
-                                "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
-                              )}
+                    <p className="font-semibold text-slate-900 mb-1">
+                      No notifications
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      You're all caught up!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {notifications.map((notif) => {
+                      const typeBadge = getTypeBadgeConfig(notif.type);
+                      const isSelected = selected?._id === notif._id;
+
+                      return (
+                        <div
+                          key={notif._id}
+                          onClick={() => fetchDetail(notif._id)}
+                          className={`p-4 cursor-pointer transition-all hover:bg-slate-50 ${
+                            isSelected
+                              ? "bg-blue-50 border-l-4 border-l-blue-500"
+                              : notif.isRead
+                              ? "bg-white"
+                              : "bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`mt-1 flex-shrink-0 ${
+                                notif.isRead
+                                  ? "text-slate-400"
+                                  : "text-blue-500"
+                              }`}
                             >
-                              <MoveLeft
-                                className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
-                                aria-hidden="true"
-                              />
-                              <span className="whitespace-nowrap group-hover:underline">
-                                Back to Messages
-                              </span>
-                            </button>
+                              {notif.isRead ? (
+                                <MailOpen className="w-5 h-5" />
+                              ) : (
+                                <Mail className="w-5 h-5" />
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <h3
+                                  className={`font-semibold text-sm line-clamp-1 ${
+                                    notif.isRead
+                                      ? "text-slate-700"
+                                      : "text-slate-900"
+                                  }`}
+                                >
+                                  {notif.title}
+                                </h3>
+                                <Badge
+                                  className={`text-xs font-bold whitespace-nowrap flex-shrink-0 ${typeBadge.className}`}
+                                >
+                                  {typeBadge.label}
+                                </Badge>
+                              </div>
+
+                              <p className="text-sm text-slate-600 line-clamp-2 mb-2">
+                                {notif.message}
+                              </p>
+
+                              <div className="flex items-center gap-1 text-xs text-slate-500">
+                                <Calendar className="w-3 h-3" />
+                                {formatDateTime(notif.createdAt)}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                        <div className="flex items-start justify-between gap-4 mb-3">
-                          <h2 className="text-2xl font-bold text-slate-900 flex-1">
-                            {selected.title}
-                          </h2>
-                          <Badge
-                            className={`text-xs font-bold whitespace-nowrap ${
-                              getTypeBadgeConfig(selected.type).className
-                            }`}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination */}
+              <div className="border-t border-slate-200 bg-slate-50/50 p-4">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="px-3"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Prev
+                  </Button>
+                  <span className="text-sm font-semibold text-slate-700">
+                    Page {page} / {totalPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="px-3"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Section: Message Detail - Hidden on mobile when no message is selected */}
+            <div
+              className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden flex flex-col h-[600px] lg:h-full ${
+                selected ? "flex" : "hidden lg:flex"
+              }`}
+            >
+              <div className="flex-1 overflow-y-auto p-6">
+                {!selected ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <Mail className="w-10 h-10 text-slate-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                      Select a message
+                    </h3>
+                    <p className="text-slate-600 max-w-sm">
+                      Choose a notification from the list to view its details
+                    </p>
+                  </div>
+                ) : loadingDetail ? (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-3" />
+                    <p className="text-sm text-slate-600">Loading details...</p>
+                  </div>
+                ) : (
+                  <div className="max-w-3xl">
+                    {/* Header */}
+                    <div className="mb-6">
+                      {/* Back button on mobile when message is selected */}
+                      {selected && (
+                        <div className="block lg:hidden">
+                          <button
+                            onClick={() => setSelected(null)}
+                            className={cn(
+                              "group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-primary",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md px-1"
+                            )}
                           >
-                            {getTypeBadgeConfig(selected.type).label}
-                          </Badge>
+                            <MoveLeft
+                              className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1"
+                              aria-hidden="true"
+                            />
+                            <span className="whitespace-nowrap group-hover:underline">
+                              Back to Messages
+                            </span>
+                          </button>
                         </div>
-
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Calendar className="w-4 h-4" />
-                          {formatDateTime(selected.createdAt)}
-                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <h2 className="text-2xl font-bold text-slate-900 flex-1">
+                          {selected.title}
+                        </h2>
+                        <Badge
+                          className={`text-xs font-bold whitespace-nowrap ${
+                            getTypeBadgeConfig(selected.type).className
+                          }`}
+                        >
+                          {getTypeBadgeConfig(selected.type).label}
+                        </Badge>
                       </div>
 
-                      <Separator className="mb-6" />
-
-                      {/* Message Content */}
-                      <div className="mb-6">
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                          {selected.message}
-                        </p>
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Calendar className="w-4 h-4" />
+                        {formatDateTime(selected.createdAt)}
                       </div>
+                    </div>
 
-                      {/* Related Project */}
-                      {selected.relatedProject && (
+                    <Separator className="mb-6" />
+
+                    {/* Message Content */}
+                    <div className="mb-6">
+                      <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                        {selected.message}
+                      </p>
+                    </div>
+
+                    {/* Related Project */}
+                    {selected.relatedProject && (
+                      <Card className="mb-6 border-slate-200 shadow-sm">
+                        <CardContent className="p-6">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <InboxIcon className="w-5 h-5 text-slate-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                                Related Project
+                              </p>
+                              <CardTitle className="text-lg font-bold text-slate-900 mb-2">
+                                {selected.relatedProject.name}
+                              </CardTitle>
+                              <p className="text-sm text-slate-600 leading-relaxed mb-3">
+                                {selected.relatedProject.description}
+                              </p>
+                              <Badge
+                                className={
+                                  getStatusBadgeConfig(
+                                    selected.relatedProject.status
+                                  ).className
+                                }
+                              >
+                                {
+                                  getStatusBadgeConfig(
+                                    selected.relatedProject.status
+                                  ).label
+                                }
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Related Borrow Request */}
+                    {selected.relatedBorrowRequest && (
+                      <>
                         <Card className="mb-6 border-slate-200 shadow-sm">
                           <CardContent className="p-6">
-                            <div className="flex items-start gap-3 mb-3">
-                              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <InboxIcon className="w-5 h-5 text-slate-600" />
+                            <div className="flex items-start gap-3 mb-4">
+                              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <User className="w-5 h-5 text-blue-600" />
                               </div>
                               <div className="flex-1">
                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                                  Related Project
+                                  Borrow Request
                                 </p>
-                                <CardTitle className="text-lg font-bold text-slate-900 mb-2">
-                                  {selected.relatedProject.name}
+                                <CardTitle className="text-lg font-bold text-slate-900 mb-4">
+                                  Request Details
                                 </CardTitle>
-                                <p className="text-sm text-slate-600 leading-relaxed mb-3">
-                                  {selected.relatedProject.description}
-                                </p>
-                                <Badge
-                                  className={
-                                    getStatusBadgeConfig(
-                                      selected.relatedProject.status
-                                    ).className
-                                  }
-                                >
-                                  {
-                                    getStatusBadgeConfig(
-                                      selected.relatedProject.status
-                                    ).label
-                                  }
-                                </Badge>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                <User className="w-5 h-5 text-slate-500 mt-0.5" />
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 mb-1">
+                                    Requested By
+                                  </p>
+                                  <p className="font-semibold text-slate-900">
+                                    {selected.relatedBorrowRequest.requestedBy
+                                      .name || "-"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                <CheckCircle className="w-5 h-5 text-slate-500 mt-0.5" />
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 mb-1">
+                                    Approved By
+                                  </p>
+                                  <p className="font-semibold text-slate-900">
+                                    {selected.relatedBorrowRequest
+                                      .isApproved === true
+                                      ? selected.relatedBorrowRequest.approvedBy
+                                          .name
+                                      : "Pending approval"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                {(() => {
+                                  const statusConfig = getApprovalStatusConfig(
+                                    selected.relatedBorrowRequest.isApproved
+                                  );
+                                  const StatusIcon = statusConfig.icon;
+                                  return (
+                                    <>
+                                      <StatusIcon className="w-5 h-5 text-slate-500 mt-0.5" />
+                                      <div className="flex-1">
+                                        <p className="text-xs font-semibold text-slate-500 mb-2">
+                                          Approval Status
+                                        </p>
+                                        <Badge
+                                          className={statusConfig.className}
+                                        >
+                                          {statusConfig.label}
+                                        </Badge>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </CardContent>
                         </Card>
-                      )}
 
-                      {/* Related Borrow Request */}
-                      {selected.relatedBorrowRequest && (
-                        <>
-                          <Card className="mb-6 border-slate-200 shadow-sm">
-                            <CardContent className="p-6">
-                              <div className="flex items-start gap-3 mb-4">
-                                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                                  <User className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                                    Borrow Request
-                                  </p>
-                                  <CardTitle className="text-lg font-bold text-slate-900 mb-4">
-                                    Request Details
-                                  </CardTitle>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                                  <User className="w-5 h-5 text-slate-500 mt-0.5" />
-                                  <div>
-                                    <p className="text-xs font-semibold text-slate-500 mb-1">
-                                      Requested By
-                                    </p>
-                                    <p className="font-semibold text-slate-900">
-                                      {selected.relatedBorrowRequest.requestedBy
-                                        .name || "-"}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                                  <CheckCircle className="w-5 h-5 text-slate-500 mt-0.5" />
-                                  <div>
-                                    <p className="text-xs font-semibold text-slate-500 mb-1">
-                                      Approved By
-                                    </p>
-                                    <p className="font-semibold text-slate-900">
-                                      {selected.relatedBorrowRequest
-                                        .isApproved === true
-                                        ? selected.relatedBorrowRequest
-                                            .approvedBy.name
-                                        : "Pending approval"}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                                  {(() => {
-                                    const statusConfig =
-                                      getApprovalStatusConfig(
-                                        selected.relatedBorrowRequest.isApproved
-                                      );
-                                    const StatusIcon = statusConfig.icon;
-                                    return (
-                                      <>
-                                        <StatusIcon className="w-5 h-5 text-slate-500 mt-0.5" />
-                                        <div className="flex-1">
-                                          <p className="text-xs font-semibold text-slate-500 mb-2">
-                                            Approval Status
-                                          </p>
-                                          <Badge
-                                            className={statusConfig.className}
-                                          >
-                                            {statusConfig.label}
-                                          </Badge>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          {/* Action Buttons */}
-                          {selected.relatedBorrowRequest.isApproved ===
-                            null && (
-                            <div className="flex flex-col sm:flex-row gap-3">
-                              <Button
-                                onClick={() =>
-                                  approvedRequest(
-                                    selected.relatedBorrowRequest._id,
-                                    false
-                                  )
-                                }
-                                variant="outline"
-                                className="flex-1 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-300 cursor-pointer"
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Reject Request
-                              </Button>
-                              <Button
-                                onClick={() =>
-                                  approvedRequest(
-                                    selected.relatedBorrowRequest._id
-                                  )
-                                }
-                                className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 cursor-pointer"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Approve Request
-                              </Button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        {/* Action Buttons */}
+                        {selected.relatedBorrowRequest.isApproved === null && (
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Button
+                              onClick={() =>
+                                approvedRequest(
+                                  selected.relatedBorrowRequest._id,
+                                  false
+                                )
+                              }
+                              variant="outline"
+                              className="flex-1 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-300 cursor-pointer"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Reject Request
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                approvedRequest(
+                                  selected.relatedBorrowRequest._id
+                                )
+                              }
+                              className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 cursor-pointer"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Approve Request
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

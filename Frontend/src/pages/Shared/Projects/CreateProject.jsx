@@ -19,6 +19,11 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,7 +49,7 @@ import {
   Medal,
   Clock,
   CheckCircle2,
-  ChevronRight,
+  Info,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import apiAI from "@/api/ai";
@@ -186,9 +191,9 @@ export default function CreateProject() {
             name: candidate.name,
             position: { name: positionName },
             skills: (candidate.skills || []).map((s) => ({ name: s })),
-            currentWorkload: Math.round(
-              (1 - (candidate.currentWorkload || 0)) * 100
-            ),
+            skillMatch: candidate.skillMatch * 100,
+            currentWorkload: Math.round((candidate.currentWorkload || 0) * 100),
+            projectSimilarity: candidate.projectSimilarity * 100,
             availability:
               (candidate.currentWorkload || 0) > 0.7
                 ? "Available"
@@ -256,7 +261,7 @@ export default function CreateProject() {
           name: emp.name,
           position: { name: emp.position?.name || "Unknown" },
           skills: (emp.skills || []).map((s) => ({ name: s.name })),
-          currentWorkload: Math.round((1 - workload) * 100),
+          // currentWorkload: Math.round((1 - workload) * 100),
           availability:
             workload > 0.7
               ? "Unavailable"
@@ -470,9 +475,9 @@ export default function CreateProject() {
   // Get selected employee details for review
   const getSelectedEmployeeDetails = () => {
     const allEmployees = [...employees, ...manualEmployees];
-    return selectedEmployees.map((id) =>
-      allEmployees.find((emp) => emp._id === id)
-    ).filter(Boolean);
+    return selectedEmployees
+      .map((id) => allEmployees.find((emp) => emp._id === id))
+      .filter(Boolean);
   };
 
   // Step indicator component
@@ -485,15 +490,15 @@ export default function CreateProject() {
 
     return (
       <div className="mb-8">
-        <div className="flex items-center justify-between max-w-3xl mx-auto">
+        <div className="flex items-center justify-center gap-8">
           {steps.map((step, index) => {
             const StepIcon = step.icon;
             const isActive = currentStep === step.number;
             const isCompleted = currentStep > step.number;
 
             return (
-              <div key={step.number} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
+              <div key={step.number} className="flex items-center">
+                <div className="flex flex-col items-center">
                   <div
                     className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center transition-all",
@@ -524,14 +529,12 @@ export default function CreateProject() {
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="flex-1 h-1 mx-2 -mt-6">
-                    <div
-                      className={cn(
-                        "h-full rounded transition-all",
-                        isCompleted ? "bg-green-600" : "bg-gray-200"
-                      )}
-                    />
-                  </div>
+                  <div
+                    className={cn(
+                      "h-1 w-12 mx-4 mt-[-24px] rounded",
+                      isCompleted ? "bg-green-600" : "bg-gray-200"
+                    )}
+                  />
                 )}
               </div>
             );
@@ -556,7 +559,7 @@ export default function CreateProject() {
         </Link>
 
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+          <div className="p-3 bg-linear-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
             <Briefcase className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -580,7 +583,7 @@ export default function CreateProject() {
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Project Information Card */}
             <Card className="border-gray-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
+              <CardHeader className="border-b border-blue-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -593,9 +596,12 @@ export default function CreateProject() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="space-y-8">
                 <div className="space-y-2">
-                  <Label htmlFor="projectName" className="flex items-center gap-2">
+                  <Label
+                    htmlFor="projectName"
+                    className="flex items-center gap-2"
+                  >
                     <Target className="w-4 h-4 text-gray-400" />
                     Project Name <span className="text-red-500">*</span>
                   </Label>
@@ -610,7 +616,10 @@ export default function CreateProject() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="projectDescription" className="flex items-center gap-2">
+                  <Label
+                    htmlFor="projectDescription"
+                    className="flex items-center gap-2"
+                  >
                     <FileText className="w-4 h-4 text-gray-400" />
                     Project Description <span className="text-red-500">*</span>
                   </Label>
@@ -627,7 +636,10 @@ export default function CreateProject() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="startDate" className="flex items-center gap-2">
+                    <Label
+                      htmlFor="startDate"
+                      className="flex items-center gap-2"
+                    >
                       <CalendarIcon className="w-4 h-4 text-gray-400" />
                       Start Date <span className="text-red-500">*</span>
                     </Label>
@@ -643,7 +655,10 @@ export default function CreateProject() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="deadline" className="flex items-center gap-2">
+                    <Label
+                      htmlFor="deadline"
+                      className="flex items-center gap-2"
+                    >
                       <Clock className="w-4 h-4 text-gray-400" />
                       Deadline <span className="text-red-500">*</span>
                     </Label>
@@ -667,7 +682,7 @@ export default function CreateProject() {
 
             {/* Team Requirements Card */}
             <Card className="border-gray-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+              <CardHeader className="border-b border-purple-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Users className="w-5 h-5 text-purple-600" />
@@ -680,7 +695,7 @@ export default function CreateProject() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="space-y-8">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Medal className="w-4 h-4 text-gray-400" />
@@ -700,7 +715,10 @@ export default function CreateProject() {
                     Position & Quantity <span className="text-red-500">*</span>
                   </Label>
                   <div className="flex gap-2">
-                    <Select value={positionInput} onValueChange={setPositionInput}>
+                    <Select
+                      value={positionInput}
+                      onValueChange={setPositionInput}
+                    >
                       <SelectTrigger className="flex-1 border-gray-300">
                         <SelectValue placeholder="Select Position" />
                       </SelectTrigger>
@@ -730,31 +748,30 @@ export default function CreateProject() {
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
-
-                {/* Selected Positions */}
-                {teamPositions.length > 0 && (
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {teamPositions.map((position, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center bg-purple-50 px-3 py-2 rounded-lg border border-purple-200"
-                      >
-                        <span className="text-sm font-medium text-gray-900">
-                          {position.name} × {position.quantity}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemovePosition(index)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer h-6 w-6 p-0"
+                  {/* Selected Positions */}
+                  {teamPositions.length > 0 && (
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {teamPositions.map((position, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center bg-purple-50 px-3 py-2 rounded-lg border border-purple-200"
                         >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                          <span className="text-sm font-medium text-gray-900">
+                            {position.name} × {position.quantity}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemovePosition(index)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer h-6 w-6 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -780,7 +797,7 @@ export default function CreateProject() {
               <Button
                 onClick={handleGenerateRecommendations}
                 disabled={isGenerating}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-md hover:shadow-lg transition-all cursor-pointer h-12"
+                className="flex-1 bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-md hover:shadow-lg transition-all cursor-pointer h-12"
               >
                 {isGenerating ? (
                   <>
@@ -790,62 +807,64 @@ export default function CreateProject() {
                 ) : (
                   <>
                     <Bot className="w-5 h-5 mr-2" />
-                    {employees.length > 0 ? "Regenerate AI Recommendations" : "AI Team Recommendations"}
+                    {employees.length > 0
+                      ? "Regenerate AI Recommendations"
+                      : "AI Team Recommendations"}
                   </>
                 )}
               </Button>
 
               <Button
                 onClick={() => getManualTeams()}
-                className="flex-1 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md hover:shadow-lg transition-all cursor-pointer h-12"
+                className="flex-1 bg-linear-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md hover:shadow-lg transition-all cursor-pointer h-12"
               >
                 <Users className="w-5 h-5 mr-2" />
-                {manualEmployees.length > 0 ? "Refresh Staff List" : "Browse All Staff"}
+                {manualEmployees.length > 0
+                  ? "Refresh Staff List"
+                  : "Browse All Staff"}
               </Button>
             </div>
             {/* Tab Switcher - Only show if at least one has data */}
-            {(employees.length > 0 || manualEmployees.length > 0) && (
-              <div className="flex gap-2 border-b border-gray-200">
-                {employees.length > 0 && (
-                  <button
-                    onClick={() => setActiveTab("ai")}
-                    className={cn(
-                      "px-4 py-2 font-medium text-sm transition-colors relative",
-                      activeTab === "ai"
-                        ? "text-purple-600 border-b-2 border-purple-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Bot className="w-4 h-4" />
-                      AI Recommendations
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                        {employees.length}
-                      </Badge>
-                    </div>
-                  </button>
+            <div className="flex gap-2 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab("ai")}
+                className={cn(
+                  "px-4 py-2 font-medium text-sm transition-colors relative cursor-pointer",
+                  activeTab === "ai"
+                    ? "text-purple-600 border-b-2 border-purple-600"
+                    : "text-gray-500 hover:text-gray-700"
                 )}
-                {manualEmployees.length > 0 && (
-                  <button
-                    onClick={() => setActiveTab("manual")}
-                    className={cn(
-                      "px-4 py-2 font-medium text-sm transition-colors relative",
-                      activeTab === "manual"
-                        ? "text-gray-600 border-b-2 border-gray-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    )}
+              >
+                <div className="flex items-center gap-2">
+                  <Bot className="w-4 h-4" />
+                  AI Recommendations
+                  <Badge
+                    variant="secondary"
+                    className="bg-purple-100 text-purple-700"
                   >
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      All Staff
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-700">
-                        {manualEmployees.length}
-                      </Badge>
-                    </div>
-                  </button>
+                    {employees.length}
+                  </Badge>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("manual")}
+                className={cn(
+                  "px-4 py-2 font-medium text-sm transition-colors relative cursor-pointer",
+                  activeTab === "manual"
+                    ? "text-gray-600 border-b-2 border-gray-600"
+                    : "text-gray-500 hover:text-gray-700"
                 )}
-              </div>
-            )}
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  All Staff
+                  <Badge
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700"
+                  ></Badge>
+                </div>
+              </button>
+            </div>
 
             {/* Selected Staff Summary */}
             {selectedEmployees.length > 0 && (
@@ -855,7 +874,8 @@ export default function CreateProject() {
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-blue-600" />
                       <span className="font-semibold text-blue-900">
-                        {selectedEmployees.length} Team Member{selectedEmployees.length !== 1 ? 's' : ''} Selected
+                        {selectedEmployees.length} Team Member
+                        {selectedEmployees.length !== 1 ? "s" : ""} Selected
                       </span>
                     </div>
                     <Button
@@ -873,7 +893,7 @@ export default function CreateProject() {
 
             {/* Team Members Display */}
             <Card className="border-gray-200 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white">
+              <CardHeader className="border-b bg-linear-to-r from-gray-50 to-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-gray-100 rounded-lg">
@@ -881,7 +901,9 @@ export default function CreateProject() {
                     </div>
                     <div>
                       <CardTitle className="text-xl">
-                        {activeTab === "ai" ? "AI Recommendations" : "All Staff Members"}
+                        {activeTab === "ai"
+                          ? "AI Recommendations"
+                          : "All Staff Members"}
                       </CardTitle>
                       <CardDescription>
                         {activeTab === "ai"
@@ -897,9 +919,12 @@ export default function CreateProject() {
                 {activeTab === "ai" && employees.length === 0 && (
                   <div className="flex flex-col items-center justify-center text-center py-16 text-gray-500">
                     <Bot className="w-16 h-16 mb-4 text-gray-400" />
-                    <p className="text-lg font-medium mb-2">No AI Recommendations Yet</p>
+                    <p className="text-lg font-medium mb-2">
+                      No AI Recommendations Yet
+                    </p>
                     <p className="text-sm">
-                      Click "AI Team Recommendations" to get personalized suggestions
+                      Click "AI Team Recommendations" to get personalized
+                      suggestions
                     </p>
                   </div>
                 )}
@@ -915,73 +940,106 @@ export default function CreateProject() {
                 )}
 
                 {/* Employee Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2">
-                  {(activeTab === "ai" ? employees : manualEmployees).map((employee) => {
-                    const isSelected = selectedEmployees.includes(employee._id);
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto p-4">
+                  {(activeTab === "ai" ? employees : manualEmployees).map(
+                    (employee) => {
+                      const isSelected = selectedEmployees.includes(
+                        employee._id
+                      );
 
-                    return (
-                      <div
-                        key={employee._id}
-                        onClick={() => handleToggleEmployee(employee._id)}
-                        className={cn(
-                          "cursor-pointer rounded-xl border-2 transition-all p-4 bg-white shadow-sm hover:shadow-md",
-                          isSelected
-                            ? "border-blue-500 bg-blue-50 scale-[1.02]"
-                            : activeTab === "ai"
-                            ? getMatchingColor(employee.matchingPercentage)
-                            : "border-gray-200"
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Avatar & Checkbox */}
-                          <div className="relative">
-                            <div className="absolute -top-2 -left-2 z-10">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => handleToggleEmployee(employee._id)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="border-2"
-                              />
-                            </div>
-                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-md">
-                              {employee.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase()}
-                            </div>
-                          </div>
-
-                          {/* Employee Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-gray-900 truncate">
-                                  {employee.name}
-                                </h4>
-                                <p className="text-sm text-gray-600 truncate">
-                                  {employee.position?.name}
-                                </p>
+                      return (
+                        <div
+                          key={employee._id}
+                          onClick={() => handleToggleEmployee(employee._id)}
+                          className={cn(
+                            "cursor-pointer rounded-xl border-2 transition-all p-4 bg-white shadow-sm hover:shadow-md flex flex-col",
+                            isSelected
+                              ? "border-blue-500 bg-blue-50 scale-[1.02]"
+                              : activeTab === "ai"
+                              ? getMatchingColor(employee.matchingPercentage)
+                              : "border-gray-200"
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Avatar & Checkbox */}
+                            <div className="relative">
+                              <div className="absolute -top-2 -left-2 z-10">
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() =>
+                                    handleToggleEmployee(employee._id)
+                                  }
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="border-2"
+                                />
                               </div>
-                              {activeTab === "ai" && employee.matchingPercentage > 0 && (
-                                <div className="text-right ml-2">
-                                  <div className="text-2xl font-bold text-purple-600">
-                                    {employee.matchingPercentage}%
-                                  </div>
-                                  {employee.aiRank && (
-                                    <Badge variant="secondary" className="text-xs mt-1">
-                                      Rank #{employee.aiRank}
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
+                              <div className="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-md">
+                                {employee.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()}
+                              </div>
                             </div>
 
-                            {/* Skills */}
-                            {employee.skills?.length > 0 && (
-                              <div className="mb-3">
-                                <div className="flex flex-wrap gap-1">
-                                  {employee.skills.slice(0, 3).map((skill, idx) => (
+                            {/* Employee Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-gray-900 truncate">
+                                    {employee.name}
+                                  </h4>
+                                  <p className="text-sm text-gray-600 truncate">
+                                    {employee.position?.name}
+                                  </p>
+                                </div>
+                                {activeTab === "ai" &&
+                                  employee.matchingPercentage > 0 && (
+                                    <div className="text-right ml-2">
+                                      <div className="text-2xl font-bold space-x-2 text-purple-600">
+                                        <span>
+                                          {employee.matchingPercentage}%
+                                        </span>
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <Info className="w-4 h-4" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>
+                                              Skill Match :{" "}
+                                              {employee.skillMatch} (
+                                              {employee.skillMatch * 0.4}%)
+                                            </p>
+                                            <p>
+                                              Current Workload :{" "}
+                                              {employee.currentWorkload} (
+                                              {employee.currentWorkload * 0.2}%)
+                                            </p>
+                                            <p>
+                                              Project Similarity :{" "}
+                                              {employee.projectSimilarity} (
+                                              {employee.projectSimilarity * 0.4}
+                                              %)
+                                            </p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </div>
+                                      {employee.aiRank && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs mt-1"
+                                        >
+                                          Rank #{employee.aiRank}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  )}
+                              </div>
+
+                              {/* Skills */}
+                              {employee.skills?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 max-h-24 overflow-auto my-3">
+                                  {employee.skills.map((skill, idx) => (
                                     <Badge
                                       key={idx}
                                       variant="secondary"
@@ -990,61 +1048,73 @@ export default function CreateProject() {
                                       {skill.name}
                                     </Badge>
                                   ))}
-                                  {employee.skills.length > 3 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      +{employee.skills.length - 3}
-                                    </Badge>
-                                  )}
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {/* Workload Bar */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-600">Workload</span>
-                                <span className="font-medium">{employee.currentWorkload}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={cn(
-                                    "h-2 rounded-full transition-all",
-                                    getWorkloadColor(employee.currentWorkload)
-                                  )}
-                                  style={{ width: `${employee.currentWorkload}%` }}
-                                />
-                              </div>
+                              {/* Workload Bar */}
+                              {employee.aiReason && (
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-gray-600">
+                                        Workload
+                                      </span>
+                                      <span className="font-medium">
+                                        {employee.currentWorkload}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className={cn(
+                                          "h-2 rounded-full transition-all",
+                                          getWorkloadColor(
+                                            employee.currentWorkload
+                                          )
+                                        )}
+                                        style={{
+                                          width: `${employee.currentWorkload}%`,
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Availability Badge */}
+                                  <div className="mt-2">
+                                    <Badge
+                                      className={cn(
+                                        "text-xs font-medium",
+                                        getAvailabilityBgColor(
+                                          employee.availability
+                                        )
+                                      )}
+                                    >
+                                      {employee.availability}
+                                    </Badge>
+                                  </div>
+                                </>
+                              )}
                             </div>
+                          </div>
 
-                            {/* Availability Badge */}
-                            <div className="mt-2">
-                              <Badge
-                                className={cn(
-                                  "text-xs font-medium",
-                                  getAvailabilityBgColor(employee.availability)
-                                )}
-                              >
-                                {employee.availability}
-                              </Badge>
-                            </div>
-
-                            {/* AI Reason */}
-                            {employee.aiReason && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
+                          {/* AI Reason - Now at the bottom with flex-grow spacer */}
+                          {employee.aiReason && (
+                            <>
+                              <div className="flex-grow" />
+                              <div className="pt-3 border-t border-gray-200 mt-3">
                                 <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
                                   <Sparkles className="w-3 h-3" />
                                   AI Insight
                                 </p>
-                                <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">
+                                <p className="text-xs text-gray-700 leading-relaxed max-h-24 overflow-auto">
                                   {employee.aiReason}
                                 </p>
                               </div>
-                            )}
-                          </div>
+                            </>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    }
+                  )}
                 </div>
               </CardContent>
 
@@ -1107,7 +1177,7 @@ export default function CreateProject() {
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Project Summary */}
             <Card className="border-gray-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
+              <CardHeader className="border-b border-blue-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -1123,8 +1193,12 @@ export default function CreateProject() {
               <CardContent className="space-y-4 pt-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-gray-500 text-sm">Project Name</Label>
-                    <p className="font-semibold text-gray-900">{formData.projectName}</p>
+                    <Label className="text-gray-500 text-sm">
+                      Project Name
+                    </Label>
+                    <p className="font-semibold text-gray-900">
+                      {formData.projectName}
+                    </p>
                   </div>
                   <div>
                     <Label className="text-gray-500 text-sm">Timeline</Label>
@@ -1138,20 +1212,32 @@ export default function CreateProject() {
                   <p className="text-gray-900">{formData.projectDescription}</p>
                 </div>
                 <div>
-                  <Label className="text-gray-500 text-sm">Required Skills</Label>
+                  <Label className="text-gray-500 text-sm">
+                    Required Skills
+                  </Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {skills.map((skill, idx) => (
-                      <Badge key={idx} variant="secondary" className="bg-blue-100 text-blue-700">
+                      <Badge
+                        key={idx}
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-700"
+                      >
                         {skill.name}
                       </Badge>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-gray-500 text-sm">Required Positions</Label>
+                  <Label className="text-gray-500 text-sm">
+                    Required Positions
+                  </Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {teamPositions.map((position, idx) => (
-                      <Badge key={idx} variant="secondary" className="bg-purple-100 text-purple-700">
+                      <Badge
+                        key={idx}
+                        variant="secondary"
+                        className="bg-purple-100 text-purple-700"
+                      >
                         {position.name} × {position.quantity}
                       </Badge>
                     ))}
@@ -1162,15 +1248,19 @@ export default function CreateProject() {
 
             {/* Team Summary */}
             <Card className="border-gray-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+              <CardHeader className="border-b border-purple-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Users className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Selected Team Members</CardTitle>
+                    <CardTitle className="text-lg">
+                      Selected Team Members
+                    </CardTitle>
                     <CardDescription className="text-sm">
-                      {selectedEmployees.length} member{selectedEmployees.length !== 1 ? 's' : ''} will be assigned to this project
+                      {selectedEmployees.length} member
+                      {selectedEmployees.length !== 1 ? "s" : ""} will be
+                      assigned to this project
                     </CardDescription>
                   </div>
                 </div>
@@ -1182,7 +1272,7 @@ export default function CreateProject() {
                       key={employee._id}
                       className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                     >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
                         {employee.name
                           .split(" ")
                           .map((n) => n[0])
@@ -1190,10 +1280,19 @@ export default function CreateProject() {
                           .toUpperCase()}
                       </div>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{employee.name}</p>
-                        <p className="text-sm text-gray-600">{employee.position?.name}</p>
+                        <p className="font-semibold text-gray-900">
+                          {employee.name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {employee.position?.name}
+                        </p>
                       </div>
-                      <Badge className={cn("text-xs", getAvailabilityBgColor(employee.availability))}>
+                      <Badge
+                        className={cn(
+                          "text-xs",
+                          getAvailabilityBgColor(employee.availability)
+                        )}
+                      >
                         {employee.availability}
                       </Badge>
                     </div>
@@ -1215,7 +1314,7 @@ export default function CreateProject() {
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                className="bg-linear-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all cursor-pointer"
               >
                 {isSubmitting ? (
                   <>

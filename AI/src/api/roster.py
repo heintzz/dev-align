@@ -283,7 +283,7 @@ def get_recommendations(request: SkillRequest):
    
     # 5. sort by the overall scores then limit to a certain number (n_required * 2)
     for score in scores:
-        score["matchingPercentage"] = round(0.4 * score["skillMatch"] + 0.3 * score["currentWorkload"] + 0.3 * score["projectSimilarity"], 2)
+        score["matchingPercentage"] = round(0.4 * score["skillMatch"] + 0.2 * score["currentWorkload"] + 0.4 * score["projectSimilarity"], 2)
         score["skillMatch"] = round(score["skillMatch"], 2)
         score["currentWorkload"] = round(score["currentWorkload"], 2)
         score["projectSimilarity"] = round(score["projectSimilarity"], 2)
