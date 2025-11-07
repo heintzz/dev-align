@@ -33,7 +33,9 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",           // Local development frontend
     "http://localhost:3000",           // Alternative local port
-    "http://18.141.166.14",            // Frontend EC2 instance
+    "http://18.141.166.14",            // Frontend EC2 instance (HTTP)
+    "https://devalign.site",           // Frontend production (HTTPS)
+    "https://www.devalign.site",       // Frontend production www (HTTPS)
     "http://13.250.231.18:5000"        // Backend EC2 instance
   ],
   credentials: true,
@@ -53,6 +55,8 @@ const io = new Server(server, {
       "http://localhost:5173",
       "http://localhost:3000",
       "http://18.141.166.14",
+      "https://devalign.site",
+      "https://www.devalign.site",
       "http://13.250.231.18:5000"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
