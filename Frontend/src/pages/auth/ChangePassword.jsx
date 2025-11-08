@@ -81,7 +81,6 @@ export default function ChangePasswordPage() {
     } catch (error) {
       const errorMsg =
         error.response?.data?.message || "Failed to change password";
-      console.log("asdasd");
       toast(errorMsg, {
         type: "error",
         position: "top-center",
