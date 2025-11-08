@@ -17,10 +17,10 @@ export default function Loading({
     >
       <div className="flex flex-col justify-center items-center h-full">
         <div className="relative">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primer"></div>
 
           <div className="absolute inset-0 flex items-center justify-center">
-            <FolderKanban className="w-6 h-6 text-blue-600" />
+            <FolderKanban className="w-6 h-6 text-primer" />
           </div>
         </div>
         <p className="mt-4 text-white font-medium">{text}</p>

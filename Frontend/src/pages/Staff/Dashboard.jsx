@@ -8,6 +8,7 @@ import {
   Filter,
   Calendar,
   User,
+  RefreshCw,
 } from "lucide-react";
 import {
   Select,
@@ -18,8 +19,8 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import projectService from "@/services/project.service";
+import Loading from "@/components/Loading";
 
-// ─── Utility Functions ──────────────────────────────────────────────
 const normalizeStatus = (status) => {
   if (!status) return "Unknown";
   const statusLower = String(status).toLowerCase();
@@ -71,38 +72,33 @@ const formatDateTime = (dateString) => {
   });
 };
 
-// ─── Main Component ──────────────────────────────────────────────
 export default function StaffDashboard() {
-  // State
   const [allTasks, setAllTasks] = useState([]);
-  const [loadingTasks, setLoadingTasks] = useState(false);
   const [filterProject, setFilterProject] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // Load tasks
-  useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        setLoadingTasks(true);
-        const response = await projectService.getStaffTasks();
-        setAllTasks(response || []);
-      } catch (err) {
-        console.error("Failed to load staff tasks:", err);
-      } finally {
-        setLoadingTasks(false);
-      }
-    };
-    loadTasks();
-  }, []);
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [filterProject, filterStatus]);
+  const loadTasks = async () => {
+    try {
+      setLoadingState(true);
+      setLoadingText("Getting the task");
+      const response = await projectService.getStaffTasks();
+      setAllTasks(response || []);
+    } catch (err) {
+      console.error("Failed to load staff tasks:", err);
+      toast(err.response.data.message || "Failed to load staff tasks", {
+        type: "error",
+      });
+    } finally {
+      setLoadingState(false);
+      setLoadingText("");
+    }
+  };
 
-  // Get unique projects for filter
   const projects = useMemo(() => {
     const projectMap = new Map(
       allTasks.map((task) => [String(task.projectId), task.projectName])
@@ -110,10 +106,8 @@ export default function StaffDashboard() {
     return Array.from(projectMap).map(([id, name]) => ({ id, name }));
   }, [allTasks]);
 
-  // Filter and paginate tasks
   const { filteredTasks, pagedTasks, totalPages, currentPage } = useMemo(() => {
     const filtered = allTasks.filter((task) => {
-      // Project filter
       if (
         filterProject !== "all" &&
         String(task.projectId) !== String(filterProject)
@@ -121,7 +115,6 @@ export default function StaffDashboard() {
         return false;
       }
 
-      // Status filter
       if (filterStatus !== "all") {
         const statusLower = String(task.status).toLowerCase();
         if (filterStatus === "todo" && !statusLower.includes("todo")) {
@@ -160,7 +153,6 @@ export default function StaffDashboard() {
     };
   }, [allTasks, filterProject, filterStatus, page]);
 
-  // Status counts
   const statusCounts = useMemo(() => {
     const counts = { todo: 0, in_progress: 0, done: 0 };
     allTasks.forEach((task) => {
@@ -172,13 +164,13 @@ export default function StaffDashboard() {
     return counts;
   }, [allTasks]);
 
-  // Render helpers
-  const renderLoading = () => (
-    <div className="flex flex-col items-center justify-center py-24">
-      <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4" />
-      <p className="text-slate-600 font-medium">Loading tasks...</p>
-    </div>
-  );
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterProject, filterStatus]);
 
   const renderEmpty = () => (
     <div className="flex flex-col items-center justify-center py-24">
@@ -198,6 +190,8 @@ export default function StaffDashboard() {
 
   return (
     <div className="min-h-screen p-5">
+      <Loading status={loadingState} fullscreen text={loadingText} />
+
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -326,13 +320,21 @@ export default function StaffDashboard() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-end text-end ">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={loadTasks}
+                className=" ml-2 p-1 text-slate-500 hover:text-slate-700 cursor-pointer"
+              >
+                <RefreshCw />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {loadingTasks ? (
-        renderLoading()
-      ) : filteredTasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
         renderEmpty()
       ) : (
         <>

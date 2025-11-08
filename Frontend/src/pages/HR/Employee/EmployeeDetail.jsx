@@ -132,8 +132,9 @@ export default function EmployeeDetail() {
     getEmployee();
   };
   const handleSave = async () => {
-    if (employeeForm.role == "manager") {
+    if (employeeForm.role !== "staff") {
       employeeForm.managerId = null;
+      employeeForm.position = null;
     }
     setLoadingState(true);
     setLoadingText("Updating employee...");
