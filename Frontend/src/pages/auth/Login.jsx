@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, LogIn } from "lucide-react";
 import authService from "@/services/auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
-import Loading from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,8 @@ import {
 } from "@/components/ui/card";
 import logoKiri from "@/assets/img/logokiribaru.png";
 import logoKecil from "@/assets/img/loginkanan.png";
+
+import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
 
 export default function Login() {

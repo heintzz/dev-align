@@ -54,9 +54,10 @@ import {
 import api from "@/api/axios";
 import { useAssigneeStore } from "@/store/useAssigneeStore";
 import { SkillSelector } from "../SkillSelector";
+import { useAuthStore } from "@/store/useAuthStore";
+
 import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
-import { useAuthStore } from "@/store/useAuthStore";
 
 const Column = ({
   projectId,

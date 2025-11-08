@@ -2,7 +2,6 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/layouts/AppSidebar";
 
 import AppNavbar from "@/components/layouts/AppNavbar";
-import App from "@/App";
 
 export default function Layout({ children }) {
   return (

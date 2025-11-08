@@ -10,9 +10,10 @@ import { useAuthStore } from "@/store/useAuthStore";
 import projectService from "../services/project.service";
 import { Button } from "@/components/ui/button";
 import { CircleCheckBig, Trash } from "lucide-react";
+import ConfirmDialog from "./ConfirmDialog";
+
 import { toast } from "@/lib/toast";
 import Loading from "@/components/Loading";
-import ConfirmDialog from "./ConfirmDialog";
 
 // ─── Utility Helpers ──────────────────────────────────────────────
 const getStatusColor = (status) => {
