@@ -49,6 +49,7 @@ import {
   Clock,
   CheckCircle2,
   Info,
+  Search,
 } from "lucide-react";
 import apiAI from "@/api/ai";
 import api from "@/api/axios";
@@ -89,6 +90,7 @@ export default function CreateProject() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("ai"); // 'ai' or 'manual'
+  const [searchQuery, setSearchQuery] = useState(""); // Search query for filtering employees
 
   const [manualMeta, setManualMeta] = useState({
     page: 1,
@@ -108,6 +110,17 @@ export default function CreateProject() {
   useEffect(() => {
     fetchPositions();
   }, []);
+
+  // Debounced search effect for manual tab
+  useEffect(() => {
+    if (activeTab === "manual" && manualEmployees.length > 0) {
+      const timeoutId = setTimeout(() => {
+        getManualTeams(1, searchQuery);
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchQuery, activeTab]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -194,12 +207,6 @@ export default function CreateProject() {
             skillMatch: candidate.skillMatch * 100,
             currentWorkload: Math.round((candidate.currentWorkload || 0) * 100),
             projectSimilarity: candidate.projectSimilarity * 100,
-            availability:
-              (candidate.currentWorkload || 0) > 0.7
-                ? "Available"
-                : (candidate.currentWorkload || 0) > 0.3
-                ? "Partially Available"
-                : "Unavailable",
             matchingPercentage: Math.round(
               (candidate.matchingPercentage || 0) * 100
             ),
@@ -236,7 +243,7 @@ export default function CreateProject() {
     }
   };
 
-  const getManualTeams = async (page = 1) => {
+  const getManualTeams = async (page = 1, search = "") => {
     setLoadingState(true);
     setLoadingText("Loading staff members...");
 
@@ -247,6 +254,11 @@ export default function CreateProject() {
         active: "true",
         role: "staff",
       };
+
+      // Add search parameter if provided
+      if (search.trim()) {
+        params.search = search.trim();
+      }
 
       const { data } = await api.get("/hr/employees", { params });
 
@@ -262,12 +274,6 @@ export default function CreateProject() {
           position: { name: emp.position?.name || "Unknown" },
           skills: (emp.skills || []).map((s) => ({ name: s.name })),
           // currentWorkload: Math.round((1 - workload) * 100),
-          availability:
-            workload > 0.7
-              ? "Unavailable"
-              : workload > 0.3
-              ? "Partially Available"
-              : "Available",
           matchingPercentage: 0,
           aiRank: null,
           aiReason: null,
@@ -407,15 +413,6 @@ export default function CreateProject() {
     }
   };
 
-  const getAvailabilityBgColor = (availability) => {
-    const colors = {
-      Available: "bg-green-100 text-green-700",
-      "Partially Available": "bg-yellow-100 text-yellow-700",
-      Unavailable: "bg-red-100 text-red-700",
-    };
-    return colors[availability] || "bg-gray-100 text-gray-700";
-  };
-
   const getWorkloadColor = (workload) => {
     if (workload <= 40) return "bg-green-500";
     if (workload <= 80) return "bg-yellow-500";
@@ -426,6 +423,21 @@ export default function CreateProject() {
     if (percentage >= 90) return "border-yellow-400 bg-yellow-50/50";
     if (percentage >= 80) return "border-green-400 bg-green-50/50";
     return "border-gray-200";
+  };
+
+  // Filter employees based on search query
+  const filterEmployees = (employeeList) => {
+    if (!searchQuery.trim()) return employeeList;
+
+    const query = searchQuery.toLowerCase();
+    return employeeList.filter((employee) => {
+      const nameMatch = employee.name.toLowerCase().includes(query);
+      const positionMatch = employee.position?.name?.toLowerCase().includes(query);
+      const skillMatch = employee.skills?.some((skill) =>
+        skill.name.toLowerCase().includes(query)
+      );
+      return nameMatch || positionMatch || skillMatch;
+    });
   };
 
   // Step validation
@@ -815,7 +827,10 @@ export default function CreateProject() {
               </Button>
 
               <Button
-                onClick={() => getManualTeams()}
+                onClick={() => {
+                  setSearchQuery("");
+                  getManualTeams(1, "");
+                }}
                 className="flex-1 bg-linear-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md hover:shadow-lg transition-all cursor-pointer h-12"
               >
                 <Users className="w-5 h-5 mr-2" />
@@ -827,7 +842,10 @@ export default function CreateProject() {
             {/* Tab Switcher - Only show if at least one has data */}
             <div className="flex gap-2 border-b border-gray-200">
               <button
-                onClick={() => setActiveTab("ai")}
+                onClick={() => {
+                  setActiveTab("ai");
+                  setSearchQuery("");
+                }}
                 className={cn(
                   "px-4 py-2 font-medium text-sm transition-colors relative cursor-pointer",
                   activeTab === "ai"
@@ -847,7 +865,10 @@ export default function CreateProject() {
                 </div>
               </button>
               <button
-                onClick={() => setActiveTab("manual")}
+                onClick={() => {
+                  setActiveTab("manual");
+                  setSearchQuery("");
+                }}
                 className={cn(
                   "px-4 py-2 font-medium text-sm transition-colors relative cursor-pointer",
                   activeTab === "manual"
@@ -865,6 +886,46 @@ export default function CreateProject() {
                 </div>
               </button>
             </div>
+
+            {/* Search Input */}
+            {((activeTab === "ai" && employees.length > 0) ||
+              (activeTab === "manual" && manualEmployees.length > 0)) && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search by name, position, or skills..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="text-sm text-gray-600">
+                    {activeTab === "ai" ? (
+                      <>
+                        Showing {filterEmployees(employees).length} of{" "}
+                        {employees.length} employees
+                      </>
+                    ) : (
+                      <>
+                        Found {manualMeta.total} employee
+                        {manualMeta.total !== 1 ? "s" : ""}
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Selected Staff Summary */}
             {selectedEmployees.length > 0 && (
@@ -939,10 +1000,34 @@ export default function CreateProject() {
                   </div>
                 )}
 
+                {/* No search results message */}
+                {searchQuery &&
+                  ((activeTab === "ai" && filterEmployees(employees).length === 0) ||
+                    (activeTab === "manual" && manualEmployees.length === 0)) && (
+                    <div className="flex flex-col items-center justify-center text-center py-16 text-gray-500">
+                      <Search className="w-16 h-16 mb-4 text-gray-400" />
+                      <p className="text-lg font-medium mb-2">
+                        No employees found
+                      </p>
+                      <p className="text-sm">
+                        Try adjusting your search query or clear the search
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSearchQuery("")}
+                        className="mt-4 cursor-pointer"
+                      >
+                        Clear Search
+                      </Button>
+                    </div>
+                  )}
+
                 {/* Employee Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto p-4">
-                  {(activeTab === "ai" ? employees : manualEmployees).map(
-                    (employee) => {
+                  {(activeTab === "ai"
+                    ? filterEmployees(employees)
+                    : manualEmployees
+                  ).map((employee) => {
                       const isSelected = selectedEmployees.includes(
                         employee._id
                       );
@@ -1077,20 +1162,6 @@ export default function CreateProject() {
                                       />
                                     </div>
                                   </div>
-
-                                  {/* Availability Badge */}
-                                  <div className="mt-2">
-                                    <Badge
-                                      className={cn(
-                                        "text-xs font-medium",
-                                        getAvailabilityBgColor(
-                                          employee.availability
-                                        )
-                                      )}
-                                    >
-                                      {employee.availability}
-                                    </Badge>
-                                  </div>
                                 </>
                               )}
                             </div>
@@ -1123,7 +1194,7 @@ export default function CreateProject() {
                 <CardFooter className="flex justify-between items-center border-t bg-gray-50">
                   <Button
                     disabled={manualMeta.page === 1}
-                    onClick={() => getManualTeams(manualMeta.page - 1)}
+                    onClick={() => getManualTeams(manualMeta.page - 1, searchQuery)}
                     variant="outline"
                     className="cursor-pointer"
                   >
@@ -1140,7 +1211,7 @@ export default function CreateProject() {
                       manualMeta.page >=
                       Math.ceil(manualMeta.total / manualMeta.limit)
                     }
-                    onClick={() => getManualTeams(manualMeta.page + 1)}
+                    onClick={() => getManualTeams(manualMeta.page + 1, searchQuery)}
                     variant="outline"
                     className="cursor-pointer"
                   >
@@ -1287,14 +1358,6 @@ export default function CreateProject() {
                           {employee.position?.name}
                         </p>
                       </div>
-                      <Badge
-                        className={cn(
-                          "text-xs",
-                          getAvailabilityBgColor(employee.availability)
-                        )}
-                      >
-                        {employee.availability}
-                      </Badge>
                     </div>
                   ))}
                 </div>

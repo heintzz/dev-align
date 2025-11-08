@@ -21,7 +21,7 @@ set -e
 
 DOMAIN="devalign.site"
 WWW_DOMAIN="www.devalign.site"
-EMAIL="admin@devalign.site"  # Change to your actual email
+EMAIL="devalign.id@gmail.com"  # Change to your actual email
 
 # Color codes
 RED='\033[0;31m'
@@ -175,7 +175,8 @@ certbot --nginx \
     --email ${EMAIL} \
     --redirect \
     --hsts \
-    --staple-ocsp
+    --staple-ocsp \
+    --must-staple
 
 if [ $? -eq 0 ]; then
     echo ""
