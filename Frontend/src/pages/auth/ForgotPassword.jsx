@@ -4,7 +4,6 @@ import { MailCheck, Mail, Send, ArrowLeft } from "lucide-react";
 import logoKiri from "@/assets/img/logokiribaru.png";
 import logoKecil from "@/assets/img/loginkanan.png";
 import authService from "@/services/auth.service";
-import Loading from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
 
 export default function ForgotPassword() {

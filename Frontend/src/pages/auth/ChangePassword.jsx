@@ -1,6 +1,5 @@
 import { useState } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
-import Loading from "@/components/Loading";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Lock, ShieldCheck, CheckCircle2 } from "lucide-react";
 import api from "@/api/axios";
+
+import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
 
 export default function ChangePasswordPage() {
@@ -80,7 +81,6 @@ export default function ChangePasswordPage() {
     } catch (error) {
       const errorMsg =
         error.response?.data?.message || "Failed to change password";
-      console.log("asdasd");
       toast(errorMsg, {
         type: "error",
         position: "top-center",

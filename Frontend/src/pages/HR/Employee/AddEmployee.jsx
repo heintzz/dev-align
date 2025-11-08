@@ -31,7 +31,6 @@ import api from "@/api/axios";
 import UploadFile from "@/components/UploadFile";
 import { SkillSelector } from "@/components/SkillSelector";
 import { PositionSelector } from "@/components/PositionSelector";
-import Loading from "@/components/Loading";
 import {
   ArrowLeft,
   FileText,
@@ -50,8 +49,10 @@ import {
   Medal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "@/lib/toast";
 import apiAI from "@/api/ai";
+
+import { toast } from "@/lib/toast";
+import Loading from "@/components/Loading";
 
 export default function AddEmployee() {
   const [skills, setSkills] = useState([]);

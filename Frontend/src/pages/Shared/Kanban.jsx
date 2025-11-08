@@ -11,13 +11,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import Loading from "@/components/Loading";
-
-import { toast } from "@/lib/toast";
 import { CirclePlus, CircleCheckBig, MoveLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import ConfirmDialog from "@/components/ConfirmDialog";
+
+import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 export default function Kanban() {
   const [socket, setSocket] = useState(null);

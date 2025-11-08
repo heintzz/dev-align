@@ -83,9 +83,10 @@ import {
 } from "lucide-react";
 import api from "@/api/axios";
 import UploadFile from "@/components/UploadFile";
+import { cn } from "@/lib/utils";
+
 import { toast } from "@/lib/toast";
 import Loading from "@/components/Loading";
-import { cn } from "@/lib/utils";
 
 export default function ManageEmployee() {
   const [total, setTotal] = useState(0);

@@ -30,7 +30,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import Loading from "@/components/Loading";
 import {
   Bot,
   CircleCheckBig,
@@ -51,16 +50,17 @@ import {
   CheckCircle2,
   Info,
 } from "lucide-react";
-import { toast } from "@/lib/toast";
 import apiAI from "@/api/ai";
 import api from "@/api/axios";
+
+import { toast } from "@/lib/toast";
+import Loading from "@/components/Loading";
 
 export default function CreateProject() {
   const navigate = useNavigate();
 
   // Step Management
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3;
 
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");

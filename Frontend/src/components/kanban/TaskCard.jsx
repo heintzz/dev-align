@@ -49,9 +49,10 @@ import {
 } from "lucide-react";
 import { useAssigneeStore } from "@/store/useAssigneeStore";
 import api from "@/api/axios";
+import { useAuthStore } from "@/store/useAuthStore";
+
 import Loading from "@/components/Loading";
 import { toast } from "@/lib/toast";
-import { useAuthStore } from "@/store/useAuthStore";
 
 const TaskCard = ({ task, projectId }) => {
   const [openCalendar, setOpenCalendar] = useState(false);

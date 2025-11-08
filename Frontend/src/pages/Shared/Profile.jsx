@@ -9,7 +9,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   User,
   Mail,
@@ -26,7 +25,9 @@ import {
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
 import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 export default function ProfilePage() {
   const {
@@ -57,6 +58,11 @@ export default function ProfilePage() {
     async function fetchProfile() {
       if (!userId || !token) {
         setError("User not authenticated");
+        toast("User not authenticated", {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        });
         return;
       }
 

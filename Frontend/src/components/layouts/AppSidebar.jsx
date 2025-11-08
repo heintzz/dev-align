@@ -19,15 +19,12 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
 
 import * as LucideIcons from "lucide-react";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import logoIcon from "@/assets/img/LogoDevAlign.png";
-import { useAuthStore } from "@/store/useAuthStore";
 
 export default function AppSidebar() {
-  const { logout, name, role } = useAuthStore();
   const { state } = useSidebar();
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);

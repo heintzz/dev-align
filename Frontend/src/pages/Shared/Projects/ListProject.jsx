@@ -21,7 +21,9 @@ import {
   Eye,
   RefreshCcw,
 } from "lucide-react";
+
 import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 const getStatusColor = (status) => {
   const statusMap = {
@@ -80,7 +82,11 @@ export default function ListProjects() {
       setFilteredProjects(transformedProjects);
     } catch (error) {
       console.error("Error fetching projects:", error);
-      alert(error.message || "Failed to fetch projects");
+      toast(error.response?.data?.message || "Error fetching projects", {
+        type: "error",
+        position: "top-center",
+        duration: 4000,
+      });
     } finally {
       setLoadingState(false);
       setLoadingText("");

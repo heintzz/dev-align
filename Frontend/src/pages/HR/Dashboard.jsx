@@ -17,7 +17,6 @@ import {
 } from "@/services/dashboard.service";
 import projectService from "@/services/project.service";
 import EmployeeTable from "@/components/EmployeeTable";
-import Loading from "@/components/Loading";
 import {
   Card,
   CardHeader,
@@ -42,6 +41,9 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 export default function HRDashboard() {
   const [loadingState, setLoadingState] = useState(false);
@@ -76,6 +78,9 @@ export default function HRDashboard() {
         setPositionsList(positions);
       } catch (err) {
         console.error("Error fetching initial data:", err);
+        toast(err.response.data.message || "Error fetching initial data", {
+          type: "error",
+        });
       } finally {
         setLoadingState(false);
         setLoadingText("");
@@ -117,6 +122,9 @@ export default function HRDashboard() {
       setEmployees(sorted.slice(start, start + pageSize));
     } catch (err) {
       console.error("Failed to fetch employees", err);
+      toast(err.response.data.message || "Failed to fetch employees", {
+        type: "error",
+      });
     } finally {
       setLoadingState(false);
       setLoadingText("");
