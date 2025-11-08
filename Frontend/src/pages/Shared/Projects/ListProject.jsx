@@ -13,7 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import ProjectDetailsDialog from "@/components/ProjectDetails";
 
-import { Calendar, Users, Plus, LayoutGrid, Eye } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Plus,
+  LayoutGrid,
+  Eye,
+  RefreshCcw,
+} from "lucide-react";
+import Loading from "@/components/Loading";
 
 const getStatusColor = (status) => {
   const statusMap = {
@@ -44,16 +52,19 @@ export default function ListProjects() {
     deadline: "",
     teamSize: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
   const fetchProjects = async () => {
-    setIsLoading(true);
+    setLoadingState(true);
+    setLoadingText("Getting the project");
     try {
       const response = await projectService.getAllProjects();
       const projectsList = response.data.projects || [];
@@ -71,7 +82,8 @@ export default function ListProjects() {
       console.error("Error fetching projects:", error);
       alert(error.message || "Failed to fetch projects");
     } finally {
-      setIsLoading(false);
+      setLoadingState(false);
+      setLoadingText("");
     }
   };
 
@@ -103,7 +115,6 @@ export default function ListProjects() {
       });
     }
 
-    // Filter by team size sort
     if (filters.teamSize) {
       filtered = filtered.sort((a, b) => {
         const aSize = a.teamMemberCount || 0;
@@ -180,7 +191,8 @@ export default function ListProjects() {
   const isManager = role === "manager";
 
   return (
-    <div className="min-h-screen lg:p-5 bg-linear-to-br from-slate-50 via-blue-50/30 to-slate-50 ">
+    <div className="min-h-screen lg:p-5  ">
+      <Loading status={loadingState} fullscreen text={loadingText} />
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -256,17 +268,21 @@ export default function ListProjects() {
                 </SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={fetchProjects}
+              className="ml-2 p-1 text-slate-500 hover:text-slate-700 cursor-pointer"
+            >
+              <RefreshCcw />
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Projects Grid */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-24">
-          <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4" />
-          <p className="text-slate-600 font-medium">Loading projects...</p>
-        </div>
-      ) : filteredProjects.length === 0 ? (
+      {filteredProjects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24">
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <LayoutGrid className="w-10 h-10 text-slate-400" />

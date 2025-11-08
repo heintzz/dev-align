@@ -26,6 +26,7 @@ import {
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Loading from "@/components/Loading";
 
 export default function ProfilePage() {
   const {
@@ -47,16 +48,20 @@ export default function ProfilePage() {
     active: true,
     createdAt: null,
   });
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [loadingState, setLoadingState] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   useEffect(() => {
     async function fetchProfile() {
       if (!userId || !token) {
         setError("User not authenticated");
-        setLoading(false);
         return;
       }
+
+      setLoadingState(true);
+      setLoadingText("Getting profile data...");
       try {
         const res = await fetch(
           `${
@@ -84,14 +89,20 @@ export default function ProfilePage() {
             createdAt: null,
           }
         );
-      } catch (err) {
-        setError(err.message);
+      } catch (error) {
+        console.error(error);
+        setError("Failed to get profile");
+        toast(error.response?.data?.message || "Failed to get profile", {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        });
       } finally {
-        setLoading(false);
+        setLoadingState(false);
+        setLoadingText("");
       }
     }
     fetchProfile();
-    // eslint-disable-next-line
   }, [userId, token]);
 
   const formatDate = (date) => {
@@ -103,7 +114,6 @@ export default function ProfilePage() {
     });
   };
 
-  // Get user initials for avatar
   const getInitials = (name) => {
     if (!name) return "U";
     return name
@@ -114,7 +124,6 @@ export default function ProfilePage() {
       .slice(0, 2);
   };
 
-  // Role color mapping
   const getRoleColor = (role) => {
     const colors = {
       admin: "bg-red-100 text-red-700 border-red-200",
@@ -129,6 +138,8 @@ export default function ProfilePage() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 lg:px-6 py-8">
+        <Loading status={loadingState} fullscreen text={loadingText} />
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -143,16 +154,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Loading State */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600">Loading your profile...</p>
-            </div>
-          </div>
-        ) : error ? (
-          // Error State
+        {error ? (
           <Card className="border-red-200 bg-red-50">
             <CardContent className="py-8">
               <div className="flex items-center gap-3 text-red-700">

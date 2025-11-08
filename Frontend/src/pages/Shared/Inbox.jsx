@@ -241,7 +241,7 @@ export default function Inbox() {
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       {/* Header */}
-      <div className="px-4 sm:px-6 lg:px-8 py-6 border-b">
+      <div className="px-4 lg:px-5 py-6 border-b">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-linear-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
@@ -512,7 +512,7 @@ export default function Inbox() {
                     {/* Related Project */}
                     {selected.relatedProject && (
                       <Card className="mb-6 border-slate-200 shadow-sm">
-                        <CardContent className="p-6">
+                        <CardContent>
                           <div className="flex items-start gap-3 mb-3">
                             <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
                               <InboxIcon className="w-5 h-5 text-slate-600" />
