@@ -427,7 +427,7 @@ export default function Kanban() {
   }, []);
 
   return (
-    <div className="p-4">
+    <div className="min-h-screen pb-24 pt-5 lg:px-5 lg:py-10">
       <Loading status={loadingState} fullscreen text={loadingText} />
       <div className="flex justify-between items-center flex-wrap gap-3">
         <Link

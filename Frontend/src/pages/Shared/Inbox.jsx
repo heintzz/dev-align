@@ -238,30 +238,30 @@ export default function Inbox() {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen pb-24 pt-5 lg:px-5 lg:py-10  flex flex-col">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       {/* Header */}
-      <div className="px-4 lg:px-5 py-6 border-b">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-linear-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
-              <InboxIcon className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Inbox</h1>
-              <p className="text-sm text-slate-600">
-                Manage your notifications and messages
-              </p>
-            </div>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-3 bg-linear-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+            <InboxIcon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Inbox
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Manage your notifications and messages
+            </p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-full">
-          <div className="flex flex-col lg:flex-row gap-6 h-full">
+        <div className="max-w-7xl mx-auto h-full">
+          <div className="flex flex-col lg:flex-row gap-6 py-1 h-full">
             {/* Left Section: Message List - Hidden on mobile when message is selected */}
             <div
               className={`lg:w-2/5 xl:w-1/3 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden h-[600px] lg:h-full ${

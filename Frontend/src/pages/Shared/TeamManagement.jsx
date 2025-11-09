@@ -128,7 +128,7 @@ export default function ManagerTeam() {
   };
 
   return (
-    <div className="min-h-screen p-5">
+    <div className="min-h-screen pb-24 pt-5 lg:px-5 lg:py-10">
       <Loading status={loadingState} fullscreen text={loadingText} />
       {/* Header */}
       <div className="mb-8">

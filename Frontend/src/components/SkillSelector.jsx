@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Check, X } from "lucide-react";
 import { useSkillStore } from "@/store/useSkillStore";
 import api from "@/api/axios";
+import { toast } from "@/lib/toast";
 
 export function SkillSelector({
   selectedSkills,
@@ -70,6 +71,9 @@ export function SkillSelector({
       setOpen(false);
     } catch (error) {
       console.error("Error adding skill:", error);
+      toast(error.response.data.message || "Failed to add new skills", {
+        type: "error",
+      });
     }
   };
 
