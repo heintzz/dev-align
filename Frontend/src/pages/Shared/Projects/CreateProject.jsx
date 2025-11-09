@@ -50,23 +50,26 @@ import {
   CheckCircle2,
   Info,
   Search,
+  BadgeCheckIcon,
+  BadgeInfo,
+  UserCheck,
 } from "lucide-react";
 import apiAI from "@/api/ai";
 import api from "@/api/axios";
 
 import { toast } from "@/lib/toast";
 import Loading from "@/components/Loading";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function CreateProject() {
+  const { userId } = useAuthStore();
   const navigate = useNavigate();
 
-  // Step Management
   const [currentStep, setCurrentStep] = useState(1);
 
   const [loadingState, setLoadingState] = useState(false);
   const [loadingText, setLoadingText] = useState("");
 
-  // Form state
   const [formData, setFormData] = useState({
     projectName: "",
     projectDescription: "",
@@ -74,23 +77,20 @@ export default function CreateProject() {
     deadline: "",
   });
 
-  // Skills state
   const [skills, setSkills] = useState([]);
 
-  // Positions state
   const [positions, setPositions] = useState([]);
   const [teamPositions, setTeamPositions] = useState([]);
   const [positionInput, setPositionInput] = useState("");
   const [quantityInput, setQuantityInput] = useState(1);
 
-  // Recommendations state
   const [employees, setEmployees] = useState([]);
   const [manualEmployees, setManualEmployees] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState("ai"); // 'ai' or 'manual'
-  const [searchQuery, setSearchQuery] = useState(""); // Search query for filtering employees
+  const [activeTab, setActiveTab] = useState("ai");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [manualMeta, setManualMeta] = useState({
     page: 1,
@@ -111,12 +111,11 @@ export default function CreateProject() {
     fetchPositions();
   }, []);
 
-  // Debounced search effect for manual tab
   useEffect(() => {
     if (activeTab === "manual" && manualEmployees.length > 0) {
       const timeoutId = setTimeout(() => {
         getManualTeams(1, searchQuery);
-      }, 500); // 500ms debounce
+      }, 500);
 
       return () => clearTimeout(timeoutId);
     }
@@ -202,6 +201,8 @@ export default function CreateProject() {
           candidates.map((candidate, index) => ({
             _id: candidate._id,
             name: candidate.name,
+            managerId: candidate.manager._id,
+            managerName: candidate.manager.name,
             position: { name: positionName },
             skills: (candidate.skills || []).map((s) => ({ name: s })),
             skillMatch: candidate.skillMatch * 100,
@@ -255,7 +256,6 @@ export default function CreateProject() {
         role: "staff",
       };
 
-      // Add search parameter if provided
       if (search.trim()) {
         params.search = search.trim();
       }
@@ -264,16 +264,18 @@ export default function CreateProject() {
 
       const transformed = data.data.map((emp) => {
         let workload;
-        if (emp.projectCount === 0) workload = 1.0;
-        else if (emp.projectCount >= 5) workload = 0.0;
-        else workload = 1.0 - emp.projectCount * 0.2;
+        if (emp.activeProjectCount === 0) workload = 1.0;
+        else if (emp.activeProjectCount >= 5) workload = 0.0;
+        else workload = 1.0 - emp.activeProjectCount * 0.2;
 
         return {
           _id: emp.id || emp._id,
           name: emp.name,
+          managerId: emp.manager.id,
+          managerName: emp.manager.name,
           position: { name: emp.position?.name || "Unknown" },
           skills: (emp.skills || []).map((s) => ({ name: s.name })),
-          // currentWorkload: Math.round((1 - workload) * 100),
+          currentWorkload: Math.round((1 - workload) * 100),
           matchingPercentage: 0,
           aiRank: null,
           aiReason: null,
@@ -298,18 +300,39 @@ export default function CreateProject() {
     }
   };
 
-  const handleToggleEmployee = (employeeId) => {
+  const handleToggleEmployee = (
+    employeeId,
+    employeeName,
+    employeePosition,
+    employeeManagerId,
+    employeeManagerName
+  ) => {
+    console.log(
+      employeeId,
+      employeeName,
+      employeePosition,
+      employeeManagerId,
+      employeeManagerName
+    );
     if (selectedEmployees.includes(employeeId)) {
       setSelectedEmployees(selectedEmployees.filter((id) => id !== employeeId));
     } else {
-      setSelectedEmployees([...selectedEmployees, employeeId]);
+      setSelectedEmployees([
+        ...selectedEmployees,
+        {
+          id: employeeId,
+          name: employeeName,
+          position: employeePosition,
+          managerId: employeeManagerId,
+          manager: employeeManagerName,
+        },
+      ]);
     }
   };
 
   const handleSubmit = async () => {
     const today = new Date().toISOString().split("T")[0];
 
-    // Validation
     if (!formData.projectName.trim()) {
       toast("Project name is required", {
         type: "warning",
@@ -372,7 +395,7 @@ export default function CreateProject() {
       const projectData = {
         name: formData.projectName,
         description: formData.projectDescription,
-        staffIds: selectedEmployees,
+        staffIds: selectedEmployees.map((emp) => emp.id),
       };
 
       if (formData.startDate) {
@@ -425,14 +448,15 @@ export default function CreateProject() {
     return "border-gray-200";
   };
 
-  // Filter employees based on search query
   const filterEmployees = (employeeList) => {
     if (!searchQuery.trim()) return employeeList;
 
     const query = searchQuery.toLowerCase();
     return employeeList.filter((employee) => {
       const nameMatch = employee.name.toLowerCase().includes(query);
-      const positionMatch = employee.position?.name?.toLowerCase().includes(query);
+      const positionMatch = employee.position?.name
+        ?.toLowerCase()
+        .includes(query);
       const skillMatch = employee.skills?.some((skill) =>
         skill.name.toLowerCase().includes(query)
       );
@@ -440,7 +464,6 @@ export default function CreateProject() {
     });
   };
 
-  // Step validation
   const canProceedToStep2 = () => {
     return (
       formData.projectName.trim() &&
@@ -484,15 +507,6 @@ export default function CreateProject() {
     }
   };
 
-  // Get selected employee details for review
-  const getSelectedEmployeeDetails = () => {
-    const allEmployees = [...employees, ...manualEmployees];
-    return selectedEmployees
-      .map((id) => allEmployees.find((emp) => emp._id === id))
-      .filter(Boolean);
-  };
-
-  // Step indicator component
   const StepIndicator = () => {
     const steps = [
       { number: 1, title: "Project Details", icon: FileText },
@@ -583,12 +597,9 @@ export default function CreateProject() {
             </p>
           </div>
         </div>
-
-        {/* Step Indicator */}
         <StepIndicator />
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto">
         {/* Step 1: Project Details */}
         {currentStep === 1 && (
@@ -804,7 +815,6 @@ export default function CreateProject() {
         {/* Step 2: Team Selection */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            {/* Action Buttons - Only show if no data loaded yet or for refresh */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={handleGenerateRecommendations}
@@ -839,7 +849,6 @@ export default function CreateProject() {
                   : "Browse All Staff"}
               </Button>
             </div>
-            {/* Tab Switcher - Only show if at least one has data */}
             <div className="flex gap-2 border-b border-gray-200">
               <button
                 onClick={() => {
@@ -927,31 +936,6 @@ export default function CreateProject() {
               </div>
             )}
 
-            {/* Selected Staff Summary */}
-            {selectedEmployees.length > 0 && (
-              <Card className="border-blue-200 bg-blue-50/50">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                      <span className="font-semibold text-blue-900">
-                        {selectedEmployees.length} Team Member
-                        {selectedEmployees.length !== 1 ? "s" : ""} Selected
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedEmployees([])}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 cursor-pointer"
-                    >
-                      Clear All
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Team Members Display */}
             <Card className="border-gray-200 shadow-lg">
               <CardHeader className="border-b bg-linear-to-r from-gray-50 to-white">
@@ -1002,8 +986,10 @@ export default function CreateProject() {
 
                 {/* No search results message */}
                 {searchQuery &&
-                  ((activeTab === "ai" && filterEmployees(employees).length === 0) ||
-                    (activeTab === "manual" && manualEmployees.length === 0)) && (
+                  ((activeTab === "ai" &&
+                    filterEmployees(employees).length === 0) ||
+                    (activeTab === "manual" &&
+                      manualEmployees.length === 0)) && (
                     <div className="flex flex-col items-center justify-center text-center py-16 text-gray-500">
                       <Search className="w-16 h-16 mb-4 text-gray-400" />
                       <p className="text-lg font-medium mb-2">
@@ -1028,164 +1014,206 @@ export default function CreateProject() {
                     ? filterEmployees(employees)
                     : manualEmployees
                   ).map((employee) => {
-                      const isSelected = selectedEmployees.includes(
-                        employee._id
-                      );
+                    const isSelected = selectedEmployees.some(
+                      (e) => e.id === employee._id
+                    );
 
-                      return (
-                        <div
-                          key={employee._id}
-                          onClick={() => handleToggleEmployee(employee._id)}
-                          className={cn(
-                            "cursor-pointer rounded-xl border-2 transition-all p-4 bg-white shadow-sm hover:shadow-md flex flex-col",
-                            isSelected
-                              ? "border-blue-500 bg-blue-50 scale-[1.02]"
-                              : activeTab === "ai"
-                              ? getMatchingColor(employee.matchingPercentage)
-                              : "border-gray-200"
-                          )}
-                        >
-                          <div className="flex items-start gap-3">
-                            {/* Avatar & Checkbox */}
-                            <div className="relative">
-                              <div className="absolute -top-2 -left-2 z-10">
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() =>
-                                    handleToggleEmployee(employee._id)
-                                  }
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="border-2"
-                                />
-                              </div>
-                              <div className="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-md">
-                                {employee.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()}
-                              </div>
+                    return (
+                      <div
+                        key={employee._id}
+                        onClick={() =>
+                          handleToggleEmployee(
+                            employee._id,
+                            employee.name,
+                            employee.position.name,
+                            employee.managerId,
+                            employee.managerName
+                          )
+                        }
+                        className={cn(
+                          "cursor-pointer rounded-xl border-2 transition-all p-4 bg-white shadow-sm hover:shadow-md flex flex-col",
+                          isSelected
+                            ? "border-blue-500 bg-blue-50 scale-[1.02]"
+                            : activeTab === "ai"
+                            ? getMatchingColor(employee.matchingPercentage)
+                            : "border-gray-200"
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Avatar & Checkbox */}
+                          <div className="relative">
+                            <div className="absolute -top-2 -left-2 z-10">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() =>
+                                  handleToggleEmployee(
+                                    employee._id,
+                                    employee.name,
+                                    employee.position.name,
+                                    employee.managerId,
+                                    employee.managerName
+                                  )
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                className="border-2"
+                              />
                             </div>
-
-                            {/* Employee Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-gray-900 truncate">
-                                    {employee.name}
-                                  </h4>
-                                  <p className="text-sm text-gray-600 truncate">
-                                    {employee.position?.name}
-                                  </p>
-                                </div>
-                                {activeTab === "ai" &&
-                                  employee.matchingPercentage > 0 && (
-                                    <div className="text-right ml-2">
-                                      <div className="text-2xl font-bold space-x-2 text-purple-600">
-                                        <span>
-                                          {employee.matchingPercentage}%
-                                        </span>
-                                        <Tooltip>
-                                          <TooltipTrigger>
-                                            <Info className="w-4 h-4" />
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>
-                                              Skill Match :{" "}
-                                              {employee.skillMatch} (
-                                              {employee.skillMatch * 0.4}%)
-                                            </p>
-                                            <p>
-                                              Current Workload :{" "}
-                                              {employee.currentWorkload} (
-                                              {employee.currentWorkload * 0.2}%)
-                                            </p>
-                                            <p>
-                                              Project Similarity :{" "}
-                                              {employee.projectSimilarity} (
-                                              {employee.projectSimilarity * 0.4}
-                                              %)
-                                            </p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </div>
-                                      {employee.aiRank && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs mt-1"
-                                        >
-                                          Rank #{employee.aiRank}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  )}
-                              </div>
-
-                              {/* Skills */}
-                              {employee.skills?.length > 0 && (
-                                <div className="flex flex-wrap gap-1 max-h-24 overflow-auto my-3">
-                                  {employee.skills.map((skill, idx) => (
-                                    <Badge
-                                      key={idx}
-                                      variant="secondary"
-                                      className="text-xs bg-gray-100"
-                                    >
-                                      {skill.name}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Workload Bar */}
-                              {employee.aiReason && (
-                                <>
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <span className="text-gray-600">
-                                        Workload
-                                      </span>
-                                      <span className="font-medium">
-                                        {employee.currentWorkload}%
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div
-                                        className={cn(
-                                          "h-2 rounded-full transition-all",
-                                          getWorkloadColor(
-                                            employee.currentWorkload
-                                          )
-                                        )}
-                                        style={{
-                                          width: `${employee.currentWorkload}%`,
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                </>
-                              )}
+                            <div className="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-md">
+                              {employee.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()}
                             </div>
                           </div>
 
-                          {/* AI Reason - Now at the bottom with flex-grow spacer */}
-                          {employee.aiReason && (
-                            <>
-                              <div className="flex-grow" />
-                              <div className="pt-3 border-t border-gray-200 mt-3">
-                                <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
-                                  <Sparkles className="w-3 h-3" />
-                                  AI Insight
+                          {/* Employee Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 truncate">
+                                  {employee.name}
+                                </h4>
+                                <p className="text-sm text-gray-600 truncate mb-1">
+                                  {employee.position?.name}
                                 </p>
-                                <p className="text-xs text-gray-700 leading-relaxed max-h-24 overflow-auto">
-                                  {employee.aiReason}
-                                </p>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge
+                                      variant={
+                                        userId === employee.managerId
+                                          ? "default"
+                                          : "secondary"
+                                      }
+                                      className={`gap-1.5 px-3 font-medium transition-colors ${
+                                        userId === employee.managerId
+                                          ? "bg-emerald-500 hover:bg-emerald-600 text-white dark:bg-emerald-600"
+                                          : "bg-slate-500 hover:bg-slate-600 text-white dark:bg-slate-600"
+                                      }`}
+                                    >
+                                      {userId === employee.managerId ? (
+                                        <UserCheck className="h-4 w-4" />
+                                      ) : (
+                                        <Users className="h-4 w-4" />
+                                      )}
+                                      {employee.managerName}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="text-sm">
+                                      {userId === employee.managerId
+                                        ? "Direct report - You manage this employee"
+                                        : "Indirect report - Managed by another manager"}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
                               </div>
-                            </>
-                          )}
+                              {activeTab === "ai" &&
+                                employee.matchingPercentage > 0 && (
+                                  <div className="text-right ml-2">
+                                    <div className="text-2xl font-bold space-x-2 text-purple-600">
+                                      <span>
+                                        {employee.matchingPercentage}%
+                                      </span>
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <Info className="w-4 h-4" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>
+                                            Skill Match : {employee.skillMatch}{" "}
+                                            ({employee.skillMatch * 0.4}%)
+                                          </p>
+                                          <p>
+                                            Current Workload :{" "}
+                                            {employee.currentWorkload} (
+                                            {employee.currentWorkload * 0.2}%)
+                                          </p>
+                                          <p>
+                                            Project Similarity :{" "}
+                                            {employee.projectSimilarity} (
+                                            {employee.projectSimilarity * 0.4}
+                                            %)
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                    {employee.aiRank && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs mt-1"
+                                      >
+                                        Rank #{employee.aiRank}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                            </div>
+
+                            {/* Skills */}
+                            {employee.skills?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 max-h-24 overflow-auto my-3">
+                                {employee.skills.map((skill, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    variant="secondary"
+                                    className="text-xs bg-gray-100"
+                                  >
+                                    {skill.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Workload Bar */}
+                            {employee.currentWorkload && (
+                              <>
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-600">
+                                      Workload
+                                    </span>
+                                    <span className="font-medium">
+                                      {employee.currentWorkload}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={cn(
+                                        "h-2 rounded-full transition-all",
+                                        getWorkloadColor(
+                                          employee.currentWorkload
+                                        )
+                                      )}
+                                      style={{
+                                        width: `${employee.currentWorkload}%`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      );
-                    }
-                  )}
+
+                        {/* AI Reason - Now at the bottom with flex-grow spacer */}
+                        {employee.aiReason && (
+                          <>
+                            <div className="flex-grow" />
+                            <div className="pt-3 border-t border-gray-200 mt-3">
+                              <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                AI Insight
+                              </p>
+                              <p className="text-xs text-gray-700 leading-relaxed max-h-24 overflow-auto">
+                                {employee.aiReason}
+                              </p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
 
@@ -1194,7 +1222,9 @@ export default function CreateProject() {
                 <CardFooter className="flex justify-between items-center border-t bg-gray-50">
                   <Button
                     disabled={manualMeta.page === 1}
-                    onClick={() => getManualTeams(manualMeta.page - 1, searchQuery)}
+                    onClick={() =>
+                      getManualTeams(manualMeta.page - 1, searchQuery)
+                    }
                     variant="outline"
                     className="cursor-pointer"
                   >
@@ -1211,7 +1241,9 @@ export default function CreateProject() {
                       manualMeta.page >=
                       Math.ceil(manualMeta.total / manualMeta.limit)
                     }
-                    onClick={() => getManualTeams(manualMeta.page + 1, searchQuery)}
+                    onClick={() =>
+                      getManualTeams(manualMeta.page + 1, searchQuery)
+                    }
                     variant="outline"
                     className="cursor-pointer"
                   >
@@ -1220,6 +1252,31 @@ export default function CreateProject() {
                 </CardFooter>
               )}
             </Card>
+
+            {/* Selected Staff Summary */}
+            {selectedEmployees.length > 0 && (
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="py-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                      <span className="font-semibold text-blue-900">
+                        {selectedEmployees.length} Team Member
+                        {selectedEmployees.length !== 1 ? "s" : ""} Selected
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedEmployees([])}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 cursor-pointer"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Navigation */}
             <div className="flex justify-between">
@@ -1261,7 +1318,7 @@ export default function CreateProject() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-gray-500 text-sm">
@@ -1331,16 +1388,16 @@ export default function CreateProject() {
                     <CardDescription className="text-sm">
                       {selectedEmployees.length} member
                       {selectedEmployees.length !== 1 ? "s" : ""} will be
-                      assigned to this project
+                      assigned to this project{" "}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-3">
-                  {getSelectedEmployeeDetails().map((employee) => (
+              <CardContent>
+                <div className="space-y-3 max-h-64 overflow-auto">
+                  {selectedEmployees.map((employee) => (
                     <div
-                      key={employee._id}
+                      key={employee.id}
                       className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                     >
                       <div className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
@@ -1355,9 +1412,39 @@ export default function CreateProject() {
                           {employee.name}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {employee.position?.name}
+                          {employee.position}
                         </p>
                       </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant={
+                              userId === employee.managerId
+                                ? "default"
+                                : "secondary"
+                            }
+                            className={`gap-1.5 px-3 font-medium transition-colors ${
+                              userId === employee.managerId
+                                ? "bg-emerald-500 hover:bg-emerald-600 text-white dark:bg-emerald-600"
+                                : "bg-slate-500 hover:bg-slate-600 text-white dark:bg-slate-600"
+                            }`}
+                          >
+                            {userId === employee.managerId ? (
+                              <UserCheck className="h-4 w-4" />
+                            ) : (
+                              <Users className="h-4 w-4" />
+                            )}
+                            {employee.manager}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-sm">
+                            {userId === employee.managerId
+                              ? "Direct report - You manage this employee"
+                              : "Indirect report - Managed by another manager"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>

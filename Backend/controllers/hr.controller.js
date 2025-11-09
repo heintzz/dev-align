@@ -203,20 +203,42 @@ const listEmployees = async (req, res) => {
       .limit(limit)
       .exec();
 
-    // Count projects per user for users in this page
     const userIds = users.map((u) => u._id);
+
     const projectCountsMap = new Map();
+    const activeCountsMap = new Map();
+
     if (userIds.length > 0) {
       const counts = await ProjectAssignment.aggregate([
         { $match: { userId: { $in: userIds } } },
         { $group: { _id: "$userId", count: { $sum: 1 } } },
       ]).exec();
       counts.forEach((c) => projectCountsMap.set(String(c._id), c.count));
+
+      const activeCounts = await ProjectAssignment.aggregate([
+        { $match: { userId: { $in: userIds } } },
+        {
+          $lookup: {
+            from: "projects",
+            localField: "projectId",
+            foreignField: "_id",
+            as: "project",
+          },
+        },
+        { $unwind: "$project" },
+        { $match: { "project.status": "active" } },
+        { $group: { _id: "$userId", activeCount: { $sum: 1 } } },
+      ]).exec();
+
+      activeCounts.forEach((c) =>
+        activeCountsMap.set(String(c._id), c.activeCount)
+      );
     }
 
     const mapped = users.map((u) => {
       const out = userDto.mapUserToUserResponse(u);
       out.projectCount = projectCountsMap.get(String(u._id)) || 0;
+      out.activeProjectCount = activeCountsMap.get(String(u._id)) || 0;
       return out;
     });
 
