@@ -192,6 +192,8 @@ def get_recommendations(request: SkillRequest):
     scores = []
     for user in user_collection.find({"role": "staff"}):
         user_id = user.get("_id")
+        manager_id = user.get("managerId")
+        manager = database.get_collection("users").find_one({"_id": manager_id}, {"_id": 1,"name": 1})
         position_id = user.get("position")
         position = database.get_collection("positions").find_one({"_id": position_id}, {"name": 1})
         position_name = position["name"] if position and position.get("name") else None
@@ -282,6 +284,7 @@ def get_recommendations(request: SkillRequest):
         logs["project_similarity_time"] += time.time() - start_time
 
         # 5. Merge all the data
+        print(manager)
         result = {
             "_id": str(user_id),
             "name": user.get("name"),
@@ -290,7 +293,10 @@ def get_recommendations(request: SkillRequest):
             "skillMatch": matched_count_score,
             "currentWorkload": project_count_score,
             "projectSimilarity": 0 if np.isnan(top_3_avg) else float(top_3_avg),
-            "managerId": str(user.get("managerId")),
+            "manager": {
+                "_id": str(manager.get("_id")),
+                "name": manager.get("name")
+            },
         }
 
         scores.append(result)

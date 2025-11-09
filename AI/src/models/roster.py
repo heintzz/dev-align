@@ -6,6 +6,10 @@ class ProjectEmbeddingsResponse(BaseModel):
     status: str
     project_id: str
 
+class ManagerModel(BaseModel):
+    id: str = Field(alias="_id")
+    name: str
+    
 class Candidate(BaseModel):
     id: str = Field(alias="_id")
     name: str
@@ -15,7 +19,7 @@ class Candidate(BaseModel):
     currentWorkload: float
     projectSimilarity: float
     matchingPercentage: float
-    managerId: str
+    manager: ManagerModel
     rank: int
     reason: str
 
