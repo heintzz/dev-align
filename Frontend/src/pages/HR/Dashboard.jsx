@@ -198,7 +198,7 @@ export default function HRDashboard() {
       : "bg-yellow-100 text-yellow-800";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
+    <div className="min-h-screen pb-24 pt-5 lg:px-5 lg:py-10">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       {/* Header */}

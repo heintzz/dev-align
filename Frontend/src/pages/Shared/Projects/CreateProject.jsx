@@ -206,7 +206,12 @@ export default function CreateProject() {
             position: { name: positionName },
             skills: (candidate.skills || []).map((s) => ({ name: s })),
             skillMatch: candidate.skillMatch * 100,
-            currentWorkload: Math.round((candidate.currentWorkload || 0) * 100),
+            originalCurrentWorkload: Math.round(
+              (candidate.currentWorkload || 0) * 100
+            ),
+            currentWorkload: Math.round(
+              (1 - candidate.currentWorkload || 0) * 100
+            ),
             projectSimilarity: candidate.projectSimilarity * 100,
             matchingPercentage: Math.round(
               (candidate.matchingPercentage || 0) * 100
@@ -573,7 +578,7 @@ export default function CreateProject() {
   };
 
   return (
-    <div className="min-h-screen lg:p-5">
+    <div className="min-h-screen pb-24 pt-5 lg:px-5 lg:py-10">
       <Loading status={loadingState} fullscreen text={loadingText} />
 
       {/* Header */}
@@ -1128,8 +1133,10 @@ export default function CreateProject() {
                                           </p>
                                           <p>
                                             Current Workload :{" "}
-                                            {employee.currentWorkload} (
-                                            {employee.currentWorkload * 0.2}%)
+                                            {employee.originalCurrentWorkload} (
+                                            {employee.originalCurrentWorkload *
+                                              0.2}
+                                            %)
                                           </p>
                                           <p>
                                             Project Similarity :{" "}

@@ -40,23 +40,6 @@ function App() {
     <>
       <Router>
         <Routes>
-          {/* Profile and Change Password */}
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePasswordPage />
-              </ProtectedRoute>
-            }
-          />
           {/* Halaman Login tanpa layout */}
           <Route
             path="/login"
@@ -80,6 +63,28 @@ function App() {
               <GuestRoute>
                 <ResetPassword />
               </GuestRoute>
+            }
+          />
+
+          {/* Profile and Change Password */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ProfilePage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ChangePasswordPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
 
