@@ -234,7 +234,11 @@ const TaskCard = ({ task, projectId }) => {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent
+          className="max-w-lg"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex justify-between items-center">
               {isEditing ? "Edit Task" : task.title}
