@@ -1109,8 +1109,8 @@ export default function CreateProject() {
                                   <TooltipContent side="top">
                                     <p className="text-sm">
                                       {userId === employee.managerId
-                                        ? "Direct report - You manage this employee"
-                                        : "Indirect report - Managed by another manager"}
+                                        ? "Direct subordinate - You manage this employee"
+                                        : "Indirect subordinate - Managed by another manager"}
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>
