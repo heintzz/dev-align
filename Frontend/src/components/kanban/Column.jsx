@@ -401,6 +401,12 @@ const Column = ({
                             className="cursor-pointer"
                           >
                             {employee.name}
+                            {" - "}
+                            <span className="italic">
+                              {employee.position
+                                ? employee.position.name
+                                : "Manager"}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
