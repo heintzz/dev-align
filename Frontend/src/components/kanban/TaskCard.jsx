@@ -435,7 +435,12 @@ const TaskCard = ({ task, projectId }) => {
                     <SelectContent>
                       {listAssigneeProject.map((assignee) => (
                         <SelectItem key={assignee._id} value={assignee._id}>
-                          {assignee.name}
+                          {assignee.name} {" - "}
+                          <span className="italic">
+                            {assignee.position
+                              ? assignee.position.name
+                              : "Manager"}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
