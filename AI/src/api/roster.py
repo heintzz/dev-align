@@ -195,19 +195,20 @@ def get_recommendations(request: SkillRequest):
         position_id = user.get("position")
         position = database.get_collection("positions").find_one({"_id": position_id}, {"name": 1})
         position_name = position["name"] if position and position.get("name") else None
+        print(position_name)
 
         # 1. matching skills, FURTHER IMPROVEMENT: maybe we can use AI to match some typo skills
         start_time = time.time()
         skill_ids = user.get("skills", [])
         skills = list(database.get_collection("skills").find({"_id": {"$in": skill_ids}}, {"name": 1}))
         user_skills = [clean_skills_name(skill["name"]) for skill in skills]
-        required_skills = [clean_skills_name(skill) for skill in position_with_skills[position_name]]
-
+        required_skills = [clean_skills_name(skill) for skill in position_with_skills.get(position_name, [])]
+        
         matched_count = len(set(required_skills) & set(user_skills))
         total = len(set(required_skills))
         print("Yang cocok: ", matched_count)
         print("Butuh brp: ", total)
-        matched_count_score = matched_count / total
+        matched_count_score = 0.0 if total == 0 else matched_count / total
         print("Required skills: ", required_skills)
         print("User skills: ", user_skills)
         logs["skill_matching_time"] += time.time() - start_time
