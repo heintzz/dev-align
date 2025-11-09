@@ -3,12 +3,12 @@ import dspy
 import string
 import time
 
-from src.models.roster import ProjectEmbeddingsResponse, RosterRecommendationsResponse
+from src.models.roster import RosterRecommendationsResponse
 
 from src.configs.mongodb import get_database
 from src.config import settings
 from src.agents.agent import configure_llm_roster
-from src.agents.recommendation_agent.model import RecommendationModel
+from src.agents.recommendation_agent.model import RecommendationModel, ClassifySkillModel
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException
@@ -159,11 +159,12 @@ async def create_project_embeddings(request: EmbeddingProjectRequest):
 def get_recommendations(request: SkillRequest):
     logs = {
         "workload_calculation_time": 0,
+        "classifying_skills": 0,
         "skill_matching_time": 0,
         "vector_retrieval_time": 0,
         "project_similarity_time": 0,
         "ai_reranking_time": 0,
-        "total_execution_time": 0
+        "total_execution_time": 0,
     }
     
     total_start_time = time.time()
@@ -174,6 +175,18 @@ def get_recommendations(request: SkillRequest):
     project_description = request.description
     required_positions = request.positions
     required_skills = request.skills
+
+    start_time = time.time()
+    configure_llm_roster()
+    skill_classifier = dspy.Predict(ClassifySkillModel)
+    position_with_skills = skill_classifier(
+        positions=[position.name for position in required_positions],
+        skills=required_skills
+    )
+    position_with_skills = {item.position: item.skills for item in position_with_skills.grouped_skills}
+    print("Position with Skills")
+    print(position_with_skills)
+    logs["classifying_skills"] += time.time() - start_time
 
     # MAIN
     scores = []
@@ -188,7 +201,7 @@ def get_recommendations(request: SkillRequest):
         skill_ids = user.get("skills", [])
         skills = list(database.get_collection("skills").find({"_id": {"$in": skill_ids}}, {"name": 1}))
         user_skills = [clean_skills_name(skill["name"]) for skill in skills]
-        required_skills = [clean_skills_name(skill) for skill in required_skills]
+        required_skills = [clean_skills_name(skill) for skill in position_with_skills[position_name]]
 
         matched_count = len(set(required_skills) & set(user_skills))
         total = len(set(required_skills))
@@ -275,7 +288,8 @@ def get_recommendations(request: SkillRequest):
             "skills":  [skill["name"] for skill in skills],
             "skillMatch": matched_count_score,
             "currentWorkload": project_count_score,
-            "projectSimilarity": 0 if np.isnan(top_3_avg) else float(top_3_avg)
+            "projectSimilarity": 0 if np.isnan(top_3_avg) else float(top_3_avg),
+            "managerId": str(user.get("managerId")),
         }
 
         scores.append(result)
@@ -287,9 +301,6 @@ def get_recommendations(request: SkillRequest):
         score["skillMatch"] = round(score["skillMatch"], 2)
         score["currentWorkload"] = round(score["currentWorkload"], 2)
         score["projectSimilarity"] = round(score["projectSimilarity"], 2)
-        
-        # print(score)
-        # print("-" * 25)
 
     # group by position
     grouped = defaultdict(list)
@@ -309,13 +320,10 @@ def get_recommendations(request: SkillRequest):
         top_candidates[position] = sorted_candidates[:n*2]
 
     # 6. let the AI rerank the recommendations
-    # ga pake dspy juga aman aja 👌
     start_time = time.time()
     configure_llm_roster()
     reranker = dspy.Predict(RecommendationModel)
 
-    # berat ga yah :v
-    # bagusnya sebenernya ga desimal sih di skor kandidatnya tapi later lah
     for position, candidates in top_candidates.items():
         response = reranker(
             project_description=project_description,
@@ -337,13 +345,9 @@ def get_recommendations(request: SkillRequest):
 
         # Terapkan urutan ke kandidat
         ordered = [top_candidates[position][i] for i in indexes]
-        print("odde")
-        print(ordered)
-
+    
         # Tambahkan rank number
         for idx, c in enumerate(ordered, start=1):
-            print("caca")
-            print(c)
             c["rank"] = idx
             c["reason"] = reasoning
 
@@ -352,6 +356,5 @@ def get_recommendations(request: SkillRequest):
     
     logs["total_execution_time"] = time.time() - total_start_time
     print(logs)
-    print("ptada")
     print(top_candidates)
     return {"success": True, "data": top_candidates}

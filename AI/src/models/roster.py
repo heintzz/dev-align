@@ -15,6 +15,7 @@ class Candidate(BaseModel):
     currentWorkload: float
     projectSimilarity: float
     matchingPercentage: float
+    managerId: str
     rank: int
     reason: str
 
