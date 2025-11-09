@@ -314,8 +314,10 @@ export default function CreateProject() {
       employeeManagerId,
       employeeManagerName
     );
-    if (selectedEmployees.includes(employeeId)) {
-      setSelectedEmployees(selectedEmployees.filter((id) => id !== employeeId));
+    if (selectedEmployees.some((e) => e.id === employeeId)) {
+      setSelectedEmployees(
+        selectedEmployees.filter((e) => e.id !== employeeId)
+      );
     } else {
       setSelectedEmployees([
         ...selectedEmployees,
