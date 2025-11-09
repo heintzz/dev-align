@@ -1175,33 +1175,34 @@ export default function CreateProject() {
                             )}
 
                             {/* Workload Bar */}
-                            {employee.currentWorkload && (
-                              <>
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-600">
-                                      Workload
-                                    </span>
-                                    <span className="font-medium">
-                                      {employee.currentWorkload}%
-                                    </span>
+                            {employee.currentWorkload !== undefined &&
+                              employee.currentWorkload !== null && (
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-gray-600">
+                                        Workload
+                                      </span>
+                                      <span className="font-medium">
+                                        {employee.currentWorkload}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className={cn(
+                                          "h-2 rounded-full transition-all",
+                                          getWorkloadColor(
+                                            employee.currentWorkload
+                                          )
+                                        )}
+                                        style={{
+                                          width: `${employee.currentWorkload}%`,
+                                        }}
+                                      />
+                                    </div>
                                   </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div
-                                      className={cn(
-                                        "h-2 rounded-full transition-all",
-                                        getWorkloadColor(
-                                          employee.currentWorkload
-                                        )
-                                      )}
-                                      style={{
-                                        width: `${employee.currentWorkload}%`,
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </>
-                            )}
+                                </>
+                              )}
                           </div>
                         </div>
 
