@@ -42,7 +42,7 @@ const getDashboardData = async (req, res) => {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
 
     // 1. Get employee statistics
-    const totalEmployees = await User.countDocuments({});
+    const totalEmployees = await User.countDocuments({ active: true });
     const resignedEmployees = await User.countDocuments({ active: false }); // Changed from isActive to active
 
     // 2. Get project statistics
