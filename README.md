@@ -129,6 +129,7 @@ An AI-powered system that:
 
 ### 🔗 Access DevAlign
 - **Production URL**: [https://devalign.site](https://devalign.site)
+- **Video Demo**: [Watch Demo on YouTube](https://bit.ly/demo-devalign)
 
 ### 🔑 Test Accounts
 
