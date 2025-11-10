@@ -284,7 +284,7 @@ export default function ManageEmployee() {
         return leaveDate >= firstDayOfMonth;
       });
 
-      setTotalCount(data.meta.total);
+      setTotalCount(data.meta.total - leavingEmployees.length);
       setNewCount(newEmployees.length);
       setLeavingCount(leavingEmployees.length);
     } catch (error) {
