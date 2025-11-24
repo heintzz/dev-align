@@ -304,8 +304,6 @@ const getManagerDashboard = async (req, res) => {
     let projectsComplete = 0;
     let projectsOnGoing = 0;
     projectStatusAgg.forEach((g) => {
-      console.log("the g");
-      console.log(g);
       totalProjects += g.count;
       if (String(g._id).toLowerCase() === "completed")
         projectsComplete += g.count;

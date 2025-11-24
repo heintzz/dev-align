@@ -6,13 +6,18 @@ const setupSocket = (io) => {
     const token = socket.handshake.auth.token;
     // Verify JWT token here
     if (token) {
-      // Attach user info to socket
-      // console.log(token);
-      const secretKey = process.env.JWT_SECRET || "secret_key";
-      const decoded = jwt.verify(token, secretKey);
-      // console.log(decoded);
-      socket.userId = decoded.id;
-      next();
+      try {
+        // Attach user info to socket
+        // console.log(token);
+        const secretKey = process.env.JWT_SECRET || "secret_key";
+        const decoded = jwt.verify(token, secretKey);
+        // console.log(decoded);
+        socket.userId = decoded.id;
+        next();
+      } catch (error) {
+        console.error("Socket JWT verification failed:", error.message);
+        next(new Error("Token expired or invalid"));
+      }
     } else {
       next(new Error("Authentication error"));
     }
