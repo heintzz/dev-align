@@ -1,27 +1,30 @@
-const { Position } = require('../models');
+const { Position } = require("../models");
+
+// Helper to escape user input when building RegExp (prevent invalid regex from names with special chars)
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Create single position
 const createPosition = async (req, res) => {
   const { name } = req.body;
 
-  if (!name || name.trim() === '') {
+  if (!name || name.trim() === "") {
     return res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: 'Position name must be specified',
+      error: "Bad Request",
+      message: "Position name must be specified",
     });
   }
 
   try {
     // Check for duplicate (case-insensitive)
     const existingPosition = await Position.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
+      name: { $regex: new RegExp("^" + escapeRegExp(name.trim()) + "$", "i") },
     });
 
     if (existingPosition) {
       return res.status(400).json({
         success: false,
-        error: 'Bad Request',
+        error: "Bad Request",
         message: `Position "${name}" already exists`,
       });
     }
@@ -35,7 +38,7 @@ const createPosition = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -48,8 +51,8 @@ const createMultiplePositions = async (req, res) => {
   if (!positions || !Array.isArray(positions) || positions.length === 0) {
     return res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: 'Positions array is required and must not be empty',
+      error: "Bad Request",
+      message: "Positions array is required and must not be empty",
     });
   }
 
@@ -59,20 +62,25 @@ const createMultiplePositions = async (req, res) => {
     const errors = [];
 
     for (const positionName of positions) {
-      if (!positionName || positionName.trim() === '') {
-        errors.push({ name: positionName, reason: 'Empty or invalid name' });
+      if (!positionName || positionName.trim() === "") {
+        errors.push({ name: positionName, reason: "Empty or invalid name" });
         continue;
       }
 
       // Check for duplicate (case-insensitive)
       const existingPosition = await Position.findOne({
-        name: { $regex: new RegExp(`^${positionName.trim()}$`, 'i') }
+        name: {
+          $regex: new RegExp(
+            "^" + escapeRegExp(positionName.trim()) + "$",
+            "i"
+          ),
+        },
       });
 
       if (existingPosition) {
         skippedPositions.push({
           name: positionName,
-          reason: 'Already exists'
+          reason: "Already exists",
         });
         continue;
       }
@@ -98,7 +106,7 @@ const createMultiplePositions = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -107,26 +115,46 @@ const createMultiplePositions = async (req, res) => {
 const getPositions = async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const perPage = Math.max(1, Number(req.query.perPage) || 15);
-  const skip = perPage ? (page - 1) * perPage : 0;
+  const skip = (page - 1) * perPage;
 
   try {
     const [total, positions] = await Promise.all([
-      Position.countDocuments({}),
-      Position.find({}).sort({ name: -1 }).skip(skip).limit(perPage).select('id name'),
+      Position.countDocuments(),
+      Position.aggregate([
+        { $sort: { name: 1 } }, // sort alphabetically
+        // { $skip: skip },
+        // { $limit: perPage },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "position",
+            as: "users",
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            userCount: { $size: "$users" },
+          },
+        },
+      ]),
     ]);
 
     return res.status(200).json({
       success: true,
       data: {
-        perPage,
+        // perPage,
         total,
         positions,
       },
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -140,8 +168,8 @@ const updatePosition = async (req, res) => {
     if (!currentPosition)
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Position not found',
+        error: "Not Found",
+        message: "Position not found",
       });
 
     currentPosition.name = req.body.name || currentPosition.name;
@@ -154,7 +182,7 @@ const updatePosition = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -168,8 +196,8 @@ const deletePosition = async (req, res) => {
     if (!deletedPosition)
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Position not found',
+        error: "Not Found",
+        message: "Position not found",
       });
 
     await deletedPosition.deleteOne();
@@ -177,7 +205,7 @@ const deletePosition = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -190,8 +218,8 @@ const deleteMultiplePositions = async (req, res) => {
   if (!positionIds || !Array.isArray(positionIds) || positionIds.length === 0) {
     return res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: 'Position IDs array is required and must not be empty',
+      error: "Bad Request",
+      message: "Position IDs array is required and must not be empty",
     });
   }
 
@@ -208,7 +236,7 @@ const deleteMultiplePositions = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }

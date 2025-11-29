@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const {
   getPositions,
   createPosition,
@@ -6,9 +6,9 @@ const {
   updatePosition,
   deletePosition,
   deleteMultiplePositions,
-} = require('../controllers/position.controller');
-const auth = require('../middlewares/authorization');
-const verifyToken = require('../middlewares/token');
+} = require("../controllers/position.controller");
+const auth = require("../middlewares/authorization");
+const verifyToken = require("../middlewares/token");
 const router = express.Router();
 
 /**
@@ -64,7 +64,7 @@ const router = express.Router();
  *                           name:
  *                             type: string
  */
-router.get('/', verifyToken, auth('hr'), getPositions);
+router.get("/", verifyToken, auth("hr", "manager"), getPositions);
 
 /**
  * @swagger
@@ -90,7 +90,7 @@ router.get('/', verifyToken, auth('hr'), getPositions);
  *       400:
  *         description: Bad request
  */
-router.post('/', verifyToken, auth('hr'), createPosition);
+router.post("/", verifyToken, auth("hr"), createPosition);
 
 /**
  * @swagger
@@ -122,7 +122,7 @@ router.post('/', verifyToken, auth('hr'), createPosition);
  *       404:
  *         description: Position not found
  */
-router.put('/:positionId', verifyToken, auth('hr'), updatePosition);
+router.put("/:positionId", verifyToken, auth("hr"), updatePosition);
 
 /**
  * @swagger
@@ -144,7 +144,7 @@ router.put('/:positionId', verifyToken, auth('hr'), updatePosition);
  *       404:
  *         description: Position not found
  */
-router.delete('/:positionId', verifyToken, auth('hr'), deletePosition);
+router.delete("/:positionId", verifyToken, auth("hr"), deletePosition);
 
 /**
  * @swagger
@@ -172,7 +172,7 @@ router.delete('/:positionId', verifyToken, auth('hr'), deletePosition);
  *       400:
  *         description: Bad request
  */
-router.post('/batch', verifyToken, auth('hr'), createMultiplePositions);
+router.post("/batch", verifyToken, auth("hr"), createMultiplePositions);
 
 /**
  * @swagger
@@ -200,6 +200,6 @@ router.post('/batch', verifyToken, auth('hr'), createMultiplePositions);
  *       400:
  *         description: Bad request
  */
-router.delete('/batch', verifyToken, auth('hr'), deleteMultiplePositions);
+router.delete("/batch", verifyToken, auth("hr"), deleteMultiplePositions);
 
 module.exports = router;

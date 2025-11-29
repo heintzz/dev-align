@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Deploy Backend to EC2
 
 on:
   push:
@@ -6,17 +6,19 @@ on:
       - dev
     paths:
       - 'Backend/**'
+      - 'AI/**'
+      - 'docker-compose.yml'
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
   deploy-backend:
-    name: Deploy Backend to EC2
+    name: Deploy Backend + AI with Docker
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Deploy to Backend EC2
         uses: appleboy/ssh-action@master
         with:
@@ -24,48 +26,91 @@ jobs:
           username: ubuntu
           key: ${{ secrets.BACKEND_SSH_KEY }}
           script: |
-            echo "🚀 Starting backend deployment..."
+            echo "=========================================="
+            echo "🚀 Starting Backend Deployment with Docker"
+            echo "=========================================="
             echo "📍 Backend Server: 13.250.231.18"
-            
-            # Navigate to app directory
-            cd /var/www/backend
-            
-            # Backup old version
+            echo ""
+
+            # Navigate to deployment directory
+            cd /var/www/backend || exit 1
+
+            # Backup old version (if exists)
             if [ -d "DevAlign" ]; then
               echo "📦 Backing up current version..."
               rm -rf DevAlign-backup
-              mv DevAlign DevAlign-backup
+              cp -r DevAlign DevAlign-backup
+              echo "✅ Backup created"
             fi
-            
-            # Clone latest code
-            echo "📥 Cloning repository..."
-            git clone -b dev https://github.com/PentabyteDevAlign/DevAlign.git
-            
-            # Install dependencies
-            echo "📦 Installing backend dependencies..."
-            cd DevAlign/Backend
-            npm install --production
-            
-            # Copy environment file
+
+            # Clone or pull latest code from dev branch
+            if [ -d "DevAlign" ]; then
+              echo "📥 Pulling latest changes from dev branch..."
+              cd DevAlign
+              git fetch origin dev
+              git reset --hard origin/dev
+              git pull origin dev
+            else
+              echo "📥 Cloning repository..."
+              git clone -b dev https://github.com/PentabyteDevAlign/DevAlign.git
+              cd DevAlign
+            fi
+
+            echo "✅ Code updated successfully"
+            echo ""
+
+            # Copy environment files from secure location
             echo "⚙️ Copying environment variables..."
-            cp /var/www/backend/.env .env
-            
-            # Stop existing PM2 process
-            echo "🛑 Stopping existing backend process..."
-            pm2 stop devalign-backend 2>/dev/null || true
-            pm2 delete devalign-backend 2>/dev/null || true
-            
-            # Start backend with PM2
-            echo "▶️ Starting backend server..."
-            pm2 start npm --name "devalign-backend" -- start
-            pm2 save
-            
-            # Setup PM2 auto-restart on server reboot
-            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu 2>/dev/null || true
-            
-            # Show status
-            pm2 status
-            
-            echo "✅ Backend deployment complete!"
-            echo "🌐 Backend API running at: http://13.250.231.18:5000"
-            echo "📊 Check logs with: pm2 logs devalign-backend"
+            cp /var/www/backend/.env.backend Backend/.env
+            cp /var/www/backend/.env.ai AI/.env
+            echo "✅ Environment files copied"
+            echo ""
+
+            # Stop existing Docker containers
+            echo "🛑 Stopping existing Docker containers..."
+            docker compose down 2>/dev/null || true
+            echo "✅ Containers stopped"
+            echo ""
+
+            # Remove old images to save space (optional, but recommended)
+            echo "🧹 Cleaning up old Docker images..."
+            docker image prune -f
+            echo ""
+
+            # Build and start containers
+            echo "🔨 Building and starting Docker containers..."
+            docker compose up -d --build
+
+            # Wait for containers to be healthy
+            echo ""
+            echo "⏳ Waiting for containers to start (10 seconds)..."
+            sleep 10
+
+            # Check container status
+            echo ""
+            echo "📊 Container Status:"
+            docker compose ps
+
+            # Show container logs (last 20 lines)
+            echo ""
+            echo "📋 Recent Backend Logs:"
+            docker compose logs --tail=20 backend
+
+            echo ""
+            echo "📋 Recent AI Backend Logs:"
+            docker compose logs --tail=20 ai-backend
+
+            echo ""
+            echo "=========================================="
+            echo "✅ Backend Deployment Complete!"
+            echo "=========================================="
+            echo "🌐 Backend API: http://13.250.231.18:5000"
+            echo "🤖 AI API: http://13.250.231.18:8000"
+            echo ""
+            echo "📊 Check logs with:"
+            echo "   docker compose logs -f backend"
+            echo "   docker compose logs -f ai-backend"
+            echo ""
+            echo "🔄 Restart containers with:"
+            echo "   docker compose restart"
+            echo "=========================================="

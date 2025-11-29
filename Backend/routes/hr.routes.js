@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 
 const {
-	createEmployee,
-	listEmployees,
-	getEmployee,
-	updateEmployee,
-	deleteEmployee,
-	importEmployees,
-	parseCv,
-	getImportTemplate,
+  createEmployee,
+  listEmployees,
+  getEmployee,
+  updateEmployee,
+  changeEmployeeStatus,
+  importEmployees,
+  parseCv,
+  getImportTemplate,
+  getColleagues,
 } = require('../controllers/hr.controller');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -140,7 +141,7 @@ router.put('/employee/:id', verifyToken, auth('hr'), updateEmployee);
  * @swagger
  * /hr/employee/{id}:
  *   delete:
- *     summary: Delete employee
+ *     summary: Deactivate or hard-delete an employee
  *     tags: [HR]
  *     security:
  *       - bearerAuth: []
@@ -150,11 +151,61 @@ router.put('/employee/:id', verifyToken, auth('hr'), updateEmployee);
  *         required: true
  *         schema:
  *           type: string
+ *         description: The ID of the employee to deactivate or delete.
+ *       - in: query
+ *         name: active
+ *         schema:
+ *           type: boolean
+ *         description: Set to 'true' to activate an employee. If omitted or 'false', the employee will be deactivated (soft-deleted).
+ *       - in: query
+ *         name: hard
+ *         schema:
+ *           type: boolean
+ *         description: Set to 'true' to permanently delete the employee. This action is irreversible. Only applicable if 'active' is not 'true'.
  *     responses:
  *       200:
- *         description: Employee deleted
+ *         description: Employee status changed successfully (deactivated, activated, or hard-deleted).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Employee deactivated
+ *       400:
+ *         description: Bad request (e.g., invalid ID, already active/deactivated).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: Invalid ID
+ *       404:
+ *         description: Employee not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *       500:
+ *         description: Internal server error.
  */
-router.delete('/employee/:id', verifyToken, auth('hr'), deleteEmployee);
+router.delete('/employee/:id', changeEmployeeStatus);
 
 /**
  * @swagger
@@ -217,5 +268,89 @@ router.post('/parse-cv', verifyToken, auth('hr'), upload.single('file'), parseCv
  *         description: File download
  */
 router.get('/employees/template', verifyToken, auth('hr'), getImportTemplate);
+
+/**
+ * @swagger
+ * /hr/colleagues:
+ *   get:
+ *     summary: Get list of colleagues - teammates with same manager (includes direct manager) for staff/HR, or direct subordinates for managers
+ *     tags: [HR]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of colleagues
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userRole:
+ *                       type: string
+ *                       enum: [staff, manager, hr]
+ *                       example: staff
+ *                     colleagues:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           role:
+ *                             type: string
+ *                           position:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                           skills:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                 name:
+ *                                   type: string
+ *                     directManager:
+ *                       type: object
+ *                       description: Only included for staff/HR roles
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *                         position:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                     totalColleagues:
+ *                       type: integer
+ *                       example: 5
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/colleagues', verifyToken, getColleagues);
 
 module.exports = router;

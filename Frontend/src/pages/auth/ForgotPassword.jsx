@@ -1,133 +1,208 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import logoKiri from "../../assets/img/loginkiri.png";
-import logoKecil from "../../assets/img/loginkanan.png";
-import authService from "../../services/auth.service";
+import { MailCheck, Mail, Send, ArrowLeft } from "lucide-react";
+import logoKiri from "@/assets/img/logokiribaru.png";
+import logoKecil from "@/assets/img/loginkanan.png";
+import authService from "@/services/auth.service";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import Loading from "@/components/Loading";
+import { toast } from "@/lib/toast";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+    setLoadingText("Sending reset link...");
 
     try {
       await authService.forgotPassword(email);
       setIsSubmitted(true);
-    } catch (err) {
-      setError(err.message || 'Failed to send reset link. Please try again.');
-      console.error('Forgot password error:', err);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      setError(error.message || "Failed to send reset link. Please try again.");
+      toast(
+        error.response?.data?.message ||
+          "Failed to send reset link. Please try again.",
+        {
+          type: "error",
+          position: "top-center",
+          duration: 4000,
+        }
+      );
     } finally {
       setIsLoading(false);
+      setLoadingText("");
     }
   };
 
   return (
     <div className="flex min-h-screen">
-      {/* Left Side - Logo Section */}
-      <div className="flex-1 overflow-hidden" style={{ backgroundColor: '#2C3F48' }}>
-        <img 
-          src={logoKiri} 
-          alt="DevAlign Logo" 
-          className="w-full h-screen object-cover"
-        />
+      <Loading status={isLoading} fullscreen text={loadingText} />
+
+      {/* Left Illustration Section */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 text-white flex-col items-center justify-center px-12 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-pink-500/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl" />
+
+        <div className="relative z-10 flex flex-col items-center text-center">
+          <div className="mb-8 transform hover:scale-105 transition-transform duration-300">
+            <img
+              src={logoKiri}
+              alt="DevAlign Illustration"
+              className="w-[480px] h-[480px] object-contain drop-shadow-2xl"
+            />
+          </div>
+          <h2 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-pink-100">
+            Secure Your Access
+          </h2>
+          <p className="text-lg text-purple-100 max-w-md leading-relaxed">
+            Forgot your password? No worries. We'll help you regain access
+            quickly and securely.
+          </p>
+        </div>
       </div>
 
-      {/* Right Side - Forgot Password Form */}
-      <div className="flex-1 bg-white flex items-center justify-center px-8">
-        <div className="w-full max-w-md">
-          {/* Logo and Title */}
-          <div className="mb-12 text-center">
-            <div className="flex items-center justify-center gap-3 mb-8">
-              <img 
-                src={logoKecil} 
-                alt="DevAlign" 
-                className="w-10 h-10 object-contain"
-              />
-              <h1 className="text-2xl font-bold" style={{ color: '#2C3F48' }}>DevAlign</h1>
-            </div>
-            <p className="text-slate-600 text-sm">Welcome to DevAlign</p>
-          </div>
-
-          {/* Forgot Password Title */}
-          <h2 className="text-3xl font-semibold mb-3" style={{ color: '#2C3F48' }}>Forgot Password</h2>
-          <p className="text-slate-600 text-sm mb-8">
-            Enter your email address and we'll send you a link to reset your password.
-          </p>
-
-          {/* Success Message */}
-          {isSubmitted ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-green-800 text-sm font-medium mb-1">
-                Reset link has been sent!
-              </p>
-              <p className="text-green-700 text-sm">
-                Please check your email inbox and follow the link to reset your password.
-              </p>
-            </div>
-          ) : null}
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
-              <p className="text-red-800 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Forgot Password Form */}
-          {!isSubmitted && (
-            <div className="space-y-6">
-              <div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
+      {/* Right Form Section */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100">
+        <Card className="w-full max-w-md shadow-2xl border-0">
+          <CardHeader className="space-y-4 pb-8">
+            {/* Logo */}
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                <img src={logoKecil} alt="DevAlign" className="w-8 h-8" />
               </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                DevAlign
+              </h1>
+            </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={isLoading || !email}
-                className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#2C3F48' }}
-              >
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
-              </button>
+            <div className="text-center">
+              <CardTitle className="text-3xl font-bold text-gray-900">
+                Forgot Password?
+              </CardTitle>
+              <CardDescription className="text-base mt-2">
+                {isSubmitted
+                  ? "Check your email for reset instructions"
+                  : "Enter your email to receive a password reset link"}
+              </CardDescription>
+            </div>
+          </CardHeader>
 
-              <div className="text-center">
-                <Link 
-                  to="/login" 
-                  className="text-sm hover:underline"
-                  style={{ color: '#2C3F48' }}
-                >
-                  Back to Login
+          <CardContent className="space-y-6">
+            {/* Success Message */}
+            {isSubmitted && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <MailCheck className="h-8 w-8 text-green-600" />
+                  </div>
+                </div>
+                <h3 className="text-green-900 font-bold text-lg mb-2">
+                  Reset Link Sent!
+                </h3>
+                <p className="text-green-700 text-sm mb-4 leading-relaxed">
+                  We've sent password reset instructions to{" "}
+                  <span className="font-semibold">{email}</span>. Please check
+                  your inbox and follow the link to reset your password.
+                </p>
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    className="w-full border-green-300 text-green-700 hover:bg-green-50 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Login
+                  </Button>
                 </Link>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Show back to login if submitted */}
-          {isSubmitted && (
-            <div className="text-center mt-6">
-              <Link 
-                to="/login" 
-                className="text-sm hover:underline"
-                style={{ color: '#2C3F48' }}
-              >
-                Back to Login
-              </Link>
-            </div>
-          )}
-        </div>
+            {/* Error Message */}
+            {error && !isSubmitted && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-white text-xs font-bold">!</span>
+                </div>
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Form */}
+            {!isSubmitted && (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Email Address
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      className="pl-11 h-12 border-gray-300 focus:ring-2 focus:ring-purple-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading || !email}
+                  className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-2" />
+                      Send Reset Link
+                    </>
+                  )}
+                </Button>
+
+                <div className="text-center pt-2">
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700 hover:underline transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Login
+                  </Link>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

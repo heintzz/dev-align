@@ -7,13 +7,6 @@ const authService = {
         email,
         password,
       });
-
-      if (response.data.success && response.data.data.token) {
-        localStorage.setItem("token", response.data.data.token);
-        localStorage.setItem("userId", response.data.data.id);
-        localStorage.setItem("userRole", response.data.data.role);
-      }
-
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Login failed" };

@@ -1,30 +1,144 @@
-const userDto = require('../dto/user.dto');
-const { User, Position, Skill } = require('../models');
-const { sendEmail } = require('../utils/email');
-const { hashPassword, generatePassword } = require('../utils/password');
-const mongoose = require('mongoose');
-const XLSX = require('xlsx');
-const pdfParse = require('pdf-parse');
-const path = require('path');
+const userDto = require("../dto/user.dto");
+const { User, Position, Skill, ProjectAssignment } = require("../models");
+const { sendEmail } = require("../utils/email");
+const { hashPassword, generatePassword } = require("../utils/password");
+const mongoose = require("mongoose");
+const XLSX = require("xlsx");
+const pdfParse = require("pdf-parse");
+const path = require("path");
+
+// Helper to safely escape user input when building RegExp
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Parse various date representations coming from XLSX: number (Excel serial), Date object, or string
+const parseExcelDate = (val) => {
+  if (!val && val !== 0) return null;
+  // already a Date
+  if (val instanceof Date) return val;
+
+  // Excel stores dates as numbers (serial). Try parse via XLSX.SSF if available
+  if (typeof val === "number") {
+    try {
+      const d = XLSX.SSF.parse_date_code(val);
+      if (!d) return null;
+      // parse_date_code returns { y, m, d, H, M, S }
+      return new Date(d.y, d.m - 1, d.d, d.H || 0, d.M || 0, d.S || 0);
+    } catch (e) {
+      // fallback to converting from epoch offset
+      const utc = Math.round((val - 25569) * 86400 * 1000);
+      return new Date(utc);
+    }
+  }
+
+  if (typeof val === "string") {
+    const s = val.trim();
+    // ISO-like yyyy-mm-dd
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) return new Date(s);
+    // try yyyy/mm/dd or yyyy.mm.dd
+    if (/^\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}$/.test(s))
+      return new Date(s.replace(/[/.]/g, "-"));
+    // try dd/mm/yyyy or dd-mm-yyyy (common Excel locales)
+    const parts = s.split(/[\/\.\-]/).map((p) => p.trim());
+    if (parts.length === 3) {
+      // if first part is year -> year-first
+      if (parts[0].length === 4) {
+        return new Date(
+          `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(
+            2,
+            "0"
+          )}`
+        );
+      }
+      // assume dd-mm-yyyy
+      return new Date(
+        `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`
+      );
+    }
+
+    // final fallback
+    const parsed = new Date(s);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
+const skillMatching = (skills, existingSkills) => {
+  const clean = (arr) =>
+    arr.map((skill) =>
+      skill
+        .toLowerCase()
+        .replace(/[^\w\s]/g, "")
+        .trim()
+    );
+  console.log({ existingSkills });
+  const cleanedSkills = clean(skills);
+  console.log({ cleanedSkills });
+  const cleanedExisting = clean(existingSkills);
+  console.log({ existingSkills });
+  console.log({ cleanedExisting });
+
+  const matchedSkills = [];
+  const newSkills = [];
+
+  cleanedSkills.forEach((skill, i) => {
+    const matchIndex = cleanedExisting.indexOf(skill);
+    if (matchIndex !== -1) {
+      // Match ditemukan → push versi DB
+      matchedSkills.push(existingSkills[matchIndex]);
+    } else {
+      // Tidak ditemukan → push versi user
+      newSkills.push(skills[i]);
+    }
+  });
+
+  console.log({ matchedSkills, newSkills });
+
+  return { matchedSkills, newSkills };
+};
 
 const createEmployee = async (req, res) => {
-  const { email } = req.body;
-
   try {
+    const { email } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        error: 'Duplicate Email',
-        message: 'User with this email already exists',
+        error: "Duplicate Email",
+        message: "User with this email already exists",
       });
     }
 
     const password = generatePassword();
     const hashedPassword = await hashPassword(password);
 
+    const existingSkills = await Skill.find({});
+    const existingSkillNames = existingSkills.map((skill) => skill.name);
+
+    const { matchedSkills, newSkills } = skillMatching(
+      req.body.skills,
+      existingSkillNames
+    );
+
+    let insertedIds = [];
+    if (newSkills.length > 0) {
+      const skillDocs = newSkills.map((name) => ({ name }));
+      const insertedSkills = await Skill.insertMany(skillDocs);
+      insertedIds = insertedSkills.map((doc) => doc._id);
+    }
+
+    if (matchedSkills?.length > 0) {
+      insertedIds = [
+        ...insertedIds,
+        ...existingSkills
+          .filter((skill) => matchedSkills.includes(skill.name))
+          .map((skill) => skill._id),
+      ];
+    }
+
     const user = new User({
       ...req.body,
+      skills: insertedIds,
       password: hashedPassword,
     });
 
@@ -36,13 +150,13 @@ const createEmployee = async (req, res) => {
     try {
       await sendEmail({
         to: email,
-        subject: 'Account Created - DevAlign HRIS',
+        subject: "Account Created - DevAlign HRIS",
         text: message,
       });
     } catch (e) {
-      // Log and continue — don't fail creation if email sending fails
+      // Log and continue — don"t fail creation if email sending fails
       // eslint-disable-next-line no-console
-      console.warn('Failed to send welcome email:', e.message || e);
+      console.warn("Failed to send welcome email:", e.message || e);
     }
 
     return res.status(201).json({
@@ -52,7 +166,7 @@ const createEmployee = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -61,42 +175,82 @@ const createEmployee = async (req, res) => {
 const listEmployees = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.max(parseInt(req.query.limit, 10) || 20, 1);
-  const search = req.query.search || '';
+  const search = req.query.search || "";
   const { role, position } = req.query;
 
   const filter = {};
   if (search) {
-    const regex = new RegExp(search, 'i');
+    const regex = new RegExp(escapeRegExp(search), "i");
     filter.$or = [{ name: regex }, { email: regex }];
   }
   if (role) filter.role = role;
-  if (position && mongoose.Types.ObjectId.isValid(position)) filter.position = position;
+  if (position && mongoose.Types.ObjectId.isValid(position))
+    filter.position = position;
 
   // Default: tampilkan semua (active & inactive). Jika query active diberikan, filter sesuai.
-  if (typeof req.query.active !== 'undefined') {
-    filter.active = req.query.active === 'true';
+  if (typeof req.query.active !== "undefined") {
+    filter.active = req.query.active === "true";
   }
 
   try {
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
-      .populate('position')
-      .populate('skills', 'name')
-      .populate('managerId', 'name email phoneNumber position')
+      .populate("position")
+      .populate("skills", "name")
+      .populate("managerId", "name email phoneNumber position")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .exec();
 
+    const userIds = users.map((u) => u._id);
+
+    const projectCountsMap = new Map();
+    const activeCountsMap = new Map();
+
+    if (userIds.length > 0) {
+      const counts = await ProjectAssignment.aggregate([
+        { $match: { userId: { $in: userIds } } },
+        { $group: { _id: "$userId", count: { $sum: 1 } } },
+      ]).exec();
+      counts.forEach((c) => projectCountsMap.set(String(c._id), c.count));
+
+      const activeCounts = await ProjectAssignment.aggregate([
+        { $match: { userId: { $in: userIds } } },
+        {
+          $lookup: {
+            from: "projects",
+            localField: "projectId",
+            foreignField: "_id",
+            as: "project",
+          },
+        },
+        { $unwind: "$project" },
+        { $match: { "project.status": "active" } },
+        { $group: { _id: "$userId", activeCount: { $sum: 1 } } },
+      ]).exec();
+
+      activeCounts.forEach((c) =>
+        activeCountsMap.set(String(c._id), c.activeCount)
+      );
+    }
+
+    const mapped = users.map((u) => {
+      const out = userDto.mapUserToUserResponse(u);
+      out.projectCount = projectCountsMap.get(String(u._id)) || 0;
+      out.activeProjectCount = activeCountsMap.get(String(u._id)) || 0;
+      return out;
+    });
+
     return res.json({
       success: true,
-      data: users.map((u) => userDto.mapUserToUserResponse(u)),
+      data: mapped,
       meta: { total, page, limit },
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: err.message,
     });
   }
@@ -106,104 +260,195 @@ const getEmployee = async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, error: 'Invalid ID' });
+    return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
   try {
     // populate manager info to include name & email for frontend
     const user = await User.findById(id)
-      .populate('position')
-      .populate('skills', 'name')
-      .populate('managerId', 'name email phoneNumber position')
+      .populate("position")
+      .populate("skills", "name")
+      .populate("managerId", "name email phoneNumber position")
       .lean();
 
-    if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
+    if (!user)
+      return res.status(404).json({ success: false, error: "Not Found" });
 
     // Authorization: hr and manager can view any; others can view only their own record
     const requester = req.user || {};
-    if (!['hr', 'manager'].includes(requester.role) && requester._id !== String(id) && requester.id !== String(id)) {
-      return res.status(403).json({ success: false, error: 'Forbidden' });
+    if (
+      !["hr", "manager"].includes(requester.role) &&
+      requester._id !== String(id) &&
+      requester.id !== String(id)
+    ) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
     // If the user is inactive, only HR can view details
-    if (user.active === false && requester.role !== 'hr') {
-      return res.status(404).json({ success: false, error: 'Not Found' });
+    if (user.active === false && requester.role !== "hr") {
+      return res.status(404).json({ success: false, error: "Not Found" });
     }
 
     // map and return — DTO will include manager object when populated
     const response = userDto.mapUserToUserResponse(user);
+    // attach project count for this employee
+    try {
+      const projCount = await ProjectAssignment.countDocuments({
+        userId: user._id,
+      });
+      response.projectCount = projCount;
+    } catch (e) {
+      // non-fatal: if counting fails, default to 0
+      response.projectCount = 0;
+    }
+
     return res.json({ success: true, data: response });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
 const updateEmployee = async (req, res) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, error: 'Invalid ID' });
+    return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
   // Only HR can update via middleware in routes; still check existence
   try {
     const user = await User.findById(id);
-    if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
+    if (!user)
+      return res.status(404).json({ success: false, error: "Not Found" });
 
     if (req.body.email && req.body.email !== user.email) {
       const exists = await User.findOne({ email: req.body.email });
-      if (exists) return res.status(400).json({ success: false, error: 'Duplicate Email' });
+      if (exists)
+        return res
+          .status(400)
+          .json({ success: false, error: "Duplicate Email" });
     }
 
-    const updatable = ['name', 'email', 'phoneNumber', 'placeOfBirth', 'dateOfBirth', 'position', 'managerId', 'role'];
+    const updatable = [
+      "name",
+      "email",
+      "phoneNumber",
+      "placeOfBirth",
+      "dateOfBirth",
+      "position",
+      "managerId",
+      "role",
+    ];
     updatable.forEach((k) => {
-      if (Object.prototype.hasOwnProperty.call(req.body, k)) user[k] = req.body[k];
+      if (Object.prototype.hasOwnProperty.call(req.body, k))
+        user[k] = req.body[k];
     });
 
+    // Handle skills update if skills array is provided
+    if (Array.isArray(req.body.skills)) {
+      // Find or create skills by name
+      const skillIds = await Promise.all(
+        req.body.skills.map(async (skillName) => {
+          let skill = await Skill.findOne({
+            name: new RegExp("^" + escapeRegExp(skillName) + "$", "i"),
+          });
+          if (!skill) {
+            // Create new skill if it doesn"t exist
+            skill = await Skill.create({ name: skillName });
+          }
+          return skill._id;
+        })
+      );
+
+      // Update user"s skills
+      user.skills = skillIds;
+    }
+
     const updated = await user.save();
-    return res.json({ success: true, data: userDto.mapUserToUserResponse(updated) });
+
+    // Fetch complete user data with populated fields
+    const populatedUser = await User.findById(updated._id)
+      .populate("skills", "name")
+      .populate("position")
+      .populate("managerId", "name email phoneNumber position");
+    return res.json({
+      success: true,
+      data: userDto.mapUserToUserResponse(populatedUser),
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
-const deleteEmployee = async (req, res) => {
+const changeEmployeeStatus = async (req, res) => {
   const { id } = req.params;
+  const isActive = req.query.active;
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, error: 'Invalid ID' });
+    return res.status(400).json({ success: false, error: "Invalid ID" });
   }
 
+  const user = await User.findById(id);
+  if (!user)
+    return res.status(404).json({ success: false, error: "Not Found" });
+
   try {
+    // ?active=true
     // Prioritize soft-delete. Allow hard delete when query ?hard=true is provided (HR only route already enforced in router).
-    const hard = req.query.hard === 'true';
+    const hard = req.query.hard === "true";
     if (hard) {
       const deleted = await User.findByIdAndDelete(id);
-      if (!deleted) return res.status(404).json({ success: false, error: 'Not Found' });
-      return res.json({ success: true, message: 'Employee hard-deleted' });
+      if (!deleted)
+        return res.status(404).json({ success: false, error: "Not Found" });
+      return res.json({ success: true, message: "Employee hard-deleted" });
     }
 
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ success: false, error: 'Not Found' });
-    if (user.active === false) return res.status(400).json({ success: false, error: 'Already Deactivated' });
+    if (isActive == "true") {
+      if (user.active === true)
+        return res
+          .status(400)
+          .json({ success: false, error: "Already Activated" });
 
-    user.active = false;
-    await user.save();
-    return res.json({ success: true, message: 'Employee deactivated' });
+      user.active = true;
+      await user.save();
+      return res.json({ success: true, message: "Employee activated" });
+    } else {
+      if (user.active === false)
+        return res
+          .status(400)
+          .json({ success: false, error: "Already Deactivated" });
+
+      user.active = false;
+      await user.save();
+      return res.json({ success: true, message: "Employee deactivated" });
+    }
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err.message });
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
 const importEmployees = async (req, res) => {
   if (!req.file || !req.file.buffer) {
-    return res.status(400).json({ success: false, error: 'No file uploaded' });
+    return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
-  // Defaults per agreement: dryRun = true by default, sendEmails = false by default
-  const dryRun = req.query.dryRun === undefined ? true : !(req.query.dryRun === 'false');
-  const sendEmails = req.query.sendEmails === 'true';
+  // Always proceed with import and send emails
+  const dryRun = false;
+  const sendEmails = true;
 
   try {
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
@@ -216,57 +461,100 @@ const importEmployees = async (req, res) => {
       const email = row.email || row.Email || null;
       const managerEmail = row.managerEmail || row.ManagerEmail || null;
       const positionVal = row.position || row.Position || null;
-      const skillsVal = row.skills || row.Skills || '';
-      
+      const skillsVal = row.skills || row.Skills || "";
+
       if (email) fileEmails.push(String(email).toLowerCase());
-      if (managerEmail) managerEmailsSet.add(String(managerEmail).toLowerCase());
-      if (positionVal && typeof positionVal === 'string') positionNamesSet.add(positionVal);
-      
+      if (managerEmail)
+        managerEmailsSet.add(String(managerEmail).toLowerCase());
+      if (positionVal && typeof positionVal === "string")
+        positionNamesSet.add(positionVal);
+
       // Handle skills (comma-separated string or array)
       if (skillsVal) {
-        const skillNames = typeof skillsVal === 'string' 
-          ? skillsVal.split(',').map(s => s.trim()).filter(Boolean)
-          : Array.isArray(skillsVal) ? skillsVal : [];
-        skillNames.forEach(name => skillNamesSet.add(name));
+        const skillNames =
+          typeof skillsVal === "string"
+            ? skillsVal
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : Array.isArray(skillsVal)
+            ? skillsVal
+            : [];
+        skillNames.forEach((name) => skillNamesSet.add(name));
       }
     });
 
     // find existing users with those emails
-    const existingUsers = await User.find({ email: { $in: fileEmails } }).select('email _id').lean();
-    const existingEmailSet = new Set(existingUsers.map((u) => String(u.email).toLowerCase()));
+    const existingUsers = await User.find({ email: { $in: fileEmails } })
+      .select("email _id")
+      .lean();
+    const existingEmailSet = new Set(
+      existingUsers.map((u) => String(u.email).toLowerCase())
+    );
 
     // resolve managers
-    const managers = await User.find({ email: { $in: Array.from(managerEmailsSet) } }).select('email _id').lean();
-    const managerMap = new Map(managers.map((m) => [String(m.email).toLowerCase(), m._id]));
+    const managers = await User.find({
+      email: { $in: Array.from(managerEmailsSet) },
+    })
+      .select("email _id")
+      .lean();
+    const managerMap = new Map(
+      managers.map((m) => [String(m.email).toLowerCase(), m._id])
+    );
 
     // helper to escape user input for RegExp
-    const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\[\]\\]/g, '\\$&');
+    const escapeRegExp = (s) =>
+      String(s).replace(/[.*+?^${}()|[\[\]\\]/g, "\\$&");
 
     // resolve positions by name (case-insensitive)
     const positions = await Position.find({
-      $or: Array.from(positionNamesSet).map((n) => ({ name: new RegExp('^' + escapeRegExp(n) + '$', 'i') })),
-    }).select('name _id').lean();
-  // map using lowercase key for case-insensitive lookup
-  const positionMap = new Map(positions.map((p) => [String(p.name).toLowerCase(), p._id]));
+      $or: Array.from(positionNamesSet).map((n) => ({
+        name: new RegExp("^" + escapeRegExp(n) + "$", "i"),
+      })),
+    })
+      .select("name _id")
+      .lean();
+    // map using lowercase key for case-insensitive lookup
+    const positionMap = new Map(
+      positions.map((p) => [String(p.name).toLowerCase(), p._id])
+    );
 
     // resolve skills by name (case-insensitive)
     const skills = await Skill.find({
-      $or: Array.from(skillNamesSet).map((n) => ({ name: new RegExp('^' + escapeRegExp(n) + '$', 'i') })),
-    }).select('name _id').lean();
-    const skillMap = new Map(skills.map((s) => [String(s.name).toLowerCase(), s._id]));
+      $or: Array.from(skillNamesSet).map((n) => ({
+        name: new RegExp("^" + escapeRegExp(n) + "$", "i"),
+      })),
+    })
+      .select("name _id")
+      .lean();
+    const skillMap = new Map(
+      skills.map((s) => [String(s.name).toLowerCase(), s._id])
+    );
 
-    // Auto-create missing positions and skills so import doesn't fail on unknown names
-    const missingPositionNames = Array.from(positionNamesSet).filter((n) => !positionMap.has(String(n).toLowerCase()));
+    // Auto-create missing positions and skills so import doesn"t fail on unknown names
+    const missingPositionNames = Array.from(positionNamesSet).filter(
+      (n) => !positionMap.has(String(n).toLowerCase())
+    );
     if (missingPositionNames.length > 0) {
       // create positions (preserve provided casing)
-      const createdPositions = await Position.insertMany(missingPositionNames.map((name) => ({ name })));
-      createdPositions.forEach((p) => positionMap.set(String(p.name).toLowerCase(), p._id));
+      const createdPositions = await Position.insertMany(
+        missingPositionNames.map((name) => ({ name }))
+      );
+      createdPositions.forEach((p) =>
+        positionMap.set(String(p.name).toLowerCase(), p._id)
+      );
     }
 
-    const missingSkillNames = Array.from(skillNamesSet).filter((n) => !skillMap.has(String(n).toLowerCase()));
+    const missingSkillNames = Array.from(skillNamesSet).filter(
+      (n) => !skillMap.has(String(n).toLowerCase())
+    );
     if (missingSkillNames.length > 0) {
-      const createdSkills = await Skill.insertMany(missingSkillNames.map((name) => ({ name })));
-      createdSkills.forEach((s) => skillMap.set(String(s.name).toLowerCase(), s._id));
+      const createdSkills = await Skill.insertMany(
+        missingSkillNames.map((name) => ({ name }))
+      );
+      createdSkills.forEach((s) =>
+        skillMap.set(String(s.name).toLowerCase(), s._id)
+      );
     }
 
     // detect within-file duplicates
@@ -282,17 +570,25 @@ const importEmployees = async (req, res) => {
       const email = emailRaw ? String(emailRaw).toLowerCase() : null;
       const phoneNumber = row.phoneNumber || row.Phone || row.phone || null;
       const placeOfBirth = row.placeOfBirth || row.PlaceOfBirth || null;
-      const dateOfBirth = row.dateOfBirth || row.DateOfBirth || null;
+      const rawDateOfBirth = row.dateOfBirth || row.DateOfBirth || null;
+      const parsedDateOfBirth = parseExcelDate(rawDateOfBirth);
       const positionVal = row.position || row.Position || null; // can be id or name
       const managerEmailRaw = row.managerEmail || row.ManagerEmail || null;
-      const managerEmail = managerEmailRaw ? String(managerEmailRaw).toLowerCase() : null;
-      const role = row.role || row.Role || 'staff';
-      const skillsVal = row.skills || row.Skills || '';
+      const managerEmail = managerEmailRaw
+        ? String(managerEmailRaw).toLowerCase()
+        : null;
+      const role = row.role || row.Role || "staff";
+      const skillsVal = row.skills || row.Skills || "";
 
-      const rowResult = { row: rowIndex, errors: [], warnings: [], resolved: {} };
+      const rowResult = {
+        row: rowIndex,
+        errors: [],
+        warnings: [],
+        resolved: {},
+      };
 
       if (!email || !name) {
-        rowResult.errors.push('Missing name or email');
+        rowResult.errors.push("Missing name or email");
         results.push({ ...rowResult, success: false });
         continue;
       }
@@ -300,24 +596,27 @@ const importEmployees = async (req, res) => {
       // simple email regex
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        rowResult.errors.push('Invalid email format');
+        rowResult.errors.push("Invalid email format");
       }
 
       // within-file duplicate
       if (seenInFile.has(email)) {
-        rowResult.errors.push('Duplicate email in file');
+        rowResult.errors.push("Duplicate email in file");
       } else {
         seenInFile.add(email);
       }
 
       // existing DB duplicate
       if (existingEmailSet.has(email)) {
-        rowResult.errors.push('Email already exists in system');
+        rowResult.errors.push("Email already exists in system");
       }
 
       // resolve position
       let position = null;
-      if (positionVal) {
+      console.log("role: ");
+      console.log(role);
+      if (role.toLowerCase() === "staff") {
+        if (positionVal) {
           if (mongoose.Types.ObjectId.isValid(positionVal)) {
             position = positionVal;
             rowResult.resolved.position = position;
@@ -325,9 +624,15 @@ const importEmployees = async (req, res) => {
             position = positionMap.get(String(positionVal).toLowerCase());
             rowResult.resolved.position = position;
           } else {
-            // should not happen because we auto-create missing positions earlier, but keep warning as fallback
-            rowResult.warnings.push('Position not found');
+            rowResult.warnings.push("Position not found");
           }
+        }
+      } else {
+        if (positionVal) {
+          rowResult.warnings.push(
+            `Position ignored for role '${role}' (only staff have positions)`
+          );
+        }
       }
 
       // resolve manager
@@ -337,29 +642,37 @@ const importEmployees = async (req, res) => {
           managerId = managerMap.get(managerEmail);
           rowResult.resolved.managerId = managerId;
         } else {
-          rowResult.warnings.push('Manager email not found');
+          rowResult.warnings.push("Manager email not found");
         }
       }
 
       // resolve skills
       let skills = [];
       if (skillsVal) {
-        const skillNames = typeof skillsVal === 'string' 
-          ? skillsVal.split(',').map(s => s.trim()).filter(Boolean)
-          : Array.isArray(skillsVal) ? skillsVal : [];
-        
-        skills = skillNames.map(name => {
-          if (mongoose.Types.ObjectId.isValid(name)) {
-            return name; // If it's already an ID, use it directly
-          }
-          const key = String(name).toLowerCase();
-          if (skillMap.has(key)) {
-            return skillMap.get(key);
-          }
-          // fallback: skill not found (should be rare because we auto-create earlier)
-          rowResult.warnings.push(`Skill not found: ${name}`);
-          return null;
-        }).filter(Boolean);
+        const skillNames =
+          typeof skillsVal === "string"
+            ? skillsVal
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : Array.isArray(skillsVal)
+            ? skillsVal
+            : [];
+
+        skills = skillNames
+          .map((name) => {
+            if (mongoose.Types.ObjectId.isValid(name)) {
+              return name; // If it"s already an ID, use it directly
+            }
+            const key = String(name).toLowerCase();
+            if (skillMap.has(key)) {
+              return skillMap.get(key);
+            }
+            // fallback: skill not found (should be rare because we auto-create earlier)
+            rowResult.warnings.push(`Skill not found: ${name}`);
+            return null;
+          })
+          .filter(Boolean);
 
         if (skills.length > 0) {
           rowResult.resolved.skills = skills;
@@ -367,9 +680,13 @@ const importEmployees = async (req, res) => {
       }
 
       // date parsing check
-      if (dateOfBirth) {
-        const dt = new Date(dateOfBirth);
-        if (Number.isNaN(dt.getTime())) rowResult.warnings.push('Invalid dateOfBirth format');
+      if (rawDateOfBirth) {
+        if (!parsedDateOfBirth) {
+          rowResult.warnings.push("Invalid dateOfBirth format");
+        } else {
+          // store resolved parsed date for later creation
+          rowResult.resolved.dateOfBirth = parsedDateOfBirth;
+        }
       }
 
       const isRowOk = rowResult.errors.length === 0;
@@ -394,7 +711,7 @@ const importEmployees = async (req, res) => {
           email,
           phoneNumber,
           placeOfBirth,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          dateOfBirth: parsedDateOfBirth ? parsedDateOfBirth : null,
           position,
           managerId,
           skills,
@@ -409,12 +726,12 @@ const importEmployees = async (req, res) => {
           try {
             await sendEmail({
               to: email,
-              subject: 'Account Created - DevAlign HRIS',
+              subject: "Account Created - DevAlign HRIS",
               text: `Hello ${name},\nYour account has been created.\nEmail: ${email}\nPassword: ${password}`,
             });
           } catch (e) {
             // email send failure should not roll back creation
-            rowResult.warnings.push('Failed to send welcome email');
+            rowResult.warnings.push("Failed to send welcome email");
           }
         }
 
@@ -426,52 +743,281 @@ const importEmployees = async (req, res) => {
 
     const created = results.filter((r) => r.success).length;
     const failed = results.length - created;
-    return res.json({ success: true, dryRun, sendEmails, created, failed, results });
+    return res.json({
+      success: true,
+      dryRun,
+      sendEmails,
+      created,
+      failed,
+      results,
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to parse file', message: err.message });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to parse file",
+      message: err.message,
+    });
   }
 };
 
 const getImportTemplate = async (req, res) => {
   try {
-    const format = (req.query.format || 'xlsx').toLowerCase();
-    const xlsxPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.xlsx');
-    const csvPath = path.join(__dirname, '..', 'scripts', 'employee-import-template.csv');
-    const fs = require('fs');
-    if (format === 'xlsx' && fs.existsSync(xlsxPath)) {
-      return res.download(xlsxPath, 'employee-import-template.xlsx');
+    const format = (req.query.format || "xlsx").toLowerCase();
+    const xlsxPath = path.join(
+      __dirname,
+      "..",
+      "scripts",
+      "employee-import-template.xlsx"
+    );
+    const csvPath = path.join(
+      __dirname,
+      "..",
+      "scripts",
+      "employee-import-template.csv"
+    );
+    const fs = require("fs");
+    if (format === "xlsx" && fs.existsSync(xlsxPath)) {
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=employee-import-template.xlsx"
+      );
+      return res.sendFile(xlsxPath);
     }
-    if (format === 'csv' && fs.existsSync(csvPath)) {
-      return res.download(csvPath, 'employee-import-template.csv');
+    if (format === "csv" && fs.existsSync(csvPath)) {
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=employee-import-template.csv"
+      );
+      return res.sendFile(csvPath);
     }
     // fallback: error if file not found
-    return res.status(404).json({ success: false, error: 'Template file not found' });
+    return res
+      .status(404)
+      .json({ success: false, error: "Template file not found" });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to get template', message: err.message });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to get template",
+      message: err.message,
+    });
   }
 };
 
 const parseCv = async (req, res) => {
   if (!req.file || !req.file.buffer) {
-    return res.status(400).json({ success: false, error: 'No file uploaded' });
+    return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
-  const mime = req.file.mimetype || '';
+  const mime = req.file.mimetype || "";
   try {
-    if (mime === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf')) {
+    if (
+      mime === "application/pdf" ||
+      req.file.originalname.toLowerCase().endsWith(".pdf")
+    ) {
       const data = await pdfParse(req.file.buffer);
-      const text = data.text || '';
+      const text = data.text || "";
 
       // extract emails and phones
-      const emails = (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).slice(0, 10);
+      const emails = (
+        text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []
+      ).slice(0, 10);
       const phones = (text.match(/\+?\d[\d \-()]{6,}\d/g) || []).slice(0, 10);
 
-      return res.json({ success: true, text: text.slice(0, 10000), emails, phones });
+      return res.json({
+        success: true,
+        text: text.slice(0, 10000),
+        emails,
+        phones,
+      });
     }
 
-    return res.status(400).json({ success: false, error: 'Unsupported file type for CV parsing. Only PDF supported for now.' });
+    return res.status(400).json({
+      success: false,
+      error:
+        "Unsupported file type for CV parsing. Only PDF supported for now.",
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to parse CV', message: err.message });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to parse CV",
+      message: err.message,
+    });
+  }
+};
+
+const getColleagues = async (req, res) => {
+  try {
+    const currentUserId = req.user.id || req.user._id;
+
+    // ========== PAGINATION PARAMETERS ==========
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // ========== SEARCH AND SORT PARAMETERS ==========
+    const search = req.query.search || "";
+    const sortBy = req.query.sortBy || "name";
+    const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
+
+    const currentUser = await User.findById(currentUserId)
+      .select("role managerId")
+      .lean();
+
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        error: "Not Found",
+        message: "Current user not found",
+      });
+    }
+
+    let colleagues = [];
+    let directManager = null;
+    let totalCount = 0;
+
+    // ========== BUILD BASE QUERY ==========
+    let baseQuery = {
+      active: true,
+      _id: { $ne: currentUserId },
+    };
+
+    // Add search filter
+    if (search) {
+      baseQuery.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // ========== BUILD SORT OBJECT ==========
+    let sortObject = {};
+    switch (sortBy) {
+      case "email":
+        sortObject = { email: sortOrder };
+        break;
+      case "position":
+        sortObject = { position: sortOrder };
+        break;
+      case "name":
+      default:
+        sortObject = { name: sortOrder };
+        break;
+    }
+
+    if (currentUser.role === "manager") {
+      // Manager: get subordinates
+      baseQuery.managerId = currentUserId;
+
+      // Get total count
+      totalCount = await User.countDocuments(baseQuery);
+
+      // Get paginated colleagues
+      colleagues = await User.find(baseQuery)
+        .populate("position", "name")
+        .populate("skills", "name")
+        .select("_id name email role position skills")
+        .sort(sortObject)
+        .skip(skip)
+        .limit(limit)
+        .lean();
+    } else {
+      // Staff/HR: get teammates
+      if (currentUser.managerId) {
+        // Get direct manager details
+        directManager = await User.findById(currentUser.managerId)
+          .populate("position", "name")
+          .select("_id name email role position")
+          .lean();
+
+        // Get teammates
+        baseQuery.managerId = currentUser.managerId;
+
+        // Get total count
+        totalCount = await User.countDocuments(baseQuery);
+
+        // Get paginated colleagues
+        colleagues = await User.find(baseQuery)
+          .populate("position", "name")
+          .populate("skills", "name")
+          .select("_id name email role position skills")
+          .sort(sortObject)
+          .skip(skip)
+          .limit(limit)
+          .lean();
+      }
+    }
+
+    // ========== FORMAT RESPONSE ==========
+    const formattedColleagues = colleagues.map((colleague) => ({
+      id: colleague._id,
+      name: colleague.name,
+      email: colleague.email,
+      role: colleague.role,
+      position: colleague.position
+        ? {
+            id: colleague.position._id,
+            name: colleague.position.name,
+          }
+        : null,
+      skills: colleague.skills
+        ? colleague.skills.map((skill) => ({
+            id: skill._id,
+            name: skill.name,
+          }))
+        : [],
+    }));
+
+    // ========== CALCULATE PAGINATION METADATA ==========
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    const response = {
+      success: true,
+      data: {
+        userRole: currentUser.role,
+        colleagues: formattedColleagues,
+        totalColleagues: totalCount,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: limit,
+          hasNextPage,
+          hasPrevPage,
+        },
+      },
+    };
+
+    // Include manager info if exists
+    if (directManager) {
+      response.data.directManager = {
+        id: directManager._id,
+        name: directManager.name,
+        email: directManager.email,
+        role: directManager.role,
+        position: directManager.position
+          ? {
+              id: directManager.position._id,
+              name: directManager.position.name,
+            }
+          : null,
+      };
+    }
+
+    return res.json(response);
+  } catch (err) {
+    console.error("getColleagues error:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+      message: err.message,
+    });
   }
 };
 
@@ -480,8 +1026,9 @@ module.exports = {
   listEmployees,
   getEmployee,
   updateEmployee,
-  deleteEmployee,
+  changeEmployeeStatus,
   importEmployees,
   parseCv,
   getImportTemplate,
+  getColleagues,
 };

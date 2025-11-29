@@ -11,6 +11,8 @@ This document provides comprehensive documentation for all API endpoints created
 
 ## Table of Contents
 - [Authentication](#authentication)
+- [Colleague Endpoints](#colleague-endpoints)
+  - [Get Colleagues List](#get-colleagues-list)
 - [Project Endpoints](#project-endpoints)
   - [Get Projects (Role-Based)](#1-get-projects-role-based)
   - [Get All Projects (HR Only)](#2-get-all-projects-hr-only)
@@ -48,6 +50,170 @@ Content-Type: application/json
 {
   "email": "user@example.com",
   "password": "password123"
+}
+```
+
+---
+
+## Colleague Endpoints
+
+Base path: `/hr`
+
+### Get Colleagues List
+
+Retrieves a list of colleagues based on the authenticated user's role and organizational hierarchy.
+
+**Endpoint**: `GET /hr/colleagues`
+
+**Access**: All authenticated users
+
+**Role-Based Behavior**:
+- **Manager**: Returns all direct subordinates (employees where `managerId` equals the manager's ID)
+- **Staff/HR**: Returns teammates with the same manager (colleagues with the same `managerId`), plus their direct manager information
+
+**Request Example**:
+```http
+GET /hr/colleagues
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response for Staff/HR** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "userRole": "staff",
+    "colleagues": [
+      {
+        "id": "69016bcc7157f337f7e2e4eb",
+        "name": "John Developer",
+        "email": "john@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439012",
+          "name": "Senior Developer"
+        },
+        "skills": [
+          {
+            "id": "507f1f77bcf86cd799439015",
+            "name": "JavaScript"
+          },
+          {
+            "id": "507f1f77bcf86cd799439016",
+            "name": "React"
+          }
+        ]
+      },
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439013",
+          "name": "UI/UX Designer"
+        },
+        "skills": [
+          {
+            "id": "507f1f77bcf86cd799439017",
+            "name": "Figma"
+          }
+        ]
+      }
+    ],
+    "directManager": {
+      "id": "69016bcc7157f337f7e2e4ea",
+      "name": "Tony Yoditanto",
+      "email": "tonyoditanto@gmail.com",
+      "role": "manager",
+      "position": {
+        "id": "507f1f77bcf86cd799439011",
+        "name": "Engineering Manager"
+      }
+    },
+    "totalColleagues": 2
+  }
+}
+```
+
+**Response for Manager** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "userRole": "manager",
+    "colleagues": [
+      {
+        "id": "69016bcc7157f337f7e2e4eb",
+        "name": "John Developer",
+        "email": "john@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439012",
+          "name": "Senior Developer"
+        },
+        "skills": [
+          {
+            "id": "507f1f77bcf86cd799439015",
+            "name": "JavaScript"
+          }
+        ]
+      },
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439013",
+          "name": "UI/UX Designer"
+        },
+        "skills": []
+      },
+      {
+        "id": "69016bcc7157f337f7e2e4ed",
+        "name": "Bob Tester",
+        "email": "bob@example.com",
+        "role": "staff",
+        "position": {
+          "id": "507f1f77bcf86cd799439014",
+          "name": "QA Engineer"
+        },
+        "skills": []
+      }
+    ],
+    "totalColleagues": 3
+  }
+}
+```
+
+**Response Explanation**:
+- `userRole`: The role of the current authenticated user
+- `colleagues`: Array of colleague objects with basic information, position, and skills
+- `directManager`: Only included for staff/HR roles - information about their direct supervisor
+- `totalColleagues`: Count of colleagues returned
+
+**Special Features**:
+- **Excludes Self**: The current user is not included in the colleagues list
+- **Active Only**: Only returns active employees (`active: true`)
+- **Sorted by Name**: Colleagues are sorted alphabetically by name
+- **Populated Data**: Includes position and skills information for easy display
+
+**Error** (404 Not Found):
+```json
+{
+  "success": false,
+  "error": "Not Found",
+  "message": "Current user not found"
+}
+```
+
+**Error** (500 Internal Server Error):
+```json
+{
+  "success": false,
+  "error": "Internal Server Error",
+  "message": "Error message details"
 }
 ```
 
@@ -654,9 +820,11 @@ Creates a new project and automatically assigns staff members in a single API ca
 **⭐ Special Features**:
 - Creates project and assigns staff in one transaction
 - **Status is automatically set to 'active'** (cannot be changed during creation)
-- **Automatically sets `teamMemberCount` to staffIds.length + 1** (includes manager)
-- startDate is automatically set to current date
+- **🔥 IMPORTANT: The project creator (manager) is AUTOMATICALLY assigned to the ProjectAssignment collection as a tech lead**
+- **Automatically sets `teamMemberCount` to staffIds.length + 1** (includes manager/creator)
+- startDate is automatically set to current date if not provided
 - Manager roles are automatically assigned as tech leads
+- Direct subordinates are assigned immediately; staff from other managers require approval
 - Returns both project and assignment data
 
 **Request Body**:
@@ -776,10 +944,17 @@ Content-Type: application/json
         "__v": 0
       }
     ],
-    "message": "Project created successfully with 3 staff members assigned"
+    "borrowRequests": 0,
+    "message": "Project created successfully. 3 staff member(s) assigned immediately. 0 staff member(s) pending manager approval."
   }
 }
 ```
+
+**⚠️ Important Notes**:
+- The **first assignment** in the `assignments` array is ALWAYS the project creator (manager) with `isTechLead: true`
+- The creator is automatically added to the ProjectAssignment collection
+- `teamMemberCount` includes the creator + assigned staff
+- The creator does NOT need to be included in the `staffIds` array
 
 **Error** (400 Bad Request - Missing Name):
 ```json
@@ -1077,6 +1252,416 @@ Project: Mobile App Development
 ```
 
 ---
+
+## Project Task Endpoints
+
+Base path: `/project`
+
+### 15. Create Task
+
+Creates a new task in a project. Only tech leads can create tasks.
+
+**Endpoint**: `POST /project/:projectId/tasks`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | MongoDB ObjectId of the project |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | Yes | Task title (max 100 chars) |
+| `description` | string | No | Task description |
+| `requiredSkills` | array | No | Array of skill IDs |
+| `assigneeIds` | array | No | Array of user IDs to assign |
+
+**Request Example**:
+```http
+POST /project/6901b5caf7ed0f35753d38a3/tasks
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "title": "Design User Interface",
+  "description": "Create UI mockups for the mobile app",
+  "requiredSkills": [
+    "507f1f77bcf86cd799439015",  // UI Design
+    "507f1f77bcf86cd799439016"   // Figma
+  ],
+  "assigneeIds": [
+    "69016bcc7157f337f7e2e4ec"   // Jane Designer
+  ]
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6901c5f7ed0f35753d38c5",
+    "title": "Design User Interface",
+    "description": "Create UI mockups for the mobile app",
+    "status": "todo",
+    "startDate": null,
+    "endDate": null,
+    "requiredSkills": [
+      {
+        "id": "507f1f77bcf86cd799439015",
+        "name": "UI Design"
+      },
+      {
+        "id": "507f1f77bcf86cd799439016",
+        "name": "Figma"
+      }
+    ],
+    "createdBy": {
+      "id": "69016bcc7157f337f7e2e4ea",
+      "name": "Tony Yoditanto",
+      "email": "tonyoditanto@gmail.com"
+    },
+    "assignees": [
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com"
+      }
+    ],
+    "createdAt": "2025-10-30T10:00:00.000Z",
+    "updatedAt": "2025-10-30T10:00:00.000Z"
+  }
+}
+```
+
+### 16. Get Task Details
+
+Retrieves detailed information about a specific task.
+
+**Endpoint**: `GET /project/tasks/:taskId`
+
+**Access**: Project members
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6901c5f7ed0f35753d38c5",
+    "title": "Design User Interface",
+    "description": "Create UI mockups for the mobile app",
+    "status": "todo",
+    "startDate": null,
+    "endDate": null,
+    "requiredSkills": [...],
+    "createdBy": {...},
+    "assignees": [...],
+    "createdAt": "2025-10-30T10:00:00.000Z",
+    "updatedAt": "2025-10-30T10:00:00.000Z"
+  }
+}
+```
+
+### 17. Update Task Details
+
+Updates a task's details. Only tech leads can update tasks.
+
+**Endpoint**: `PUT /project/tasks/:taskId`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | No | New task title |
+| `description` | string | No | New task description |
+| `requiredSkills` | array | No | New array of skill IDs |
+
+**Request Example**:
+```http
+PUT /project/tasks/6901c5f7ed0f35753d38c5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "title": "Design User Interface - Mobile App",
+  "description": "Create UI mockups for iOS and Android apps",
+  "requiredSkills": [
+    "507f1f77bcf86cd799439015",
+    "507f1f77bcf86cd799439016",
+    "507f1f77bcf86cd799439017"
+  ]
+}
+```
+
+### 18. Get Project Tasks (DEV-79)
+
+Retrieves all tasks for a specific project with their assignees and required skills.
+
+**Endpoint**: `GET /project/:projectId/tasks`
+
+**Access**: Project members only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | MongoDB ObjectId of the project |
+
+**Request Example**:
+```http
+GET /project/6901b5caf7ed0f35753d38a3/tasks
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6901c5f7ed0f35753d38c5",
+      "title": "Design User Interface",
+      "description": "Create UI mockups for the mobile app",
+      "status": "in_progress",
+      "startDate": "2025-10-30T10:00:00.000Z",
+      "endDate": null,
+      "requiredSkills": [
+        {
+          "id": "507f1f77bcf86cd799439015",
+          "name": "UI Design"
+        },
+        {
+          "id": "507f1f77bcf86cd799439016",
+          "name": "Figma"
+        }
+      ],
+      "createdBy": {
+        "id": "69016bcc7157f337f7e2e4ea",
+        "name": "Tony Yoditanto",
+        "email": "tonyoditanto@gmail.com"
+      },
+      "assignees": [
+        {
+          "id": "69016bcc7157f337f7e2e4ec",
+          "name": "Jane Designer",
+          "email": "jane@example.com"
+        }
+      ],
+      "createdAt": "2025-10-30T10:00:00.000Z",
+      "updatedAt": "2025-10-30T10:15:00.000Z"
+    }
+  ]
+}
+```
+
+**Error** (403 Forbidden):
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "message": "You are not assigned to this project"
+}
+```
+
+### 19. Assign Users to Task
+
+Assigns multiple users to a task. Only project members can be assigned.
+
+**Endpoint**: `POST /project/tasks/:taskId/assignees`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `userIds` | array | Yes | Array of user IDs to assign |
+
+**Request Example**:
+```http
+POST /project/tasks/6901c5f7ed0f35753d38c5/assignees
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "userIds": [
+    "69016bcc7157f337f7e2e4ec",
+    "69016bcc7157f337f7e2e4ed"
+  ]
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "taskId": "6901c5f7ed0f35753d38c5",
+    "assignees": [
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com"
+      },
+      {
+        "id": "69016bcc7157f337f7e2e4ed",
+        "name": "Bob Tester",
+        "email": "bob@example.com"
+      }
+    ]
+  }
+}
+```
+
+### 20. Remove User from Task
+
+Removes a user from a task's assignees.
+
+**Endpoint**: `DELETE /project/tasks/:taskId/assignees/:userId`
+
+**Access**: Tech leads only
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+| `userId` | string | Yes | MongoDB ObjectId of the user to remove |
+
+**Request Example**:
+```http
+DELETE /project/tasks/6901c5f7ed0f35753d38c5/assignees/69016bcc7157f337f7e2e4ed
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+```
+
+**Response** (204 No Content):
+```
+(Empty response body)
+```
+
+### 21. Update Task Status (DEV-80)
+
+Updates the status of a task with valid status transitions.
+
+**Endpoint**: `PUT /project/tasks/:taskId/status`
+
+**Access**: Project members assigned to the task, or tech leads
+
+**⭐ Status Transitions**:
+- todo → in_progress
+- in_progress → done, todo
+- done → in_progress
+
+**Automatic Date Updates**:
+- When status changes to 'in_progress': startDate is set to current date
+- When status changes to 'done': endDate is set to current date
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskId` | string | Yes | MongoDB ObjectId of the task |
+
+**Request Body**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | string | Yes | New status for the task |
+
+**Status Values**: `todo`, `in_progress`, `done`
+
+**Request Example**:
+```http
+PUT /project/tasks/6901c5f7ed0f35753d38c5/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInT5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "status": "in_progress"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6901c5f7ed0f35753d38c5",
+    "title": "Design User Interface",
+    "description": "Create UI mockups for the mobile app",
+    "status": "in_progress",
+    "startDate": "2025-10-30T10:15:00.000Z",
+    "endDate": null,
+    "requiredSkills": [
+      {
+        "id": "507f1f77bcf86cd799439015",
+        "name": "UI Design"
+      },
+      {
+        "id": "507f1f77bcf86cd799439016",
+        "name": "Figma"
+      }
+    ],
+    "createdBy": {
+      "id": "69016bcc7157f337f7e2e4ea",
+      "name": "Tony Yoditanto",
+      "email": "tonyoditanto@gmail.com"
+    },
+    "assignees": [
+      {
+        "id": "69016bcc7157f337f7e2e4ec",
+        "name": "Jane Designer",
+        "email": "jane@example.com"
+      }
+    ],
+    "createdAt": "2025-10-30T10:00:00.000Z",
+    "updatedAt": "2025-10-30T10:15:00.000Z"
+  }
+}
+```
+
+**Error** (400 Bad Request - Invalid Transition):
+```json
+{
+  "success": false,
+  "error": "Invalid Status Transition",
+  "message": "Cannot transition from todo to done",
+  "allowedTransitions": ["in_progress"]
+}
+```
+
+**Error** (403 Forbidden):
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "message": "You are not assigned to this task"
+}
+```
 
 ## Project Assignment Endpoints
 
@@ -1598,13 +2183,21 @@ Content-Type: application/json
 | 5 | `/project/with-assignments` | POST | Manager | **Create project with staff (auto-active, Recommended)** |
 | 6 | `/project/:projectId` | PUT | Manager/HR | **Update project (staff mgmt + skill transfer)** |
 | 7 | `/project/:projectId` | DELETE | Manager/HR | **Delete project (cascading deletes)** |
-| 8 | `/project-assignment` | GET | All | Get all assignments (with filters) |
-| 9 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
-| 10 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
-| 11 | `/project-assignment/:assignmentId` | PUT | Manager/HR | Update assignment |
-| 12 | `/project-assignment/:assignmentId` | DELETE | Manager/HR | Remove assignment |
-| 13 | `/position/batch` | POST | HR | **Create multiple positions (batch)** |
-| 14 | `/position/batch` | DELETE | HR | **Delete multiple positions (batch)** |
+| 8 | `/project/:projectId/tasks` | GET | Project Members | **Get all tasks for a project (DEV-79)** |
+| 9 | `/project/:projectId/tasks` | POST | Tech Leads | **Create new task** |
+| 10 | `/project/tasks/:taskId` | GET | Project Members | **Get task details** |
+| 11 | `/project/tasks/:taskId` | PUT | Tech Leads | **Update task details** |
+| 12 | `/project/tasks/:taskId` | DELETE | Tech Leads | **Delete task** |
+| 13 | `/project/tasks/:taskId/status` | PUT | Task Assignees/Tech Leads | **Update task status (DEV-80)** |
+| 14 | `/project/tasks/:taskId/assignees` | POST | Tech Leads | **Assign users to task** |
+| 15 | `/project/tasks/:taskId/assignees/:userId` | DELETE | Tech Leads | **Remove user from task** |
+| 10 | `/project-assignment` | GET | All | Get all assignments (with filters) |
+| 11 | `/project-assignment/:assignmentId` | GET | All | Get assignment by ID |
+| 12 | `/project-assignment` | POST | Manager/HR | Assign user to project (auto tech lead) |
+| 13 | `/project-assignment/:assignmentId` | PUT | Manager/HR | Update assignment |
+| 14 | `/project-assignment/:assignmentId` | DELETE | Manager/HR | Remove assignment |
+| 15 | `/position/batch` | POST | HR | **Create multiple positions (batch)** |
+| 16 | `/position/batch` | DELETE | HR | **Delete multiple positions (batch)** |
 
 ---
 

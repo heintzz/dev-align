@@ -1,4 +1,4 @@
-const { Schema } = require('mongoose');
+const { Schema } = require("mongoose");
 
 const projectSchema = new Schema(
   {
@@ -13,8 +13,8 @@ const projectSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'completed'],
-      default: 'active',
+      enum: ["active", "completed"],
+      default: "active",
       maxlength: 20,
     },
     startDate: {
@@ -25,13 +25,24 @@ const projectSchema = new Schema(
       type: Date,
       required: false,
     },
+    completedAt: {
+      type: Date,
+      required: false,
+      default: null,
+    },
     teamMemberCount: {
       type: Number,
       default: 1, // Default 1 to include manager
     },
+    skills: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Skill",
+      },
+    ],
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
   },

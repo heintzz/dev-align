@@ -9,6 +9,15 @@ const {
   updateProject,
   deleteProject,
   assignTechLead,
+  getProjectStaff,
+  getProjectTasks,    // Added for DEV-79
+  updateTaskStatus,   // Added for DEV-80
+  createTask,
+  getTaskDetails,
+  updateTaskDetails,
+  deleteTask,
+  assignUsersToTask,
+  removeUserFromTask
 } = require('../controllers/project.controller');
 const auth = require('../middlewares/authorization');
 const verifyToken = require('../middlewares/token');
@@ -224,6 +233,65 @@ router.get('/:projectId/details', verifyToken, getProjectDetails);
 
 /**
  * @swagger
+ * /project/{projectId}/staff:
+ *   get:
+ *     summary: Get all staff assigned to a project
+ *     description: Returns user ID and name for all staff members assigned to the project. Useful for task assignment.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: List of staff assigned to the project
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     projectId:
+ *                       type: string
+ *                     projectName:
+ *                       type: string
+ *                     totalStaff:
+ *                       type: integer
+ *                     staff:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           role:
+ *                             type: string
+ *                           isTechLead:
+ *                             type: boolean
+ *       400:
+ *         description: Invalid project ID format
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:projectId/staff', verifyToken, getProjectStaff);
+
+/**
+ * @swagger
  * /project/{projectId}/assign-tech-lead:
  *   put:
  *     summary: Assign or remove tech lead status for a staff member
@@ -334,7 +402,10 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  * /project/with-assignments:
  *   post:
  *     summary: Create a new project with staff assignments (Manager only)
- *     description: Creates a project (auto-set to 'active') and automatically assigns staff members in a single operation. Manager is automatically assigned as tech lead. Team member count includes manager + staff.
+ *     description: |
+ *       Creates a project (auto-set to 'active') and automatically assigns staff members in a single operation.
+ *       **IMPORTANT**: The project creator (manager) is automatically assigned to the project as a tech lead in the ProjectAssignment collection.
+ *       Team member count includes manager (creator) + assigned staff. Direct subordinates are assigned immediately, while staff from other managers require approval.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -396,6 +467,264 @@ router.post('/', verifyToken, auth('manager', 'hr'), createProject);
  *         description: One or more staff members not found
  */
 router.post('/with-assignments', verifyToken, auth('manager'), createProjectWithAssignments);
+
+/**
+ * @swagger
+ * /project/{projectId}/tasks:
+ *   get:
+ *     summary: Get all tasks for a specific project
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of tasks with assignees and required skills
+ *       403:
+ *         description: User not assigned to project
+ *       404:
+ *         description: Project not found
+ */
+router.get('/:projectId/tasks', verifyToken, getProjectTasks);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}/status:
+ *   put:
+ *     summary: Update task status (e.g., todo -> in_progress)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [todo, in_progress, done]
+ *     responses:
+ *       200:
+ *         description: Task status updated
+ *       400:
+ *         description: Invalid status transition
+ *       403:
+ *         description: User not assigned to task/project
+ *       404:
+ *         description: Task not found
+ */
+router.put('/tasks/:taskId/status', verifyToken, updateTaskStatus);
+
+/**
+ * @swagger
+ * /project/{projectId}/tasks:
+ *   post:
+ *     summary: Create a new task in a project (Tech Lead only)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *               requiredSkills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               assigneeIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Task created successfully
+ *       403:
+ *         description: Not a tech lead
+ */
+router.post('/:projectId/tasks', verifyToken, createTask);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}:
+ *   get:
+ *     summary: Get task details
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Task details with assignees
+ *       403:
+ *         description: Not a project member
+ *       404:
+ *         description: Task not found
+ */
+router.get('/tasks/:taskId', verifyToken, getTaskDetails);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}:
+ *   put:
+ *     summary: Update task details (Tech Lead only)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *               requiredSkills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Task updated successfully
+ *       403:
+ *         description: Not a tech lead
+ *       404:
+ *         description: Task not found
+ */
+router.put('/tasks/:taskId', verifyToken, updateTaskDetails);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}:
+ *   delete:
+ *     summary: Delete a task (Tech Lead only)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Task deleted successfully
+ *       403:
+ *         description: Not a tech lead
+ *       404:
+ *         description: Task not found
+ */
+router.delete('/tasks/:taskId', verifyToken, deleteTask);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}/assignees:
+ *   post:
+ *     summary: Assign users to task (Tech Lead only)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userIds
+ *             properties:
+ *               userIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Users assigned to task
+ *       403:
+ *         description: Not a tech lead
+ *       404:
+ *         description: Task not found
+ */
+router.post('/tasks/:taskId/assignees', verifyToken, assignUsersToTask);
+
+/**
+ * @swagger
+ * /project/tasks/{taskId}/assignees/{userId}:
+ *   delete:
+ *     summary: Remove user from task (Tech Lead only)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: User removed from task
+ *       403:
+ *         description: Not a tech lead
+ *       404:
+ *         description: Task not found
+ */
+router.delete('/tasks/:taskId/assignees/:userId', verifyToken, removeUserFromTask);
 
 /**
  * @swagger
